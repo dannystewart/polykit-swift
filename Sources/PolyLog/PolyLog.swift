@@ -18,7 +18,7 @@ public final class PolyLog: @unchecked Sendable {
 
     public static func getLogger(
         _ name: String,
-        level: LogLevel = .info,
+        level: LogLevel = .debug,
         simple: Bool = false,
         color: Bool = true
     ) -> PolyLogger {
@@ -31,8 +31,10 @@ public final class PolyLog: @unchecked Sendable {
         simple: Bool,
         color: Bool
     ) -> PolyLogger {
+        // Use a more specific subsystem for better visibility in Console.app
+        let subsystem = Bundle.main.bundleIdentifier ?? "com.dannystewart.polylog"
         let osLogger = Logger(
-            subsystem: Bundle.main.bundleIdentifier ?? "com.dannystewart.polylog",
+            subsystem: subsystem,
             category: name
         )
         return PolyLogger(osLogger: osLogger, level: level, simple: simple, color: color)
@@ -77,6 +79,16 @@ public struct PolyLogger {
     private func log(_ message: String, level: LogLevel) {
         let formattedMessage = formatMessage(message, level: level)
 
+        // Output directly to the console for immediate visibility
+        switch level {
+        case .debug, .info:
+            print(formattedMessage)
+        case .warning, .error, .fault:
+            // For error levels, write to stderr
+            FileHandle.standardError.write(Data((formattedMessage + "\n").utf8))
+        }
+
+        // Also log to unified logging system for system logs
         switch level.osLogType {
         case .debug:
             osLogger.debug("\(formattedMessage, privacy: .public)")
