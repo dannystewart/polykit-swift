@@ -17,12 +17,34 @@ public final class PolyLog: @unchecked Sendable {
     private init() {}
 
     public static func getLogger(
-        _ name: String,
+        _ name: String? = nil,
         level: LogLevel = .debug,
         simple: Bool = false,
         color: Bool = true
     ) -> PolyLogger {
-        return _shared.createLogger(name: name, level: level, simple: simple, color: color)
+        let loggerName = _getLoggerName(name)
+        return _shared.createLogger(name: loggerName, level: level, simple: simple, color: color)
+    }
+
+    private static func _getLoggerName(_ name: String? = nil) -> String {
+        if let name = name {
+            return name
+        }
+
+        // Use Swift's built-in introspection to automatically determine logger name
+        let fileID = #fileID  // e.g., "MyApp/MyClass.swift"
+        let function = #function  // e.g., "myMethod()"
+
+        // Extract module and file from fileID
+        let components = fileID.split(separator: "/")
+        if components.count >= 2 {
+            let module = String(components[0])
+            let fileName = String(components[1]).replacingOccurrences(of: ".swift", with: "")
+            return "\(module).\(fileName)"
+        }
+
+        // Fallback to just the function name if we can't parse fileID
+        return function
     }
 
     private func createLogger(
