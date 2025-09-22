@@ -10,9 +10,8 @@ import os
 
 // MARK: PolyLog Main Class
 
-@MainActor
-public final class PolyLog {
-    public static let shared = PolyLog()
+public final class PolyLog: @unchecked Sendable {
+    public static let _shared = PolyLog()
     private var loggers: [String: Logger] = [:]
 
     private init() {}
@@ -23,7 +22,7 @@ public final class PolyLog {
         simple: Bool = false,
         color: Bool = true
     ) -> PolyLogger {
-        return shared.createLogger(name: name, level: level, simple: simple, color: color)
+        return _shared.createLogger(name: name, level: level, simple: simple, color: color)
     }
 
     private func createLogger(
