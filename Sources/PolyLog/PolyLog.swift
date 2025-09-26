@@ -14,19 +14,27 @@ public struct PolyLog: @unchecked Sendable {
     private let osLogger: Logger
     private let simple: Bool
     private let color: Bool
+    private let debug: Bool
 
     public init(
         simple: Bool = false,
-        color: Bool = true
+        color: Bool = true,
+        debug: Bool = true
     ) {
         let subsystem = Bundle.main.bundleIdentifier ?? "com.dannystewart.polylog"
         self.osLogger = Logger(subsystem: subsystem, category: "PolyLog")
         self.simple = simple
         self.color = color
+        self.debug = debug
     }
 
     public func debug(_ message: String) {
-        log(message, level: .debug)
+        if debug {
+            log(message, level: .debug)
+        } else {
+            let formattedMessage = formatMessage(message, level: .debug)
+            osLogger.debug("\(formattedMessage, privacy: .public)")
+        }
     }
 
     public func info(_ message: String) {
