@@ -12,18 +12,15 @@ import os
 
 public struct PolyLog: @unchecked Sendable {
     private let osLogger: Logger
-    private let level: LogLevel
     private let simple: Bool
     private let color: Bool
 
     public init(
-        level: LogLevel = .debug,
         simple: Bool = false,
         color: Bool = true
     ) {
         let subsystem = Bundle.main.bundleIdentifier ?? "com.dannystewart.polylog"
         self.osLogger = Logger(subsystem: subsystem, category: "PolyLog")
-        self.level = level
         self.simple = simple
         self.color = color
     }
@@ -51,16 +48,15 @@ public struct PolyLog: @unchecked Sendable {
     private func log(_ message: String, level: LogLevel) {
         let formattedMessage = formatMessage(message, level: level)
 
-        // Output directly to the console for immediate visibility
+        // Output to console for immediate visibility
         switch level {
         case .debug, .info:
             print(formattedMessage)
         case .warning, .error, .fault:
-            // For error levels, write to stderr
             FileHandle.standardError.write(Data((formattedMessage + "\n").utf8))
         }
 
-        // Also log to unified logging system for system logs
+        // Also log to system for Console.app and production debugging
         switch level.osLogType {
         case .debug:
             osLogger.debug("\(formattedMessage, privacy: .public)")
@@ -149,23 +145,12 @@ public enum LogLevel: String, CaseIterable {
 
 // MARK: Log Colors
 
-public enum LogColors: String, CaseIterable {
+public enum LogColors: String {
     case reset = "\u{001B}[0m"
     case bold = "\u{001B}[1m"
-    case white = "\u{001B}[37m"
-    case black = "\u{001B}[30m"
-    case blue = "\u{001B}[34m"
-    case cyan = "\u{001B}[36m"
     case gray = "\u{001B}[90m"
     case green = "\u{001B}[32m"
-    case magenta = "\u{001B}[95m"
-    case purple = "\u{001B}[35m"
-    case red = "\u{001B}[31m"
     case yellow = "\u{001B}[33m"
-    case brightBlue = "\u{001B}[94m"
-    case brightCyan = "\u{001B}[96m"
-    case brightGreen = "\u{001B}[92m"
-    case brightRed = "\u{001B}[91m"
-    case brightWhite = "\u{001B}[97m"
-    case brightYellow = "\u{001B}[93m"
+    case red = "\u{001B}[31m"
+    case magenta = "\u{001B}[95m"
 }
