@@ -1,0 +1,47 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        "editor.detectIndentation": false,
+        "editor.formatOnPaste": true,
+        "editor.formatOnSave": true,
+        "explorerExclude.backup": {},
+        "files.exclude": {
+            "**/*.xcodeproj": true,
+            "**/.DS_Store": true,
+            "**/.git": true,
+            "**/.hg": false,
+            "**/.pytest_cache": true,
+            "**/.svn": false,
+            "**/.vscode": true,
+            "**/__pycache__": true,
+            "**/CVS": false,
+            "**/node_modules": true,
+            "**/Thumbs.db": true,
+            "*.code-workspace": true,
+            ".build": true,
+            ".cursor": true,
+            ".cursorindexingignore": true,
+            ".history": true,
+            ".specstory": true,
+            ".swiftpm": true,
+            "env*": true,
+            "venv": true
+        },
+        "swift.autoGenerateLaunchConfigurations": true,
+        "swift.buildArguments": [
+            "-Xswiftc",
+            "-target",
+            "-Xswiftc",
+            "x86_64-apple-macosx26.0"
+        ],
+        "swift.buildPath": "./.build",
+        "swift.sdk": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+        "swift.sourcekit-lsp.serverPath": "/usr/bin/sourcekit-lsp",
+        "swift.swiftEnvironmentVariables": {},
+        "swift.target": "x86_64-apple-macosx26.0"
+    }
+}
