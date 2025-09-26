@@ -1,8 +1,21 @@
-.DS_Store
-.netrc
-.swiftpm/configuration/registries.json
-.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
-/.build
-/Packages
+# Build artifacts
+.build/
+build/
 DerivedData/
-xcuserdata/
+
+# Swift package files
+.swiftpm/
+*.xcodeproj/xcuserdata/
+*.xcuserdata/
+*.xcworkspace/xcuserdata/
+**/UserInterfaceState.xcuserstate
+Packages/
+
+# Local development
+.cursor/rules/
+.cursorindexingignore
+.DS_Store
+.specstory/
+*.tmp
+release/
+scripts/
