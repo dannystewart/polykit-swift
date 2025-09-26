@@ -8,71 +8,21 @@
 import Foundation
 import os
 
-// MARK: PolyLog Main Class
+// MARK: PolyLog
 
-public final class PolyLog: @unchecked Sendable {
-    public static let _shared = PolyLog()
-    private var loggers: [String: Logger] = [:]
-
-    private init() {}
-
-    public static func getLogger(
-        _ name: String? = nil,
-        level: LogLevel = .debug,
-        simple: Bool = false,
-        color: Bool = true
-    ) -> PolyLogger {
-        let loggerName = _getLoggerName(name)
-        return _shared.createLogger(name: loggerName, level: level, simple: simple, color: color)
-    }
-
-    private static func _getLoggerName(_ name: String? = nil) -> String {
-        if let name = name {
-            return name
-        }
-
-        // Use Swift's built-in introspection to automatically determine logger name
-        let fileID = #fileID  // e.g., "MyApp/MyClass.swift"
-        let function = #function  // e.g., "myMethod()"
-
-        // Extract module and file from fileID
-        let components = fileID.split(separator: "/")
-        if components.count >= 2 {
-            let module = String(components[0])
-            let fileName = String(components[1]).replacingOccurrences(of: ".swift", with: "")
-            return "\(module).\(fileName)"
-        }
-
-        // Fallback to just the function name if we can't parse fileID
-        return function
-    }
-
-    private func createLogger(
-        name: String,
-        level: LogLevel,
-        simple: Bool,
-        color: Bool
-    ) -> PolyLogger {
-        // Use a more specific subsystem for better visibility in Console.app
-        let subsystem = Bundle.main.bundleIdentifier ?? "com.dannystewart.polylog"
-        let osLogger = Logger(
-            subsystem: subsystem,
-            category: name
-        )
-        return PolyLogger(osLogger: osLogger, level: level, simple: simple, color: color)
-    }
-}
-
-// MARK: PolyLogger Wrapper
-
-public struct PolyLogger {
+public struct PolyLog: @unchecked Sendable {
     private let osLogger: Logger
     private let level: LogLevel
     private let simple: Bool
     private let color: Bool
 
-    init(osLogger: Logger, level: LogLevel, simple: Bool, color: Bool) {
-        self.osLogger = osLogger
+    public init(
+        level: LogLevel = .debug,
+        simple: Bool = false,
+        color: Bool = true
+    ) {
+        let subsystem = Bundle.main.bundleIdentifier ?? "com.dannystewart.polylog"
+        self.osLogger = Logger(subsystem: subsystem, category: "PolyLog")
         self.level = level
         self.simple = simple
         self.color = color
