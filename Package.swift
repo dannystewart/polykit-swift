@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "polylog-swift",
+    name: "polykit-swift",
     platforms: [
         .macOS(.v26)
     ],
