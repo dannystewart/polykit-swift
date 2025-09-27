@@ -9,8 +9,12 @@ import Foundation
 import PolyText
 import os
 
-// MARK: PolyLog
-
+/// Struct for logging messages to the console and system log.
+///
+/// - Parameters:
+///   - simple: Whether to use a simpler format without timestamps and level indicators.
+///   - color:  Whether to use colorized output.
+///   - debug:  Whether to log debug messages. Otherwise, logs only info and above.
 public struct PolyLog: @unchecked Sendable {
     private let osLogger: Logger
     private let simple: Bool
@@ -29,6 +33,9 @@ public struct PolyLog: @unchecked Sendable {
         self.debug = debug
     }
 
+    /// Logs a debug message.
+    ///
+    /// - Parameter message: The message to log.
     public func debug(_ message: String) {
         if debug {
             log(message, level: .debug)
@@ -38,22 +45,39 @@ public struct PolyLog: @unchecked Sendable {
         }
     }
 
+    /// Logs an info message.
+    ///
+    /// - Parameter message: The message to log.
     public func info(_ message: String) {
         log(message, level: .info)
     }
 
+    /// Logs a warning message.
+    ///
+    /// - Parameter message: The message to log.
     public func warning(_ message: String) {
         log(message, level: .warning)
     }
 
+    /// Logs an error message.
+    ///
+    /// - Parameter message: The message to log.
     public func error(_ message: String) {
         log(message, level: .error)
     }
 
+    /// Logs a fault message.
+    ///
+    /// - Parameter message: The message to log.
     public func fault(_ message: String) {
         log(message, level: .fault)
     }
 
+    /// Logs a message at the specified level.
+    ///
+    /// - Parameters:
+    ///   - message: The message to log.
+    ///   - level:   The level of the message.
     private func log(_ message: String, level: LogLevel) {
         let formattedMessage = formatMessage(message, level: level)
 
@@ -82,6 +106,12 @@ public struct PolyLog: @unchecked Sendable {
         }
     }
 
+    /// Formats a message for the specified level.
+    ///
+    /// - Parameters:
+    ///   - message: The message to format.
+    ///   - level:   The level of the message.
+    /// - Returns: The formatted message.
     private func formatMessage(_ message: String, level: LogLevel) -> String {
         if !color {
             return simple ? message : "\(timestamp()) \(level.displayText) \(message)"
@@ -105,6 +135,9 @@ public struct PolyLog: @unchecked Sendable {
         return "\(timestampFormatted)\(levelFormatted) \(messageFormatted)"
     }
 
+    /// Formats the current time for use in a log message.
+    ///
+    /// - Returns: The current timestamp in the format "h:mm:ss a".
     private func timestamp() -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "h:mm:ss a"
@@ -112,8 +145,7 @@ public struct PolyLog: @unchecked Sendable {
     }
 }
 
-// MARK: Log Levels
-
+/// Enum representing various log levels.
 public enum LogLevel: String, CaseIterable {
     case debug = "debug"
     case info = "info"

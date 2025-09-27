@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// Enum representing various text colors.
 public enum TextColor: String, CaseIterable {
     case reset = "\u{001B}[0m"
     case bold = "\u{001B}[1m"
