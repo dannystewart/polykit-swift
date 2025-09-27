@@ -1,10 +1,3 @@
-//
-//  TextColor.swift
-//  polykit-swift
-//
-//  Created by Danny Stewart on 9/22/25.
-//
-
 import Foundation
 
 /// Enum representing various text colors.

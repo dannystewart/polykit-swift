@@ -1,10 +1,3 @@
-//
-//  PolyLog.swift
-//  polykit-swift
-//
-//  Created by Danny Stewart on 9/22/25.
-//
-
 import Foundation
 import PolyText
 import os

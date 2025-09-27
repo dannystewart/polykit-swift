@@ -1,10 +1,3 @@
-//
-//  WalkingMan.swift
-//  polykit-swift
-//
-//  Created by Danny Stewart on 9/26/25.
-//
-
 import Foundation
 import PolyText
 
