@@ -9,6 +9,7 @@ let package = Package(
     products: [
         .library(name: "PolyLog", targets: ["PolyLog"]),
         .library(name: "PolyText", targets: ["PolyText"]),
+        .executable(name: "walkingman", targets: ["WalkingMan"]),
     ],
     targets: [
         .target(
@@ -20,6 +21,10 @@ let package = Package(
             name: "PolyText",
             path: "Sources/PolyText"
         ),
-
+        .executableTarget(
+            name: "WalkingMan",
+            dependencies: ["PolyText"],
+            path: "Sources/WalkingMan",
+        ),
     ],
 )

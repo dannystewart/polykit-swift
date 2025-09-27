@@ -1,5 +1,5 @@
 //
-//  Colors.swift
+//  TextColor.swift
 //  polykit-swift
 //
 //  Created by Danny Stewart on 9/22/25.
@@ -8,7 +8,7 @@
 import Foundation
 
 /// Enum representing various text colors.
-public enum TextColor: String, CaseIterable {
+public enum TextColor: String, CaseIterable, Sendable {
     case reset = "\u{001B}[0m"
     case bold = "\u{001B}[1m"
     case white = "\u{001B}[37m"
