@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Text {
+public enum Text {
     /// Returns a string with the specified color and style attributes.
     ///
     /// - Parameters:

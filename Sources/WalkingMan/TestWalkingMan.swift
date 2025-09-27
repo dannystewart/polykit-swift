@@ -1,7 +1,7 @@
 import Foundation
 import PolyText
 
-struct TestWalkingMan {
+enum TestWalkingMan {
     static func run() {
         var walkingMan = WalkingMan(
             color: .cyan,

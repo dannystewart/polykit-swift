@@ -1,6 +1,6 @@
 import Foundation
-import PolyText
 import os
+import PolyText
 
 /// Struct for logging messages to the console and system log.
 ///
@@ -19,11 +19,12 @@ public struct PolyLog: @unchecked Sendable {
         color: Bool = true,
         debug: Bool = true
     ) {
-        let subsystem = Bundle.main.bundleIdentifier ?? "com.dannystewart.polylog"
-        self.osLogger = Logger(subsystem: subsystem, category: "PolyLog")
         self.simple = simple
         self.color = color
         self.debug = debug
+
+        let subsystem = Bundle.main.bundleIdentifier ?? "com.dannystewart.polylog"
+        osLogger = Logger(subsystem: subsystem, category: "PolyLog")
     }
 
     /// Logs a debug message.

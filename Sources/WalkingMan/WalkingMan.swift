@@ -19,8 +19,8 @@ public struct WalkingMan: Sendable {
 
     // Animation state
     private var position: Int = 0
-    private var direction: Int = 1  // 1 for right, -1 for left
-    private var turnState: Int = 0  // 0 = normal, 1 = showing middle, 2 = completed turn
+    private var direction: Int = 1 // 1 for right, -1 for left
+    private var turnState: Int = 0 // 0 = normal, 1 = showing middle, 2 = completed turn
     private var isRunning: Bool = false
 
     public init(
@@ -93,16 +93,16 @@ public struct WalkingMan: Sendable {
         if turnState == 1 {
             // Middle position shown, now complete turn and resume movement
             turnState = 0
-            direction = -direction  // Reverse direction
-            position += direction  // First step in new direction
+            direction = -direction // Reverse direction
+            position += direction // First step in new direction
         } else {
             // Check boundaries BEFORE moving
-            if position + direction >= width && direction == 1 {
+            if position + direction >= width, direction == 1 {
                 // About to hit right boundary - stay at boundary and start turn
-                position = width - 1  // Stay within bounds
+                position = width - 1 // Stay within bounds
                 turnState = 1
                 // Don't change direction yet - that happens in turnState 1
-            } else if position + direction < 0 && direction == -1 {
+            } else if position + direction < 0, direction == -1 {
                 // About to hit left boundary - stay at boundary and start turn
                 position = 0
                 turnState = 1
