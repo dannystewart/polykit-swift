@@ -4,6 +4,46 @@
             "path": "."
         }
     ],
+    "launch": {
+        "configurations": [
+            {
+                "args": [],
+                "cwd": "${workspaceFolder:polykit-swift}",
+                "name": "Debug WalkingMan",
+                "preLaunchTask": "swift: Build Debug WalkingMan",
+                "program": "${workspaceFolder:polykit-swift}/.build/debug/WalkingMan",
+                "request": "launch",
+                "type": "lldb"
+            },
+            {
+                "args": [],
+                "cwd": "${workspaceFolder:polykit-swift}",
+                "name": "Release WalkingMan",
+                "preLaunchTask": "swift: Build Release WalkingMan",
+                "program": "${workspaceFolder:polykit-swift}/.build/release/WalkingMan",
+                "request": "launch",
+                "type": "lldb"
+            },
+            {
+                "args": [],
+                "cwd": "${workspaceFolder:polykit-swift}",
+                "name": "Debug walkingman",
+                "preLaunchTask": "swift: Build Debug walkingman",
+                "program": "${workspaceFolder:polykit-swift}/.build/debug/walkingman",
+                "request": "launch",
+                "type": "lldb"
+            },
+            {
+                "args": [],
+                "cwd": "${workspaceFolder:polykit-swift}",
+                "name": "Release walkingman",
+                "preLaunchTask": "swift: Build Release walkingman",
+                "program": "${workspaceFolder:polykit-swift}/.build/release/walkingman",
+                "request": "launch",
+                "type": "lldb"
+            }
+        ]
+    },
     "settings": {
         "editor.detectIndentation": false,
         "editor.formatOnPaste": true,
@@ -39,9 +79,6 @@
             "x86_64-apple-macosx26.0"
         ],
         "swift.buildPath": "./.build",
-        "swift.sdk": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
-        "swift.sourcekit-lsp.serverPath": "/usr/bin/sourcekit-lsp",
-        "swift.swiftEnvironmentVariables": {},
-        "swift.target": "x86_64-apple-macosx26.0"
+        "swift.sourcekit-lsp.serverPath": "/usr/bin/sourcekit-lsp"
     }
 }
