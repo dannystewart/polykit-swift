@@ -5,7 +5,7 @@ import PolyText
 //
 // Walking Man is the unsung hero who brings a bit of joy to operations that would otherwise be
 // frustrating or tedious. He's a simple character, but he's always there when you need him.
-public struct WalkingMan: Sendable {
+public class WalkingMan: @unchecked Sendable {
     // The ASCII, the myth, the legend: it's SWIFT Walking Man!
     static let characterLeft = "<('-'<) "
     static let characterMiddle = "<('-')>"
@@ -35,7 +35,7 @@ public struct WalkingMan: Sendable {
         self.width = width
     }
 
-    public mutating func start() {
+    public func start() {
         // Reset animation state to ensure clean start
         position = 0
         direction = 1
@@ -58,7 +58,7 @@ public struct WalkingMan: Sendable {
         animate()
     }
 
-    private mutating func animate() {
+    private func animate() {
         while isRunning {
             // Print the current frame
             printFrame()
@@ -88,7 +88,7 @@ public struct WalkingMan: Sendable {
         }
     }
 
-    private mutating func updatePosition() {
+    private func updatePosition() {
         // Handle turn state transitions
         if turnState == 1 {
             // Middle position shown, now complete turn and resume movement
@@ -114,7 +114,7 @@ public struct WalkingMan: Sendable {
         }
     }
 
-    public mutating func stop() {
+    public func stop() {
         isRunning = false
         // Show cursor again
         print("\u{001B}[?25h", terminator: "")

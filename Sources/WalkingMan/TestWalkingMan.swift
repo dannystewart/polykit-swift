@@ -3,17 +3,17 @@ import PolyText
 
 enum TestWalkingMan {
     static func run() {
-        var walkingMan = WalkingMan(
+        let walkingMan = WalkingMan(
             color: .cyan,
             speed: 0.15,
             width: 45
         )
 
-        Text.printColor("It's Swift Walking Man! Press any key to say goodbye.", .green)
+        Text.printColor("It's Walking Man… but in Swift! Press any key to say goodbye.", .green)
 
         // Start the animation in a background thread
         DispatchQueue.global().async { [walkingMan] in
-            var man = walkingMan
+            let man = walkingMan
             man.start()
         }
 
@@ -32,7 +32,7 @@ enum TestWalkingMan {
         tcsetattr(STDIN_FILENO, TCSANOW, &originalTermios)
 
         // Stop the animation and exit
-        Text.printColor("\n\nWalking Man says goodbye! 👋", .green)
+        Text.printColor("\n\nGoodbye! 👋", .green)
         walkingMan.stop()
     }
 }
