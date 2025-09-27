@@ -140,11 +140,11 @@ public struct PolyLog: @unchecked Sendable {
 
 /// Enum representing various log levels.
 public enum LogLevel: String, CaseIterable {
-    case debug = "debug"
-    case info = "info"
-    case warning = "warning"
-    case error = "error"
-    case fault = "fault"
+    case debug
+    case info
+    case warning
+    case error
+    case fault
 
     var osLogType: OSLogType {
         switch self {

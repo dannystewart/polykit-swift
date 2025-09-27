@@ -1,5 +1,3 @@
-import Foundation
-
 /// Enum representing various text colors.
 public enum TextColor: String, CaseIterable, Sendable {
     case reset = "\u{001B}[0m"
