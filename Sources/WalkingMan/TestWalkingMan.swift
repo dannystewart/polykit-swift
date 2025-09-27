@@ -11,19 +11,35 @@ import PolyText
 struct TestWalkingMan {
     static func run() {
         var walkingMan = WalkingMan(
-            loadingText: "Swift Walking Man is walking...",
             color: .cyan,
-            speed: 0.15,  // Same as Python version
-            width: 20
+            speed: 0.15,
+            width: 45
         )
 
-        // Start the animation
-        walkingMan.start()
+        Text.printColor("It's Swift Walking Man! Press any key to say goodbye.", .green)
 
-        // Let him walk for a few seconds
-        Thread.sleep(forTimeInterval: 5.0)
+        // Start the animation in a background thread
+        DispatchQueue.global().async { [walkingMan] in
+            var man = walkingMan
+            man.start()
+        }
 
-        // Stop the animation
+        // Wait for any key press in the main thread
+        // Set terminal to raw mode to detect any key immediately
+        var originalTermios = termios()
+        tcgetattr(STDIN_FILENO, &originalTermios)
+        var rawTermios = originalTermios
+        rawTermios.c_lflag &= ~UInt(ECHO | ICANON)
+        tcsetattr(STDIN_FILENO, TCSANOW, &rawTermios)
+
+        // Wait for any key
+        _ = getchar()
+
+        // Restore terminal settings
+        tcsetattr(STDIN_FILENO, TCSANOW, &originalTermios)
+
+        // Stop the animation and exit
+        Text.printColor("\n\nWalking Man says goodbye! 👋", .green)
         walkingMan.stop()
     }
 }
