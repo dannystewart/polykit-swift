@@ -1,11 +1,12 @@
 //
 //  PolyLog.swift
-//  PolyLog
+//  polykit-swift
 //
 //  Created by Danny Stewart on 9/22/25.
 //
 
 import Foundation
+import PolyText
 import os
 
 // MARK: PolyLog
@@ -87,9 +88,9 @@ public struct PolyLog: @unchecked Sendable {
         }
 
         let levelColor = level.color.rawValue
-        let reset = LogColors.reset.rawValue
-        let bold = LogColors.bold.rawValue
-        let gray = LogColors.gray.rawValue
+        let reset = TextColor.reset.rawValue
+        let bold = TextColor.bold.rawValue
+        let gray = TextColor.gray.rawValue
 
         if simple {
             let shouldBold = level != .debug && level != .info
@@ -130,7 +131,7 @@ public enum LogLevel: String, CaseIterable {
         }
     }
 
-    var color: LogColors {
+    var color: TextColor {
         switch self {
         case .debug: return .gray
         case .info: return .green
@@ -149,16 +150,4 @@ public enum LogLevel: String, CaseIterable {
         case .fault: return "[FAULT]"
         }
     }
-}
-
-// MARK: Log Colors
-
-public enum LogColors: String {
-    case reset = "\u{001B}[0m"
-    case bold = "\u{001B}[1m"
-    case gray = "\u{001B}[90m"
-    case green = "\u{001B}[32m"
-    case yellow = "\u{001B}[33m"
-    case red = "\u{001B}[31m"
-    case magenta = "\u{001B}[95m"
 }

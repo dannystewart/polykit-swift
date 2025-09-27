@@ -7,16 +7,19 @@ let package = Package(
         .macOS(.v26)
     ],
     products: [
-        .library(
-            name: "PolyLog",
-            targets: ["PolyLog"]
-        )
+        .library(name: "PolyLog", targets: ["PolyLog"]),
+        .library(name: "PolyText", targets: ["PolyText"]),
     ],
     targets: [
         .target(
             name: "PolyLog",
-            path: "Sources/PolyLog"
-        )
+            dependencies: ["PolyText"],
+            path: "Sources/PolyLog",
+        ),
+        .target(
+            name: "PolyText",
+            path: "Sources/PolyText"
+        ),
 
-    ]
+    ],
 )
