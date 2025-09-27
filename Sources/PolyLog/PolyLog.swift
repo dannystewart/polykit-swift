@@ -12,9 +12,9 @@ import os
 /// Struct for logging messages to the console and system log.
 ///
 /// - Parameters:
-///   - simple: Whether to use a simpler format without timestamps and level indicators.
-///   - color:  Whether to use colorized output.
-///   - debug:  Whether to log debug messages. Otherwise, logs only info and above.
+///   - simple: Whether to omit timestamps and level indicators. Defaults to false.
+///   - color:  Whether to use colorized output. Defaults to true.
+///   - debug:  Whether to log debug messages. Otherwise only logs info and above. Defaults to true.
 public struct PolyLog: @unchecked Sendable {
     private let osLogger: Logger
     private let simple: Bool
