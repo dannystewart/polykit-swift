@@ -5,6 +5,8 @@
 //  Created by Danny Stewart on 9/26/25.
 //
 
+import Foundation
+
 public struct Text {
     /// Returns a string with the specified color and style attributes.
     ///
@@ -46,7 +48,7 @@ public struct Text {
             return showNumber ? "1 \(word)" : word
         }
 
-        let formattedCount = useCommas ? "\(count)" : "\(count)"
+        let formattedCount = useCommas ? formatNumberWithCommas(count) : "\(count)"
         let pluralized = word.hasSuffix("s") ? "\(word)es" : "\(word)s"
 
         return showNumber ? "\(formattedCount) \(pluralized)" : pluralized
@@ -67,7 +69,7 @@ public struct Text {
         useCommas: Bool = true
     ) -> String {
         // Format the number with or without commas
-        let numStr = useCommas ? "\(number)" : "\(number)"
+        let numStr = useCommas ? formatNumberWithCommas(number) : "\(number)"
 
         if let word = word {
             // Handle word if provided
@@ -76,5 +78,18 @@ public struct Text {
         } else {
             return numStr
         }
+    }
+
+    /// Format a number with commas.
+    ///
+    /// - Parameter number: The number to format.
+    /// - Returns: The formatted string.
+    public static func formatNumberWithCommas(_ number: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = ","
+        formatter.groupingSize = 3
+
+        return formatter.string(from: NSNumber(value: number)) ?? "\(number)"
     }
 }
