@@ -177,3 +177,30 @@ public enum LogLevel: String, CaseIterable {
         }
     }
 }
+
+/// Protocol for errors that can be logged and thrown.
+public protocol LoggableError: Error {
+    var logMessage: String { get }
+    var isWarning: Bool { get }
+}
+
+/// Extension for PolyLog to add logging and throwing capabilities.
+public extension PolyLog {
+    func logAndThrow<T: LoggableError>(_ error: T) throws {
+        if error.isWarning {
+            warning(error.logMessage)
+        } else {
+            self.error(error.logMessage)
+        }
+        throw error
+    }
+
+    func logAndExit<T: LoggableError>(_ error: T) -> Never {
+        if error.isWarning {
+            warning(error.logMessage)
+        } else {
+            self.error(error.logMessage)
+        }
+        Foundation.exit(1)
+    }
+}
