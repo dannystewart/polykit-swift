@@ -1,3 +1,3 @@
 # Polykit for Swift
 
-A Swift port of my [Polykit](https://github.com/dannystewart/polykit/tree/main/src/polykit/log) library from Python, starting with my wonderful [PolyLog](https://github.com/dannystewart/polykit/tree/main/src/polykit/log) logger.
+A Swift port of my [Polykit](https://github.com/dannystewart/polykit/tree/main/src/polykit/log) library from Python.
