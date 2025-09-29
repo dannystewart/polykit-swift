@@ -17,7 +17,7 @@ public struct PolyLog: @unchecked Sendable {
     public init(
         simple: Bool = false,
         color: Bool = true,
-        debug: Bool = true
+        debug: Bool = true,
     ) {
         self.simple = simple
         self.color = color
@@ -149,31 +149,31 @@ public enum LogLevel: String, CaseIterable {
 
     var osLogType: OSLogType {
         switch self {
-        case .debug: return .debug
-        case .info: return .info
-        case .warning: return .default
-        case .error: return .error
-        case .fault: return .fault
+        case .debug: .debug
+        case .info: .info
+        case .warning: .default
+        case .error: .error
+        case .fault: .fault
         }
     }
 
     var color: TextColor {
         switch self {
-        case .debug: return .gray
-        case .info: return .green
-        case .warning: return .yellow
-        case .error: return .red
-        case .fault: return .magenta
+        case .debug: .gray
+        case .info: .green
+        case .warning: .yellow
+        case .error: .red
+        case .fault: .magenta
         }
     }
 
     var displayText: String {
         switch self {
-        case .debug: return "[DEBUG]"
-        case .info: return "[INFO]"
-        case .warning: return "[WARN]"
-        case .error: return "[ERROR]"
-        case .fault: return "[FAULT]"
+        case .debug: "[DEBUG]"
+        case .info: "[INFO]"
+        case .warning: "[WARN]"
+        case .error: "[ERROR]"
+        case .fault: "[FAULT]"
         }
     }
 }
@@ -186,7 +186,7 @@ public protocol LoggableError: Error {
 
 /// Extension for PolyLog to add logging and throwing capabilities.
 public extension PolyLog {
-    func logAndThrow<T: LoggableError>(_ error: T) throws {
+    func logAndThrow(_ error: some LoggableError) throws {
         if error.isWarning {
             warning(error.logMessage)
         } else {
@@ -195,7 +195,7 @@ public extension PolyLog {
         throw error
     }
 
-    func logAndExit<T: LoggableError>(_ error: T) -> Never {
+    func logAndExit(_ error: some LoggableError) -> Never {
         if error.isWarning {
             warning(error.logMessage)
         } else {

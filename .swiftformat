@@ -1,0 +1,4 @@
+--swift-version 6.2
+--enable blankLinesBetweenImports,blockComments,emptyExtensions,environmentEntry,redundantMemberwiseInit,redundantProperty,redundantThrows,wrapConditionalBodies,wrapMultilineConditionalAssignment
+--max-width 110
+--indent-case false

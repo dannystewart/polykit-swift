@@ -8,7 +8,7 @@ public enum Text {
     ///   - color: The name of the color from TextColor enum.
     /// - Returns: A colorized string.
     public static func color(_ text: String, _ color: TextColor) -> String {
-        return "\(color.rawValue)\(text)\(TextColor.reset.rawValue)"
+        "\(color.rawValue)\(text)\(TextColor.reset.rawValue)"
     }
 
     /// Prints a colorized string to the console.
