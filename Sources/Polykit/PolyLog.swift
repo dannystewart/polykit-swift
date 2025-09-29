@@ -1,6 +1,5 @@
 import Foundation
 import os
-import PolyText
 
 /// Struct for logging messages to the console and system log.
 ///

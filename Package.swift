@@ -7,29 +7,12 @@ let package = Package(
         .macOS(.v26),
     ],
     products: [
-        .library(name: "PolyCmd", targets: ["PolyCmd"]),
-        .library(name: "PolyLog", targets: ["PolyLog"]),
-        .library(name: "PolyText", targets: ["PolyText"]),
-        .executable(name: "walkingman", targets: ["WalkingMan"]),
+        .library(name: "Polykit", targets: ["Polykit"]),
     ],
     targets: [
         .target(
-            name: "PolyCmd",
-            path: "Sources/PolyCmd",
-        ),
-        .target(
-            name: "PolyLog",
-            dependencies: ["PolyText"],
-            path: "Sources/PolyLog",
-        ),
-        .target(
-            name: "PolyText",
-            path: "Sources/PolyText",
-        ),
-        .executableTarget(
-            name: "WalkingMan",
-            dependencies: ["PolyText"],
-            path: "Sources/WalkingMan",
+            name: "Polykit",
+            path: "Sources/Polykit",
         ),
     ],
 )

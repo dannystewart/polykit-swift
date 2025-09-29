@@ -1,7 +1,7 @@
 import Darwin
 import Foundation
 
-public enum PolyCmd {
+public enum PolyTerm {
     /// Uses the terminal's raw mode to read a single character without waiting for Enter.
     public static func readSingleChar() -> String {
         // Ensure output is flushed before reading input

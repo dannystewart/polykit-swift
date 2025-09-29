@@ -1,5 +1,4 @@
 import Foundation
-import PolyText
 
 // The cute and entertaining Walking Man <('-'<) animation for tasks that take time.
 //
@@ -27,7 +26,7 @@ public class WalkingMan: @unchecked Sendable {
         loadingText: String? = nil,
         color: TextColor? = .cyan,
         speed: Double = 0.15,
-        width: Int = 25
+        width: Int = 25,
     ) {
         self.loadingText = loadingText
         self.color = color
@@ -47,7 +46,7 @@ public class WalkingMan: @unchecked Sendable {
 
         // Show loading text if provided
         if let text = loadingText {
-            if let color = color {
+            if let color {
                 Text.printColor(text, color)
             } else {
                 print(text)
@@ -83,8 +82,8 @@ public class WalkingMan: @unchecked Sendable {
 
     private func getCurrentCharacter() -> String {
         switch turnState {
-        case 1: return Self.characterMiddle
-        default: return direction == 1 ? Self.characterRight : Self.characterLeft
+        case 1: Self.characterMiddle
+        default: direction == 1 ? Self.characterRight : Self.characterLeft
         }
     }
 
