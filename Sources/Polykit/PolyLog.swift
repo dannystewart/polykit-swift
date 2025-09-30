@@ -86,17 +86,17 @@ public struct PolyLog: @unchecked Sendable {
         // Also log to system for Console.app and production debugging
         switch level.osLogType {
         case .debug:
-            osLogger.debug("\(formattedMessage, privacy: .public)")
+            osLogger.debug("\(message, privacy: .public)")
         case .info:
-            osLogger.info("\(formattedMessage, privacy: .public)")
+            osLogger.info("\(message, privacy: .public)")
         case .default:
-            osLogger.notice("\(formattedMessage, privacy: .public)")
+            osLogger.notice("\(message, privacy: .public)")
         case .error:
-            osLogger.error("\(formattedMessage, privacy: .public)")
+            osLogger.error("\(message, privacy: .public)")
         case .fault:
-            osLogger.fault("\(formattedMessage, privacy: .public)")
+            osLogger.fault("\(message, privacy: .public)")
         default:
-            osLogger.log("\(formattedMessage, privacy: .public)")
+            osLogger.log("\(message, privacy: .public)")
         }
     }
 
@@ -147,10 +147,11 @@ public enum LogLevel: String, CaseIterable {
     case error
     case fault
 
+    // Force debug and info to default level for Console.app visibility
     var osLogType: OSLogType {
         switch self {
-        case .debug: .debug
-        case .info: .info
+        case .debug: .default
+        case .info: .default
         case .warning: .default
         case .error: .error
         case .fault: .fault
