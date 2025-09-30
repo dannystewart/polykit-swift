@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - PolySync
+
 /// Simple concurrency utilities for common patterns.
 /// This demonstrates basic Swift concurrency concepts in a safe, understandable way.
 public enum PolySync {
@@ -128,6 +130,8 @@ public extension PolySync {
         }
     }
 }
+
+// MARK: - TimeoutError
 
 /// Simple error type for timeouts.
 private struct TimeoutError: Error {}

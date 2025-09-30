@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - Text
+
 public enum Text {
     /// Returns a string with the specified color and style attributes.
     ///
@@ -21,6 +23,8 @@ public enum Text {
         print(Text.color(text, color), terminator: terminator)
     }
 }
+
+// MARK: - TextColor
 
 /// Enum representing various text colors.
 public enum TextColor: String, CaseIterable, Sendable {

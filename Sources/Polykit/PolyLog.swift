@@ -1,6 +1,8 @@
 import Foundation
 import os
 
+// MARK: - PolyLog
+
 /// Struct for logging messages to the console and system log.
 ///
 /// - Parameters:
@@ -139,6 +141,8 @@ public struct PolyLog: @unchecked Sendable {
     }
 }
 
+// MARK: - LogLevel
+
 /// Enum representing various log levels.
 public enum LogLevel: String, CaseIterable {
     case debug
@@ -178,6 +182,8 @@ public enum LogLevel: String, CaseIterable {
         }
     }
 }
+
+// MARK: - LoggableError
 
 /// Protocol for errors that can be logged and thrown.
 public protocol LoggableError: Error {
