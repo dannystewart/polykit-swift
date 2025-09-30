@@ -22,7 +22,8 @@ public struct PolyLog: @unchecked Sendable {
         self.color = color
         self.debug = debug
 
-        let subsystem = Bundle.main.bundleIdentifier ?? "com.dannystewart.polylog"
+        // Use the app's bundle identifier
+        let subsystem = Bundle.main.bundleIdentifier ?? "com.unknown.app.polylog"
         osLogger = Logger(subsystem: subsystem, category: "PolyLog")
     }
 
