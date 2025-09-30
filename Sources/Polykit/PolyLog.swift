@@ -75,31 +75,30 @@ public struct PolyLog: @unchecked Sendable {
     ///   - message: The message to log.
     ///   - level:   The level of the message.
     private func log(_ message: String, level: LogLevel) {
-        let formattedMessage = formatMessage(message, level: level)
-
-        // Output to console for immediate visibility
-        switch level {
-        case .debug, .info:
-            print(formattedMessage)
-        case .warning, .error, .fault:
-            FileHandle.standardError.write(Data((formattedMessage + "\n").utf8))
-        }
-
-        // Also log to system for Console.app and production debugging
-        switch level.osLogType {
-        case .debug:
-            osLogger.debug("\(message, privacy: .public)")
-        case .info:
-            osLogger.info("\(message, privacy: .public)")
-        case .default:
-            osLogger.notice("\(message, privacy: .public)")
-        case .error:
-            osLogger.error("\(message, privacy: .public)")
-        case .fault:
-            osLogger.fault("\(message, privacy: .public)")
-        default:
-            osLogger.log("\(message, privacy: .public)")
-        }
+        #if DEBUG // Xcode: show plain output for debug console
+            let formattedMessage = simple ? message : "\(timestamp()) \(level.displayText) \(message)"
+            switch level {
+            case .debug, .info:
+                print(formattedMessage)
+            case .warning, .error, .fault:
+                fputs(formattedMessage + "\n", stderr)
+            }
+        #else // Production: send directly to unified logging
+            switch level.osLogType {
+            case .debug:
+                osLogger.debug("\(message, privacy: .public)")
+            case .info:
+                osLogger.info("\(message, privacy: .public)")
+            case .default:
+                osLogger.notice("\(message, privacy: .public)")
+            case .error:
+                osLogger.error("\(message, privacy: .public)")
+            case .fault:
+                osLogger.fault("\(message, privacy: .public)")
+            default:
+                osLogger.log("\(message, privacy: .public)")
+            }
+        #endif
     }
 
     /// Formats a message for the specified level.
@@ -151,7 +150,6 @@ public enum LogLevel: String, CaseIterable {
     case error
     case fault
 
-    // Force debug and info to default level for Console.app visibility
     var osLogType: OSLogType {
         switch self {
         case .debug: .default
@@ -174,11 +172,11 @@ public enum LogLevel: String, CaseIterable {
 
     var displayText: String {
         switch self {
-        case .debug: "[DEBUG]"
-        case .info: "[INFO]"
-        case .warning: "[WARN]"
-        case .error: "[ERROR]"
-        case .fault: "[FAULT]"
+        case .debug: "DEBUG:"
+        case .info: "INFO:"
+        case .warning: "WARN:"
+        case .error: "ERROR:"
+        case .fault: "FAULT:"
         }
     }
 }
