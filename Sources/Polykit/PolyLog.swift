@@ -11,7 +11,7 @@ import os
 ///   - debug:  Whether to log debug messages. Otherwise only logs info and above. Defaults to true.
 public struct PolyLog: @unchecked Sendable {
     private let osLogger: Logger
-    private let simple: Bool
+    private let messageOnly: Bool
     private let color: Bool
     private let debug: Bool
 
@@ -20,7 +20,7 @@ public struct PolyLog: @unchecked Sendable {
         color: Bool = true,
         debug: Bool = true,
     ) {
-        self.simple = simple
+        messageOnly = simple
         self.color = color
         self.debug = debug
 
@@ -76,7 +76,7 @@ public struct PolyLog: @unchecked Sendable {
     ///   - level:   The level of the message.
     private func log(_ message: String, level: LogLevel) {
         #if DEBUG // Xcode: show plain output for debug console
-            let formattedMessage = simple ? message : "\(timestamp()) \(level.displayText) \(message)"
+            let formattedMessage = messageOnly ? message : "\(timestamp()) \(level.displayText) \(message)"
             switch level {
             case .debug, .info:
                 print(formattedMessage)
@@ -108,16 +108,14 @@ public struct PolyLog: @unchecked Sendable {
     ///   - level:   The level of the message.
     /// - Returns: The formatted message.
     private func formatMessage(_ message: String, level: LogLevel) -> String {
-        if !color {
-            return simple ? message : "\(timestamp()) \(level.displayText) \(message)"
-        }
+        if !color { return messageOnly ? message : "\(timestamp()) \(level.displayText) \(message)" }
 
         let levelColor = level.color.rawValue
         let reset = TextColor.reset.rawValue
         let bold = TextColor.bold.rawValue
         let gray = TextColor.gray.rawValue
 
-        if simple {
+        if messageOnly {
             let shouldBold = level != .debug && level != .info
             let boldPrefix = shouldBold ? bold : ""
             return "\(reset)\(boldPrefix)\(levelColor)\(message)\(reset)"
@@ -127,7 +125,7 @@ public struct PolyLog: @unchecked Sendable {
         let levelFormatted = "\(bold)\(levelColor)\(level.displayText)\(reset)"
         let messageFormatted = "\(levelColor)\(message)\(reset)"
 
-        return "\(timestampFormatted)\(levelFormatted) \(messageFormatted)"
+        return "\(timestampFormatted)\(levelFormatted)\(messageFormatted)"
     }
 
     /// Formats the current time for use in a log message.
@@ -172,11 +170,11 @@ public enum LogLevel: String, CaseIterable {
 
     var displayText: String {
         switch self {
-        case .debug: "DEBUG:"
-        case .info: "INFO:"
-        case .warning: "WARN:"
-        case .error: "ERROR:"
-        case .fault: "FAULT:"
+        case .debug: "[DEBUG] "
+        case .info: ""
+        case .warning: "[WARNING] "
+        case .error: "[ERROR] "
+        case .fault: "[CRITICAL] "
         }
     }
 }
