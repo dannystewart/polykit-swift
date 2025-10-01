@@ -5,66 +5,46 @@ import os
 
 /// Struct for logging messages to the console and system log.
 ///
+/// In DEBUG builds, logs are formatted and printed to console with colors and timestamps.
+/// In production builds, all logs go directly to the unified logging system.
+///
 /// - Parameters:
-///   - simple: Whether to omit timestamps and level indicators. Defaults to false.
-///   - color:  Whether to use colorized output. Defaults to true.
-///   - debug:  Whether to log debug messages. Otherwise only logs info and above. Defaults to true.
+///   - simple: Whether to omit timestamps and level indicators in DEBUG console output. Defaults to false.
+///   - includeDebug: Whether to log debug messages. Otherwise only logs info and above. Defaults to true.
 public struct PolyLog: @unchecked Sendable {
     private let osLogger: Logger
     private let messageOnly: Bool
-    private let color: Bool
-    private let debug: Bool
+    private let includeDebug: Bool
 
     public init(
         simple: Bool = false,
-        color: Bool = true,
-        debug: Bool = true,
+        includeDebug: Bool = true,
     ) {
         messageOnly = simple
-        self.color = color
-        self.debug = debug
+        self.includeDebug = includeDebug
 
         // Use the app's bundle identifier
         let subsystem = Bundle.main.bundleIdentifier ?? "com.unknown.app.polylog"
         osLogger = Logger(subsystem: subsystem, category: "PolyLog")
     }
 
-    /// Logs a debug message.
-    ///
-    /// - Parameter message: The message to log.
     public func debug(_ message: String) {
-        if debug {
-            log(message, level: .debug)
-        } else {
-            let formattedMessage = formatMessage(message, level: .debug)
-            osLogger.debug("\(formattedMessage, privacy: .public)")
-        }
+        guard includeDebug else { return }
+        log(message, level: .debug)
     }
 
-    /// Logs an info message.
-    ///
-    /// - Parameter message: The message to log.
     public func info(_ message: String) {
         log(message, level: .info)
     }
 
-    /// Logs a warning message.
-    ///
-    /// - Parameter message: The message to log.
     public func warning(_ message: String) {
         log(message, level: .warning)
     }
 
-    /// Logs an error message.
-    ///
-    /// - Parameter message: The message to log.
     public func error(_ message: String) {
         log(message, level: .error)
     }
 
-    /// Logs a fault message.
-    ///
-    /// - Parameter message: The message to log.
     public func fault(_ message: String) {
         log(message, level: .fault)
     }
@@ -75,15 +55,15 @@ public struct PolyLog: @unchecked Sendable {
     ///   - message: The message to log.
     ///   - level:   The level of the message.
     private func log(_ message: String, level: LogLevel) {
-        #if DEBUG // Xcode: show plain output for debug console
-            let formattedMessage = messageOnly ? message : "\(timestamp()) \(level.displayText) \(message)"
+        #if DEBUG // DEBUG: Console output (with colors only if in a real TTY)
+            let formattedMessage = formatConsoleMessage(message, level: level)
             switch level {
             case .debug, .info:
                 print(formattedMessage)
             case .warning, .error, .fault:
                 fputs(formattedMessage + "\n", stderr)
             }
-        #else // Production: send directly to unified logging
+        #else // Production: System logger only
             switch level.osLogType {
             case .debug:
                 osLogger.debug("\(message, privacy: .public)")
@@ -101,31 +81,44 @@ public struct PolyLog: @unchecked Sendable {
         #endif
     }
 
-    /// Formats a message for the specified level.
+    /// Formats a message for console output in DEBUG builds.
     ///
     /// - Parameters:
     ///   - message: The message to format.
     ///   - level:   The level of the message.
-    /// - Returns: The formatted message.
-    private func formatMessage(_ message: String, level: LogLevel) -> String {
-        if !color { return messageOnly ? message : "\(timestamp()) \(level.displayText) \(message)" }
+    /// - Returns: The formatted message with colors (if real terminal) and timestamps.
+    private func formatConsoleMessage(_ message: String, level: LogLevel) -> String {
+        let useColors = shouldUseColors()
 
-        let levelColor = level.color.rawValue
-        let reset = TextColor.reset.rawValue
-        let bold = TextColor.bold.rawValue
-        let gray = TextColor.gray.rawValue
-
-        if messageOnly {
-            let shouldBold = level != .debug && level != .info
-            let boldPrefix = shouldBold ? bold : ""
-            return "\(reset)\(boldPrefix)\(levelColor)\(message)\(reset)"
+        if messageOnly { // Simple mode: just colorized message (if real terminal)
+            if useColors {
+                let shouldBold = level != .debug && level != .info
+                let boldPrefix = shouldBold ? TextColor.bold.rawValue : ""
+                return "\(TextColor.reset.rawValue)\(boldPrefix)\(level.color.rawValue)\(message)\(TextColor.reset.rawValue)"
+            } else {
+                return message
+            }
+        } else { // Full format: timestamp + level + message
+            if useColors {
+                let timestampFormatted = "\(TextColor.reset.rawValue)\(TextColor.gray.rawValue)\(timestamp())\(TextColor.reset.rawValue) "
+                let levelFormatted = "\(TextColor.bold.rawValue)\(level.color.rawValue)\(level.displayText)\(TextColor.reset.rawValue)"
+                let messageFormatted = "\(level.color.rawValue)\(message)\(TextColor.reset.rawValue)"
+                return "\(timestampFormatted)\(levelFormatted)\(messageFormatted)"
+            } else {
+                return "\(timestamp()) \(level.displayText)\(message)"
+            }
         }
+    }
 
-        let timestampFormatted = "\(reset)\(gray)\(timestamp())\(reset) "
-        let levelFormatted = "\(bold)\(levelColor)\(level.displayText)\(reset)"
-        let messageFormatted = "\(levelColor)\(message)\(reset)"
+    /// Determines if we should use ANSI colors based on the environment.
+    ///
+    /// - Returns: True if we're in a real terminal that supports colors, false if in Xcode or other non-color environment.
+    private func shouldUseColors() -> Bool {
+        // Check if we're running in Xcode by looking for Xcode-specific environment variables
+        if ProcessInfo.processInfo.environment["__XCODE_BUILT_PRODUCTS_DIR_PATHS"] != nil || ProcessInfo.processInfo.environment["XCODE_VERSION_MAJOR"] != nil { return false }
 
-        return "\(timestampFormatted)\(levelFormatted)\(messageFormatted)"
+        // Check if stdout is a TTY and we have a TERM environment variable
+        return isatty(STDOUT_FILENO) != 0 && ProcessInfo.processInfo.environment["TERM"] != nil
     }
 
     /// Formats the current time for use in a log message.
@@ -135,6 +128,35 @@ public struct PolyLog: @unchecked Sendable {
         let formatter = DateFormatter()
         formatter.dateFormat = "h:mm:ss a"
         return formatter.string(from: Date())
+    }
+}
+
+// MARK: - LoggableError
+
+/// Protocol for errors that can be logged and thrown.
+public protocol LoggableError: Error {
+    var logMessage: String { get }
+    var isWarning: Bool { get }
+}
+
+/// Extension for PolyLog to add logging and throwing capabilities.
+public extension PolyLog {
+    func logAndThrow(_ error: some LoggableError) throws {
+        if error.isWarning {
+            warning(error.logMessage)
+        } else {
+            self.error(error.logMessage)
+        }
+        throw error
+    }
+
+    func logAndExit(_ error: some LoggableError) -> Never {
+        if error.isWarning {
+            warning(error.logMessage)
+        } else {
+            self.error(error.logMessage)
+        }
+        Foundation.exit(1)
     }
 }
 
@@ -176,34 +198,5 @@ public enum LogLevel: String, CaseIterable {
         case .error: "[ERROR] "
         case .fault: "[CRITICAL] "
         }
-    }
-}
-
-// MARK: - LoggableError
-
-/// Protocol for errors that can be logged and thrown.
-public protocol LoggableError: Error {
-    var logMessage: String { get }
-    var isWarning: Bool { get }
-}
-
-/// Extension for PolyLog to add logging and throwing capabilities.
-public extension PolyLog {
-    func logAndThrow(_ error: some LoggableError) throws {
-        if error.isWarning {
-            warning(error.logMessage)
-        } else {
-            self.error(error.logMessage)
-        }
-        throw error
-    }
-
-    func logAndExit(_ error: some LoggableError) -> Never {
-        if error.isWarning {
-            warning(error.logMessage)
-        } else {
-            self.error(error.logMessage)
-        }
-        Foundation.exit(1)
     }
 }
