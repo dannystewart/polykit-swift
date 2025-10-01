@@ -99,9 +99,11 @@ public enum PolyDiff {
             let prefix = String(line.prefix(1))
             let content = String(line.dropFirst())
 
-            if content.hasPrefix(" ") { // Already has space, keep as is
+            if content.hasPrefix(" ") {
+                // Already has space, keep as is
                 return prefix + " " + content.trimmingCharacters(in: .whitespacesAndNewlines)
-            } else { // No space, add one
+            } else {
+                // No space, add one
                 return prefix + " " + content.trimmingCharacters(in: .whitespacesAndNewlines)
             }
         }

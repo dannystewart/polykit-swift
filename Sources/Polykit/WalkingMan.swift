@@ -94,6 +94,7 @@ public class WalkingMan: @unchecked Sendable {
             turnState = 0
             direction = -direction // Reverse direction
             position += direction // First step in new direction
+
         } else {
             // Check boundaries BEFORE moving
             if position + direction >= width, direction == 1 {
@@ -101,11 +102,13 @@ public class WalkingMan: @unchecked Sendable {
                 position = width - 1 // Stay within bounds
                 turnState = 1
                 // Don't change direction yet - that happens in turnState 1
+
             } else if position + direction < 0, direction == -1 {
                 // About to hit left boundary - stay at boundary and start turn
                 position = 0
                 turnState = 1
                 // Don't change direction yet - that happens in turnState 1
+
             } else {
                 // Normal movement
                 position += direction
@@ -115,6 +118,7 @@ public class WalkingMan: @unchecked Sendable {
 
     public func stop() {
         isRunning = false
+
         // Show cursor again
         print("\u{001B}[?25h", terminator: "")
     }

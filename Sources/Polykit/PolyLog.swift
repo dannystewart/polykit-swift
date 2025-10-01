@@ -55,7 +55,8 @@ public struct PolyLog: @unchecked Sendable {
     ///   - message: The message to log.
     ///   - level:   The level of the message.
     private func log(_ message: String, level: LogLevel) {
-        #if DEBUG // DEBUG: Console output (with colors only if in a real TTY)
+        #if DEBUG
+            // DEBUG: Console output (with colors only if in a real TTY)
             let formattedMessage = formatConsoleMessage(message, level: level)
             switch level {
             case .debug, .info:
@@ -63,7 +64,8 @@ public struct PolyLog: @unchecked Sendable {
             case .warning, .error, .fault:
                 fputs(formattedMessage + "\n", stderr)
             }
-        #else // Production: System logger only
+        #else
+            // Production: System logger only
             switch level.osLogType {
             case .debug:
                 osLogger.debug("\(message, privacy: .public)")
@@ -90,7 +92,8 @@ public struct PolyLog: @unchecked Sendable {
     private func formatConsoleMessage(_ message: String, level: LogLevel) -> String {
         let useColors = shouldUseColors()
 
-        if messageOnly { // Simple mode: just colorized message (if real terminal)
+        if messageOnly {
+            // Simple mode: just colorized message (if real terminal)
             if useColors {
                 let shouldBold = level != .debug && level != .info
                 let boldPrefix = shouldBold ? TextColor.bold.rawValue : ""
@@ -98,7 +101,8 @@ public struct PolyLog: @unchecked Sendable {
             } else {
                 return message
             }
-        } else { // Full format: timestamp + level + message
+        } else {
+            // Full format: timestamp + level + message
             if useColors {
                 let timestampFormatted = "\(TextColor.reset.rawValue)\(TextColor.gray.rawValue)\(timestamp())\(TextColor.reset.rawValue) "
                 let levelFormatted = "\(TextColor.bold.rawValue)\(level.color.rawValue)\(level.displayText)\(TextColor.reset.rawValue)"
@@ -115,7 +119,8 @@ public struct PolyLog: @unchecked Sendable {
     /// - Returns: True if we're in a real terminal that supports colors, false if in Xcode or other non-color environment.
     private func shouldUseColors() -> Bool {
         // Check if we're running in Xcode by looking for Xcode-specific environment variables
-        if ProcessInfo.processInfo.environment["__XCODE_BUILT_PRODUCTS_DIR_PATHS"] != nil || ProcessInfo.processInfo.environment["XCODE_VERSION_MAJOR"] != nil { return false }
+        if ProcessInfo.processInfo.environment["__XCODE_BUILT_PRODUCTS_DIR_PATHS"] != nil ||
+            ProcessInfo.processInfo.environment["XCODE_VERSION_MAJOR"] != nil { return false }
 
         // Check if stdout is a TTY and we have a TERM environment variable
         return isatty(STDOUT_FILENO) != 0 && ProcessInfo.processInfo.environment["TERM"] != nil

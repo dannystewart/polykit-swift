@@ -26,7 +26,8 @@ public enum PolyTerm {
             return ""
         }
         var rawTermios = originalTermios
-        cfmakeraw(&rawTermios) // sets ICANON off, ECHO off, VMIN=1, VTIME=0, etc.
+        // set ICANON off, ECHO off, VMIN=1, VTIME=0, etc.
+        cfmakeraw(&rawTermios)
         if tcsetattr(fd, TCSANOW, &rawTermios) != 0 {
             if openedTtyFd != -1 {
                 close(openedTtyFd)
