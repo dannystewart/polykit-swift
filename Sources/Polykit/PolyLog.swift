@@ -198,7 +198,7 @@ public enum LogLevel: String, CaseIterable {
     var displayText: String {
         switch self {
         case .debug: "[DEBUG] "
-        case .info: ""
+        case .info: " [INFO] "
         case .warning: "[WARNING] "
         case .error: "[ERROR] "
         case .fault: "[CRITICAL] "
