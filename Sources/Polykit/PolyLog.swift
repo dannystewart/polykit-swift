@@ -16,7 +16,7 @@ public struct PolyLog: @unchecked Sendable {
     private let messageOnly: Bool
     private let includeDebug: Bool
 
-    public init(
+    public nonisolated init(
         simple: Bool = false,
         includeDebug: Bool = true,
     ) {
@@ -197,11 +197,11 @@ public enum LogLevel: String, CaseIterable {
 
     var displayText: String {
         switch self {
-        case .debug: "[DEBUG] "
-        case .info: " [INFO] "
-        case .warning: "[WARNING] "
-        case .error: "[ERROR] "
-        case .fault: "[CRITICAL] "
+        case .debug: "   [DEBUG] "
+        case .info: "    [INFO] "
+        case .warning: " [WARNING] "
+        case .error: "  ![ERROR] "
+        case .fault: "  !![CRIT] "
         }
     }
 }
