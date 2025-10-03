@@ -3,33 +3,20 @@ import os
 
 // MARK: - PolyLog
 
-/// Struct for logging messages to the console and system log.
+/// Class for logging messages to the console and system log.
 ///
 /// In DEBUG builds, logs are formatted and printed to console with colors and timestamps.
 /// In production builds, all logs go directly to the unified logging system.
-///
-/// - Parameters:
-///   - simple: Whether to omit timestamps and level indicators in DEBUG console output. Defaults to false.
-///   - includeDebug: Whether to log debug messages. Otherwise only logs info and above. Defaults to true.
-public struct PolyLog: @unchecked Sendable {
+public final class PolyLog: @unchecked Sendable {
     private let osLogger: Logger
-    private let messageOnly: Bool
-    private let includeDebug: Bool
 
-    public nonisolated init(
-        simple: Bool = false,
-        includeDebug: Bool = true,
-    ) {
-        messageOnly = simple
-        self.includeDebug = includeDebug
-
+    public nonisolated init() {
         // Use the app's bundle identifier
         let subsystem = Bundle.main.bundleIdentifier ?? "com.unknown.app.polylog"
         osLogger = Logger(subsystem: subsystem, category: "PolyLog")
     }
 
     public func debug(_ message: String) {
-        guard includeDebug else { return }
         log(message, level: .debug)
     }
 
@@ -56,7 +43,7 @@ public struct PolyLog: @unchecked Sendable {
     ///   - level:   The level of the message.
     private func log(_ message: String, level: LogLevel) {
         #if DEBUG
-            // DEBUG: Console output (with colors only if in a real TTY)
+            // DEBUG: Console output (only using colors if in a real TTY)
             let formattedMessage = formatConsoleMessage(message, level: level)
             switch level {
             case .debug, .info:
@@ -92,25 +79,13 @@ public struct PolyLog: @unchecked Sendable {
     private func formatConsoleMessage(_ message: String, level: LogLevel) -> String {
         let useColors = shouldUseColors()
 
-        if messageOnly {
-            // Simple mode: just colorized message (if real terminal)
-            if useColors {
-                let shouldBold = level != .debug && level != .info
-                let boldPrefix = shouldBold ? TextColor.bold.rawValue : ""
-                return "\(TextColor.reset.rawValue)\(boldPrefix)\(level.color.rawValue)\(message)\(TextColor.reset.rawValue)"
-            } else {
-                return message
-            }
+        if useColors {
+            let timestampFormatted = "\(TextColor.reset.rawValue)\(TextColor.gray.rawValue)\(timestamp())\(TextColor.reset.rawValue) "
+            let levelFormatted = "\(TextColor.bold.rawValue)\(level.color.rawValue)\(level.displayText)\(TextColor.reset.rawValue)"
+            let messageFormatted = "\(level.color.rawValue)\(message)\(TextColor.reset.rawValue)"
+            return "\(timestampFormatted)\(levelFormatted)\(messageFormatted)"
         } else {
-            // Full format: timestamp + level + message
-            if useColors {
-                let timestampFormatted = "\(TextColor.reset.rawValue)\(TextColor.gray.rawValue)\(timestamp())\(TextColor.reset.rawValue) "
-                let levelFormatted = "\(TextColor.bold.rawValue)\(level.color.rawValue)\(level.displayText)\(TextColor.reset.rawValue)"
-                let messageFormatted = "\(level.color.rawValue)\(message)\(TextColor.reset.rawValue)"
-                return "\(timestampFormatted)\(levelFormatted)\(messageFormatted)"
-            } else {
-                return "\(timestamp()) \(level.displayText)\(message)"
-            }
+            return "\(timestamp()) \(level.displayText)\(message)"
         }
     }
 
@@ -168,7 +143,7 @@ public extension PolyLog {
 // MARK: - LogLevel
 
 /// Enum representing various log levels.
-public enum LogLevel: String, CaseIterable {
+public enum LogLevel: String, CaseIterable, Sendable {
     case debug
     case info
     case warning
