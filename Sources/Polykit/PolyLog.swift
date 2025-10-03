@@ -9,11 +9,27 @@ import os
 /// In production builds, all logs go directly to the unified logging system.
 public final class PolyLog: @unchecked Sendable {
     private let osLogger: Logger
+    private var seqSink: PolySeq?
 
-    public nonisolated init() {
+    public nonisolated init(seqSink: PolySeq? = nil) {
+        self.seqSink = seqSink
+
         // Use the app's bundle identifier
         let subsystem = Bundle.main.bundleIdentifier ?? "com.unknown.app.polylog"
         osLogger = Logger(subsystem: subsystem, category: "PolyLog")
+    }
+
+    /// Enables Seq logging by setting the SeqSink. Can be called after initialization.
+    public func setSeqSink(_ sink: PolySeq?) {
+        seqSink = sink
+    }
+
+    /// Creates a PolyLog instance with Seq support that will be enabled later.
+    ///
+    /// Use this when you need a logger immediately but want to enable Seq asynchronously.
+    /// Call `setSeqSink()` later to enable Seq logging.
+    public static func withSeqSupport() -> PolyLog {
+        PolyLog(seqSink: nil)
     }
 
     public func debug(_ message: String) {
@@ -68,6 +84,13 @@ public final class PolyLog: @unchecked Sendable {
                 osLogger.log("\(message, privacy: .public)")
             }
         #endif
+
+        // Send to Seq if configured
+        if let seqSink {
+            Task {
+                await seqSink.log(message, level: level)
+            }
+        }
     }
 
     /// Formats a message for console output in DEBUG builds.
