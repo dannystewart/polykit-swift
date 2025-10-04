@@ -9,9 +9,9 @@ import os
 /// In production builds, all logs go directly to the unified logging system.
 public final class PolyLog: @unchecked Sendable {
     private let osLogger: Logger
-    private var seqSink: PolySeq?
+    private var seqSink: SeqSink?
 
-    public nonisolated init(seqSink: PolySeq? = nil) {
+    public nonisolated init(seqSink: SeqSink? = nil) {
         self.seqSink = seqSink
 
         // Use the app's bundle identifier
@@ -20,7 +20,7 @@ public final class PolyLog: @unchecked Sendable {
     }
 
     /// Enables Seq logging by setting the SeqSink. Can be called after initialization.
-    public func setSeqSink(_ sink: PolySeq?) {
+    public func setSeqSink(_ sink: SeqSink?) {
         seqSink = sink
     }
 
@@ -28,7 +28,7 @@ public final class PolyLog: @unchecked Sendable {
     ///
     /// Use this when you need a logger immediately but want to enable Seq asynchronously.
     /// Call `setSeqSink()` later to enable Seq logging.
-    public static func withSeqSupport() -> PolyLog {
+    public static func withSeqSink() -> PolyLog {
         PolyLog(seqSink: nil)
     }
 
@@ -100,9 +100,9 @@ public final class PolyLog: @unchecked Sendable {
     ///   - level:   The level of the message.
     /// - Returns: The formatted message with colors (if real terminal) and timestamps.
     private func formatConsoleMessage(_ message: String, level: LogLevel) -> String {
-        let useColors = shouldUseColors()
+        let shouldUseColor = Text.supportsColor()
 
-        if useColors {
+        if shouldUseColor {
             let timestampFormatted = "\(TextColor.reset.rawValue)\(TextColor.gray.rawValue)\(timestamp())\(TextColor.reset.rawValue) "
             let levelFormatted = "\(TextColor.bold.rawValue)\(level.color.rawValue)\(level.displayText)\(TextColor.reset.rawValue)"
             let messageFormatted = "\(level.color.rawValue)\(message)\(TextColor.reset.rawValue)"
@@ -110,18 +110,6 @@ public final class PolyLog: @unchecked Sendable {
         } else {
             return "\(timestamp()) \(level.displayText)\(message)"
         }
-    }
-
-    /// Determines if we should use ANSI colors based on the environment.
-    ///
-    /// - Returns: True if we're in a real terminal that supports colors, false if in Xcode or other non-color environment.
-    private func shouldUseColors() -> Bool {
-        // Check if we're running in Xcode by looking for Xcode-specific environment variables
-        if ProcessInfo.processInfo.environment["__XCODE_BUILT_PRODUCTS_DIR_PATHS"] != nil ||
-            ProcessInfo.processInfo.environment["XCODE_VERSION_MAJOR"] != nil { return false }
-
-        // Check if stdout is a TTY and we have a TERM environment variable
-        return isatty(STDOUT_FILENO) != 0 && ProcessInfo.processInfo.environment["TERM"] != nil
     }
 
     /// Formats the current time for use in a log message.
@@ -137,28 +125,17 @@ public final class PolyLog: @unchecked Sendable {
 // MARK: - LoggableError
 
 /// Protocol for errors that can be logged and thrown.
-public protocol LoggableError: Error {
-    var logMessage: String { get }
-    var isWarning: Bool { get }
-}
+public protocol LoggableError: Error { var logMessage: String { get }}
 
 /// Extension for PolyLog to add logging and throwing capabilities.
 public extension PolyLog {
     func logAndThrow(_ error: some LoggableError) throws {
-        if error.isWarning {
-            warning(error.logMessage)
-        } else {
-            self.error(error.logMessage)
-        }
+        self.error(error.logMessage)
         throw error
     }
 
     func logAndExit(_ error: some LoggableError) -> Never {
-        if error.isWarning {
-            warning(error.logMessage)
-        } else {
-            self.error(error.logMessage)
-        }
+        self.error(error.logMessage)
         Foundation.exit(1)
     }
 }

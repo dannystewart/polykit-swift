@@ -7,12 +7,12 @@ let package = Package(
         .macOS(.v26),
     ],
     products: [
-        .library(name: "Polykit", targets: ["Polykit"]),
+        .library(name: "PolyKit", targets: ["PolyKit"]),
     ],
     targets: [
         .target(
-            name: "Polykit",
-            path: "Sources/Polykit",
+            name: "PolyKit",
+            path: "Sources/PolyKit",
         ),
     ],
 )

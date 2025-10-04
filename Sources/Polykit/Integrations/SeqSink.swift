@@ -7,7 +7,7 @@ import os
 ///
 /// Batches logs to reduce network overhead and fails gracefully if the server is unreachable.
 /// Enriches logs with contextual properties like app version, device info, and session ID.
-public actor PolySeq {
+public actor SeqSink {
     private let serverUrl: URL
     private let apiKey: String?
     private let batchSize: Int
