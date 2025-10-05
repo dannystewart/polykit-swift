@@ -173,10 +173,10 @@ public enum LogLevel: String, CaseIterable, Sendable {
     var displayText: String {
         switch self {
         case .debug: "   [DEBUG] "
-        case .info: "    [INFO] "
+        case .info: "           "
         case .warning: " [WARNING] "
-        case .error: "  ![ERROR] "
-        case .fault: "  !![CRIT] "
+        case .error: " !![ERROR] "
+        case .fault: " !![FAULT] "
         }
     }
 }
