@@ -44,9 +44,9 @@ public enum PolyDiff {
     public static func content(old: String, new: String, filename: String? = nil) -> DiffResult {
         let content = filename ?? "text"
 
-        var changes: [String] = []
-        var additions: [String] = []
-        var deletions: [String] = []
+        var changes = [String]()
+        var additions = [String]()
+        var deletions = [String]()
 
         let diff = unifiedDiff(
             old: old.components(separatedBy: .newlines),
@@ -115,7 +115,7 @@ public enum PolyDiff {
     private static func unifiedDiff(old: [String], new: [String], fromFile _: String,
                                     toFile _: String) -> [String]
     {
-        var result: [String] = []
+        var result = [String]()
         let maxLines = max(old.count, new.count)
 
         for i in 0 ..< maxLines {

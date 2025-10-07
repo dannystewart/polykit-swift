@@ -1,9 +1,9 @@
 import Foundation
 
-// The cute and entertaining Walking Man <('-'<) animation for tasks that take time.
-//
-// Walking Man is the unsung hero who brings a bit of joy to operations that would otherwise be
-// frustrating or tedious. He's a simple character, but he's always there when you need him.
+/// The cute and entertaining Walking Man <('-'<) animation for tasks that take time.
+///
+/// Walking Man is the unsung hero who brings a bit of joy to operations that would otherwise be
+/// frustrating or tedious. He's a simple character, but he's always there when you need him.
 public class WalkingMan: @unchecked Sendable {
     // The ASCII, the myth, the legend: it's SWIFT Walking Man!
     static let characterLeft = "<('-'<) "

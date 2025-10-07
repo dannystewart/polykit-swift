@@ -1,7 +1,7 @@
 import Foundation
 import os
 
-// MARK: - PolySeq
+// MARK: - SeqSink
 
 /// A log sink that streams logs to a Seq server via the CLEF (Compact Log Event Format) over HTTP.
 ///
@@ -119,11 +119,12 @@ public actor SeqSink {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
 
-        var clefLines: [String] = []
+        var clefLines = [String]()
         for event in events {
-            guard let jsonData = try? encoder.encode(event),
-                  let jsonString = String(data: jsonData, encoding: .utf8)
-            else {
+            guard
+                let jsonData = try? encoder.encode(event),
+                let jsonString = String(data: jsonData, encoding: .utf8) else
+            {
                 continue
             }
             clefLines.append(jsonString)
@@ -170,7 +171,7 @@ public actor SeqSink {
     private func startPeriodicFlush() {
         flushTask = Task {
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: UInt64(flushInterval * 1_000_000_000))
+                try? await Task.sleep(nanoseconds: UInt64(flushInterval * 1000000000))
                 await flush()
             }
         }
