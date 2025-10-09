@@ -5,6 +5,7 @@ let package = Package(
     name: "polykit-swift",
     platforms: [
         .macOS(.v26),
+        .iOS(.v26),
     ],
     products: [
         .library(name: "PolyKit", targets: ["PolyKit"]),
