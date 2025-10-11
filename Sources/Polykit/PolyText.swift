@@ -52,6 +52,10 @@ public enum Text {
     ///
     /// - Returns: True if we're in a real terminal that supports colors, false if in Xcode or other non-color environment.
     public static func supportsColor() -> Bool {
+        #if os(iOS)
+            return false
+        #endif
+
         // Check if we're running in Xcode by looking for Xcode-specific environment variables
         if
             ProcessInfo.processInfo.environment["__XCODE_BUILT_PRODUCTS_DIR_PATHS"] != nil ||
