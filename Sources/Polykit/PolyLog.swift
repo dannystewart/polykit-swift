@@ -117,7 +117,7 @@ public final class PolyLog: @unchecked Sendable {
     /// - Returns: The current timestamp in the format "h:mm:ss a".
     private func timestamp() -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm:ss a"
+        formatter.dateFormat = "h:mm:ss.SSS a"
         return formatter.string(from: Date())
     }
 }
