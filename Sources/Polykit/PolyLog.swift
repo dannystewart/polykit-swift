@@ -59,7 +59,7 @@ public final class PolyLog: @unchecked Sendable {
     ///   - level:   The level of the message.
     private func log(_ message: String, level: LogLevel) {
         #if DEBUG
-            // DEBUG: Console output (only using colors if in a real TTY)
+            // DEBUG: Pretty console output for local development
             let formattedMessage = formatConsoleMessage(message, level: level)
             switch level {
             case .debug, .info:
@@ -67,23 +67,24 @@ public final class PolyLog: @unchecked Sendable {
             case .warning, .error, .fault:
                 fputs(formattedMessage + "\n", stderr)
             }
-        #else
-            // Production: System logger only
-            switch level.osLogType {
-            case .debug:
-                osLogger.debug("\(message, privacy: .public)")
-            case .info:
-                osLogger.info("\(message, privacy: .public)")
-            case .default:
-                osLogger.notice("\(message, privacy: .public)")
-            case .error:
-                osLogger.error("\(message, privacy: .public)")
-            case .fault:
-                osLogger.fault("\(message, privacy: .public)")
-            default:
-                osLogger.log("\(message, privacy: .public)")
-            }
         #endif
+
+        // ALWAYS use unified logging system (for Xcode Console, Instruments, and log capture tools)
+        // This ensures logs are visible in Xcode's console and can be captured by debugging tools
+        switch level.osLogType {
+        case .debug:
+            osLogger.debug("\(message, privacy: .public)")
+        case .info:
+            osLogger.info("\(message, privacy: .public)")
+        case .default:
+            osLogger.notice("\(message, privacy: .public)")
+        case .error:
+            osLogger.error("\(message, privacy: .public)")
+        case .fault:
+            osLogger.fault("\(message, privacy: .public)")
+        default:
+            osLogger.log("\(message, privacy: .public)")
+        }
 
         // Send to Seq if configured
         if let seqSink {
