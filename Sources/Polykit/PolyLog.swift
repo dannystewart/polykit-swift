@@ -89,7 +89,7 @@ public final class PolyLog: @unchecked Sendable {
     ///   - level:   The level of the message.
     /// - Returns: The formatted message with colors (if real terminal) and timestamps.
     private func formatConsoleMessage(_ message: String, level: LogLevel) -> String {
-        let shouldUseColor = Text.supportsColor()
+        let shouldUseColor = PolyText.supportsColor()
 
         if shouldUseColor {
             let timestampFormatted = "\(TextColor.reset.rawValue)\(TextColor.gray.rawValue)[\(timestamp())]\(TextColor.reset.rawValue) "

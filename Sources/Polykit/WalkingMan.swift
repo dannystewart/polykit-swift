@@ -47,7 +47,7 @@ public class WalkingMan: @unchecked Sendable {
         // Show loading text if provided
         if let text = loadingText {
             if let color {
-                Text.printColor(text, color)
+                PolyText.printColor(text, color)
             } else {
                 print(text)
             }
@@ -72,7 +72,7 @@ public class WalkingMan: @unchecked Sendable {
 
     private func printFrame() {
         let character = getCurrentCharacter()
-        let coloredCharacter = color != nil ? Text.color(character, color!) : character
+        let coloredCharacter = color != nil ? PolyText.color(character, color!) : character
         let spaces = String(repeating: " ", count: position)
 
         // Clear the entire line and print Walking Man

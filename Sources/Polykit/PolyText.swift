@@ -25,9 +25,9 @@ public enum TextColor: String, CaseIterable, Sendable {
     case brightYellow = "\u{001B}[93m"
 }
 
-// MARK: - Text
+// MARK: - PolyText
 
-public enum Text {
+public enum PolyText {
     /// Returns a string with the specified color and style attributes.
     ///
     /// - Parameters:
@@ -45,7 +45,7 @@ public enum Text {
     ///   - color:      The name of the color from TextColor enum.
     ///   - terminator: The string to print after the text. Defaults to "\n".
     public static func printColor(_ text: String, _ color: TextColor, terminator: String = "\n") {
-        print(Text.color(text, color), terminator: terminator)
+        print(PolyText.color(text, color), terminator: terminator)
     }
 
     /// Determines if the terminal supports ANSI colors based on the environment.
