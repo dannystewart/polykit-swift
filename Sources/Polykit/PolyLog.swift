@@ -58,32 +58,20 @@ public final class PolyLog: @unchecked Sendable {
     ///   - message: The message to log.
     ///   - level:   The level of the message.
     private func log(_ message: String, level: LogLevel) {
-        #if DEBUG
-            // DEBUG: Pretty console output for local development
-            let formattedMessage = formatConsoleMessage(message, level: level)
-            switch level {
-            case .debug, .info:
-                print(formattedMessage)
-            case .warning, .error, .fault:
-                fputs(formattedMessage + "\n", stderr)
-            }
-        #endif
-
-        // ALWAYS use unified logging system (for Xcode Console, Instruments, and log capture tools)
-        // This ensures logs are visible in Xcode's console and can be captured by debugging tools
+        let formattedMessage = formatConsoleMessage(message, level: level)
         switch level.osLogType {
         case .debug:
-            osLogger.debug("\(message, privacy: .public)")
+            osLogger.debug("\(formattedMessage, privacy: .public)")
         case .info:
-            osLogger.info("\(message, privacy: .public)")
+            osLogger.info("\(formattedMessage, privacy: .public)")
         case .default:
-            osLogger.notice("\(message, privacy: .public)")
+            osLogger.notice("\(formattedMessage, privacy: .public)")
         case .error:
-            osLogger.error("\(message, privacy: .public)")
+            osLogger.error("\(formattedMessage, privacy: .public)")
         case .fault:
-            osLogger.fault("\(message, privacy: .public)")
+            osLogger.fault("\(formattedMessage, privacy: .public)")
         default:
-            osLogger.log("\(message, privacy: .public)")
+            osLogger.log("\(formattedMessage, privacy: .public)")
         }
 
         // Send to Seq if configured
