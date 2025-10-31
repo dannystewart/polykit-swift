@@ -92,12 +92,12 @@ public final class PolyLog: @unchecked Sendable {
         let shouldUseColor = PolyText.supportsColor()
 
         if shouldUseColor {
-            let timestampFormatted = "\(TextColor.reset.rawValue)\(TextColor.gray.rawValue)[\(timestamp())]\(TextColor.reset.rawValue) "
+            let timestampFormatted = "\(TextColor.reset.rawValue)\(TextColor.gray.rawValue)\(timestamp())\(TextColor.reset.rawValue) "
             let levelFormatted = "\(TextColor.bold.rawValue)\(level.color.rawValue)\(level.displayText)\(TextColor.reset.rawValue)"
             let messageFormatted = "\(level.color.rawValue)\(message)\(TextColor.reset.rawValue)"
             return "\(timestampFormatted)\(levelFormatted)\(messageFormatted)"
         } else {
-            return "[\(timestamp())] \(level.displayText)\(message)"
+            return "\(timestamp()) \(level.displayText)\(message)"
         }
     }
 
