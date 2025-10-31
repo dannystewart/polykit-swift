@@ -1,13 +1,25 @@
+//
+//  PolyDiff.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 import Foundation
 
 /// Utility class for comparing files and content with colored diff output.
 public enum PolyDiff {
+    // MARK: Nested Types
+
     /// Result of a diff operation containing the changes found.
     public struct DiffResult {
+        // MARK: Properties
+
         public let hasChanges: Bool
         public let changes: [String]
         public let additions: [String]
         public let deletions: [String]
+
+        // MARK: Lifecycle
 
         public init(hasChanges: Bool, changes: [String], additions: [String], deletions: [String]) {
             self.hasChanges = hasChanges
@@ -16,6 +28,8 @@ public enum PolyDiff {
             self.deletions = deletions
         }
     }
+
+    // MARK: Static Functions
 
     /// Compare two files and show the differences with colored output.
     ///

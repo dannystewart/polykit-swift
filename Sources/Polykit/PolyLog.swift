@@ -1,3 +1,9 @@
+//
+//  PolyLog.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 import Foundation
 import os
 
@@ -8,8 +14,12 @@ import os
 /// In DEBUG builds, logs are formatted and printed to console with colors and timestamps.
 /// In production builds, all logs go directly to the unified logging system.
 public final class PolyLog: @unchecked Sendable {
+    // MARK: Properties
+
     private let osLogger: Logger
     private var seqSink: SeqSink?
+
+    // MARK: Lifecycle
 
     public nonisolated init(seqSink: SeqSink? = nil) {
         self.seqSink = seqSink
@@ -19,10 +29,7 @@ public final class PolyLog: @unchecked Sendable {
         osLogger = Logger(subsystem: subsystem, category: "PolyLog")
     }
 
-    /// Enables Seq logging by setting the SeqSink. Can be called after initialization.
-    public func setSeqSink(_ sink: SeqSink?) {
-        seqSink = sink
-    }
+    // MARK: Static Functions
 
     /// Creates a PolyLog instance with Seq support that will be enabled later.
     ///
@@ -30,6 +37,13 @@ public final class PolyLog: @unchecked Sendable {
     /// Call `setSeqSink()` later to enable Seq logging.
     public static func withSeqSink() -> PolyLog {
         PolyLog(seqSink: nil)
+    }
+
+    // MARK: Functions
+
+    /// Enables Seq logging by setting the SeqSink. Can be called after initialization.
+    public func setSeqSink(_ sink: SeqSink?) {
+        seqSink = sink
     }
 
     public func debug(_ message: String) {
@@ -138,6 +152,8 @@ public enum LogLevel: String, CaseIterable, Sendable {
     case warning
     case error
     case fault
+
+    // MARK: Computed Properties
 
     var osLogType: OSLogType {
         switch self {

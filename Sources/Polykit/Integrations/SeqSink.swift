@@ -1,3 +1,9 @@
+//
+//  SeqSink.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 import Foundation
 import os
 
@@ -8,6 +14,8 @@ import os
 /// Batches logs to reduce network overhead and fails gracefully if the server is unreachable.
 /// Enriches logs with contextual properties like app version, device info, and session ID.
 public actor SeqSink {
+    // MARK: Properties
+
     private let serverUrl: URL
     private let apiKey: String?
     private let batchSize: Int
@@ -17,6 +25,8 @@ public actor SeqSink {
     private let session: URLSession
     private let sessionId: String
     private let enrichmentProperties: [String: String]
+
+    // MARK: Lifecycle
 
     /// Creates a new Seq sink for streaming logs.
     ///
@@ -74,14 +84,16 @@ public actor SeqSink {
         enrichmentProperties = properties
     }
 
+    deinit {
+        flushTask?.cancel()
+    }
+
+    // MARK: Functions
+
     /// Starts the periodic flush task. Must be called after initialization.
     public func start() {
         guard flushTask == nil else { return }
         startPeriodicFlush()
-    }
-
-    deinit {
-        flushTask?.cancel()
     }
 
     /// Adds a log event to the buffer and sends it to Seq if batch size is reached.
@@ -182,10 +194,7 @@ public actor SeqSink {
 
 /// Represents a log event in Seq's CLEF format.
 struct SeqEvent: Codable {
-    let timestamp: String
-    let level: String
-    let messageTemplate: String
-    let properties: [String: String]
+    // MARK: Nested Types
 
     enum CodingKeys: String, CodingKey {
         case timestamp = "@t"
@@ -193,6 +202,15 @@ struct SeqEvent: Codable {
         case messageTemplate = "@mt"
         case properties
     }
+
+    // MARK: Properties
+
+    let timestamp: String
+    let level: String
+    let messageTemplate: String
+    let properties: [String: String]
+
+    // MARK: Functions
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
@@ -212,8 +230,15 @@ struct SeqEvent: Codable {
 
 /// Dynamic coding key for encoding arbitrary property names.
 struct DynamicKey: CodingKey {
+    // MARK: Properties
+
     var stringValue: String
+
+    // MARK: Computed Properties
+
     var intValue: Int? { nil }
+
+    // MARK: Lifecycle
 
     init?(stringValue: String) {
         self.stringValue = stringValue
