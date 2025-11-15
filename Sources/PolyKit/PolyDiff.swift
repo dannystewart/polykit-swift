@@ -96,11 +96,11 @@ public enum PolyDiff {
 
         if line.hasPrefix("+") {
             let normalizedLine = normalizeDiffLine(line)
-            PolyText.printColor("  \(normalizedLine)", .green)
+            PolyTerm.printColor("  \(normalizedLine)", .green)
             additions.append(normalizedLine)
         } else if line.hasPrefix("-") {
             let normalizedLine = normalizeDiffLine(line)
-            PolyText.printColor("  \(normalizedLine)", .red)
+            PolyTerm.printColor("  \(normalizedLine)", .red)
             deletions.append(normalizedLine)
         } else {
             print("  \(trimmedLine)")

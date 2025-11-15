@@ -22,7 +22,7 @@ A thoughtful logging system that provides colorful, timestamped console output d
 - Built-in error logging patterns with `LoggableError` protocol
 - Thread-safe design with `@unchecked Sendable`
 
-### 🎨 PolyText — Terminal Colors and Input
+### 🎨 PolyTerm — Terminal Colors and Input
 
 Brings ANSI color support to your console output with automatic detection of terminal capabilities. Includes utilities for colorizing text, checking if your output supports colors (detecting Xcode vs. real terminals), and reading single characters from the terminal in raw mode.
 
@@ -105,8 +105,8 @@ log.error("Failed to connect to server")
 ### Terminal Colors
 
 ```swift
-if PolyText.supportsColor() {
-    PolyText.printColor("Success!", .green)
+if PolyTerm.supportsANSI() {
+    PolyTerm.printColor("Success!", .green)
 } else {
     print("Success!")
 }

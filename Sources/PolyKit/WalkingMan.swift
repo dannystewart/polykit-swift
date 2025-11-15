@@ -22,7 +22,7 @@ public class WalkingMan: @unchecked Sendable {
 
     // Swift Walking Man properties
     let loadingText: String?
-    let color: TextColor?
+    let color: ANSIColor?
     let speed: Double
     let width: Int
 
@@ -36,7 +36,7 @@ public class WalkingMan: @unchecked Sendable {
 
     public init(
         loadingText: String? = nil,
-        color: TextColor? = .cyan,
+        color: ANSIColor? = .cyan,
         speed: Double = 0.15,
         width: Int = 25,
     ) {
@@ -61,7 +61,7 @@ public class WalkingMan: @unchecked Sendable {
         // Show loading text if provided
         if let text = loadingText {
             if let color {
-                PolyText.printColor(text, color)
+                PolyTerm.printColor(text, color)
             } else {
                 print(text)
             }
@@ -93,7 +93,7 @@ public class WalkingMan: @unchecked Sendable {
 
     private func printFrame() {
         let character = getCurrentCharacter()
-        let coloredCharacter = color != nil ? PolyText.color(character, color!) : character
+        let coloredCharacter = color != nil ? PolyTerm.color(character, color!) : character
         let spaces = String(repeating: " ", count: position)
 
         // Clear the entire line and print Walking Man

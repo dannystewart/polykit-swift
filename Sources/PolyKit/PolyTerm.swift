@@ -1,5 +1,5 @@
 //
-//  PolyText.swift
+//  PolyTerm.swift
 //  by Danny Stewart
 //  https://github.com/dannystewart/polykit-swift
 //
@@ -7,57 +7,31 @@
 import Darwin
 import Foundation
 
-// MARK: - TextColor
-
-/// Enum representing various text colors.
-public enum TextColor: String, CaseIterable, Sendable {
-    case reset = "\u{001B}[0m"
-    case bold = "\u{001B}[1m"
-    case white = "\u{001B}[37m"
-    case black = "\u{001B}[30m"
-    case blue = "\u{001B}[34m"
-    case cyan = "\u{001B}[36m"
-    case gray = "\u{001B}[90m"
-    case green = "\u{001B}[32m"
-    case magenta = "\u{001B}[95m"
-    case purple = "\u{001B}[35m"
-    case red = "\u{001B}[31m"
-    case yellow = "\u{001B}[33m"
-    case brightBlue = "\u{001B}[94m"
-    case brightCyan = "\u{001B}[96m"
-    case brightGreen = "\u{001B}[92m"
-    case brightRed = "\u{001B}[91m"
-    case brightWhite = "\u{001B}[97m"
-    case brightYellow = "\u{001B}[93m"
-}
-
-// MARK: - PolyText
-
-public enum PolyText {
+public enum PolyTerm {
     /// Returns a string with the specified color and style attributes.
     ///
     /// - Parameters:
     ///   - text:  The text to colorize.
-    ///   - color: The name of the color from TextColor enum.
+    ///   - color: The name of the color from the ANSIColor enum.
     /// - Returns: A colorized string.
-    public static func color(_ text: String, _ color: TextColor) -> String {
-        "\(color.rawValue)\(text)\(TextColor.reset.rawValue)"
+    public static func color(_ text: String, _ color: ANSIColor) -> String {
+        "\(color.rawValue)\(text)\(ANSIColor.reset.rawValue)"
     }
 
     /// Prints a colorized string to the console.
     ///
     /// - Parameters:
     ///   - text:       The text to colorize.
-    ///   - color:      The name of the color from TextColor enum.
+    ///   - color:      The name of the color from the ANSIColor enum.
     ///   - terminator: The string to print after the text. Defaults to "\n".
-    public static func printColor(_ text: String, _ color: TextColor, terminator: String = "\n") {
-        print(PolyText.color(text, color), terminator: terminator)
+    public static func printColor(_ text: String, _ color: ANSIColor, terminator: String = "\n") {
+        print(PolyTerm.color(text, color), terminator: terminator)
     }
 
     /// Determines if the terminal supports ANSI colors based on the environment.
     ///
     /// - Returns: True if we're in a real terminal that supports colors, false if in Xcode or other non-color environment.
-    public static func supportsColor() -> Bool {
+    public static func supportsANSI() -> Bool {
         #if os(iOS)
             return false
         #endif
@@ -70,11 +44,7 @@ public enum PolyText {
         // Check if stdout is a TTY and we have a TERM environment variable
         return isatty(STDOUT_FILENO) != 0 && ProcessInfo.processInfo.environment["TERM"] != nil
     }
-}
 
-// MARK: - PolyTerm
-
-public enum PolyTerm {
     /// Uses the terminal's raw mode to read a single character without waiting for Enter.
     public static func readSingleChar() -> String {
         // Ensure output is flushed before reading input

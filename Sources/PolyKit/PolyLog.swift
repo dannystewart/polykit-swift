@@ -10,9 +10,6 @@ import os
 // MARK: - PolyLog
 
 /// Class for logging messages to the console and system log.
-///
-/// In DEBUG builds, logs are formatted and printed to console with colors and timestamps.
-/// In production builds, all logs go directly to the unified logging system.
 public final class PolyLog: @unchecked Sendable {
     // MARK: Properties
 
@@ -55,6 +52,13 @@ public final class PolyLog: @unchecked Sendable {
     ///   - level:   The level of the message.
     private func log(_ message: String, level: LogLevel) {
         let formattedMessage = formatConsoleMessage(message, level: level)
+
+        // Print to console if we're in a real terminal (supports ANSI colors)
+        if PolyTerm.supportsANSI() {
+            print(formattedMessage)
+        }
+
+        // Always log to unified logging system
         switch level.osLogType {
         case .debug:
             osLogger.debug("\(formattedMessage, privacy: .public)")
@@ -78,12 +82,10 @@ public final class PolyLog: @unchecked Sendable {
     ///   - level:   The level of the message.
     /// - Returns: The formatted message with colors (if real terminal) and timestamps.
     private func formatConsoleMessage(_ message: String, level: LogLevel) -> String {
-        let shouldUseColor = PolyText.supportsColor()
-
-        if shouldUseColor {
-            let timestampFormatted = "\(TextColor.reset.rawValue)\(TextColor.gray.rawValue)\(timestamp())\(TextColor.reset.rawValue) "
-            let levelFormatted = "\(TextColor.bold.rawValue)\(level.color.rawValue)\(level.displayText)\(TextColor.reset.rawValue)"
-            let messageFormatted = "\(level.color.rawValue)\(message)\(TextColor.reset.rawValue)"
+        if PolyTerm.supportsANSI() {
+            let timestampFormatted = "\(ANSIColor.reset.rawValue)\(ANSIColor.gray.rawValue)\(timestamp())\(ANSIColor.reset.rawValue) "
+            let levelFormatted = "\(ANSIColor.bold.rawValue)\(level.color.rawValue)\(level.displayText)\(ANSIColor.reset.rawValue)"
+            let messageFormatted = "\(level.color.rawValue)\(message)\(ANSIColor.reset.rawValue)"
             return "\(timestampFormatted)\(levelFormatted)\(messageFormatted)"
         } else {
             return "\(timestamp()) \(level.displayText)\(message)"
@@ -140,7 +142,7 @@ public enum LogLevel: String, CaseIterable, Sendable {
         }
     }
 
-    var color: TextColor {
+    var color: ANSIColor {
         switch self {
         case .debug: .gray
         case .info: .green
