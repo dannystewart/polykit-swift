@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "polykit-swift",
+    name: "PolyKit",
     platforms: [
         .macOS(.v26),
         .iOS(.v26),
