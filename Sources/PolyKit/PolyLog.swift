@@ -17,34 +17,16 @@ public final class PolyLog: @unchecked Sendable {
     // MARK: Properties
 
     private let osLogger: Logger
-    private var seqSink: SeqSink?
 
     // MARK: Lifecycle
 
-    public nonisolated init(seqSink: SeqSink? = nil) {
-        self.seqSink = seqSink
-
+    public nonisolated init() {
         // Use the app's bundle identifier
         let subsystem = Bundle.main.bundleIdentifier ?? "com.unknown.app.polylog"
         osLogger = Logger(subsystem: subsystem, category: "PolyLog")
     }
 
-    // MARK: Static Functions
-
-    /// Creates a PolyLog instance with Seq support that will be enabled later.
-    ///
-    /// Use this when you need a logger immediately but want to enable Seq asynchronously.
-    /// Call `setSeqSink()` later to enable Seq logging.
-    public static func withSeqSink() -> PolyLog {
-        PolyLog(seqSink: nil)
-    }
-
     // MARK: Functions
-
-    /// Enables Seq logging by setting the SeqSink. Can be called after initialization.
-    public func setSeqSink(_ sink: SeqSink?) {
-        seqSink = sink
-    }
 
     public func debug(_ message: String) {
         log(message, level: .debug)
@@ -86,13 +68,6 @@ public final class PolyLog: @unchecked Sendable {
             osLogger.fault("\(formattedMessage, privacy: .public)")
         default:
             osLogger.log("\(formattedMessage, privacy: .public)")
-        }
-
-        // Send to Seq if configured
-        if let seqSink {
-            Task {
-                await seqSink.log(message, level: level)
-            }
         }
     }
 

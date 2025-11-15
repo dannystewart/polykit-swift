@@ -14,7 +14,6 @@ let package = Package(
         .target(
             name: "PolyKit",
             path: "Sources/PolyKit",
-            exclude: ["Integrations/SEQ_README.md"],
         ),
     ],
 )
