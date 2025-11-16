@@ -1,44 +1,44 @@
 {
-    "folders": [
-        {
-            "path": "."
-        }
-    ],
-    "settings": {
-        "editor.detectIndentation": false,
-        "editor.formatOnPaste": true,
-        "editor.formatOnSave": true,
-        "explorerExclude.backup": {},
-        "files.exclude": {
-            "**/*.xcodeproj": true,
-            "**/.DS_Store": true,
-            "**/.git": true,
-            "**/.hg": false,
-            "**/.pytest_cache": true,
-            "**/.svn": false,
-            "**/.vscode": true,
-            "**/__pycache__": true,
-            "**/CVS": false,
-            "**/node_modules": true,
-            "**/Thumbs.db": true,
-            "*.code-workspace": true,
-            ".build": true,
-            ".cursor": true,
-            ".cursorindexingignore": true,
-            ".history": true,
-            ".specstory": true,
-            ".swiftpm": true,
-            "env*": true,
-            "venv": true
-        },
-        "swift.autoGenerateLaunchConfigurations": false,
-        "swift.buildArguments": [
-            "-Xswiftc",
-            "-target",
-            "-Xswiftc",
-            "x86_64-apple-macosx26.0"
-        ],
-        "swift.buildPath": "./.build",
-        "swift.sourcekit-lsp.serverPath": "/usr/bin/sourcekit-lsp"
+  "folders": [
+    {
+      "path": "."
     }
+  ],
+  "settings": {
+    "editor.detectIndentation": false,
+    "editor.formatOnPaste": true,
+    "editor.formatOnSave": true,
+    "explorerExclude.backup": {},
+    "files.exclude": {
+      ".build": true,
+      ".cursor": true,
+      ".cursorindexingignore": true,
+      ".history": true,
+      ".specstory": true,
+      ".swiftpm": true,
+      "*.code-workspace": true,
+      "**/__pycache__": true,
+      "**/.DS_Store": true,
+      "**/.git": true,
+      "**/.hg": false,
+      "**/.pytest_cache": true,
+      "**/.svn": false,
+      "**/.vscode": true,
+      "**/*.xcodeproj": false,
+      "**/CVS": false,
+      "**/node_modules": true,
+      "**/Thumbs.db": true,
+      "env*": true,
+      "venv": true,
+    },
+    "swift.autoGenerateLaunchConfigurations": false,
+    "swift.buildArguments": [
+      "-Xswiftc",
+      "-target",
+      "-Xswiftc",
+      "x86_64-apple-macosx26.0"
+    ],
+    "swift.buildPath": "./.build",
+    "swift.sourcekit-lsp.serverPath": "/usr/bin/sourcekit-lsp"
+  }
 }
