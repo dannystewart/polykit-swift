@@ -16,15 +16,46 @@ import Foundation
     import Glibc
 #endif
 
+// MARK: - LogGroup
+
+/// Type-safe identifier for logging groups. Allows categorization of logs for filtering.
+///
+/// Example usage:
+/// ```swift
+/// extension LogGroup {
+///     static let networking = LogGroup("networking")
+///     static let database = LogGroup("database")
+///     static let ui = LogGroup("ui")
+/// }
+/// ```
+public struct LogGroup: Hashable, Sendable {
+    // MARK: Properties
+
+    public let identifier: String
+
+    // MARK: Lifecycle
+
+    public init(_ identifier: String) {
+        self.identifier = identifier
+    }
+}
+
 // MARK: - PolyLog
 
-/// Class for logging messages to the console and system log.
+/// Class for logging messages to the console and system log with optional group-based filtering.
+///
+/// Supports categorizing logs into groups that can be individually enabled/disabled at runtime.
+/// All group functionality is optional - logs without groups are always printed.
 public final class PolyLog: @unchecked Sendable {
     // MARK: Properties
 
     #if canImport(os)
         private let osLogger: Logger
     #endif
+
+    /// Thread-safe storage for enabled/disabled groups
+    private let groupLock: NSLock = .init()
+    private var disabledGroups: Set<LogGroup> = []
 
     // MARK: Lifecycle
 
@@ -38,24 +69,84 @@ public final class PolyLog: @unchecked Sendable {
 
     // MARK: Functions
 
-    public func debug(_ message: String) {
-        log(message, level: .debug)
+    // MARK: Public Logging Methods
+
+    public func debug(_ message: String, group: LogGroup? = nil) {
+        log(message, level: .debug, group: group)
     }
 
-    public func info(_ message: String) {
-        log(message, level: .info)
+    public func info(_ message: String, group: LogGroup? = nil) {
+        log(message, level: .info, group: group)
     }
 
-    public func warning(_ message: String) {
-        log(message, level: .warning)
+    public func warning(_ message: String, group: LogGroup? = nil) {
+        log(message, level: .warning, group: group)
     }
 
-    public func error(_ message: String) {
-        log(message, level: .error)
+    public func error(_ message: String, group: LogGroup? = nil) {
+        log(message, level: .error, group: group)
     }
 
-    public func fault(_ message: String) {
-        log(message, level: .fault)
+    public func fault(_ message: String, group: LogGroup? = nil) {
+        log(message, level: .fault, group: group)
+    }
+
+    // MARK: Group Management
+
+    /// Disables logging for a specific group.
+    /// - Parameter group: The group to disable.
+    public func disableGroup(_ group: LogGroup) {
+        groupLock.lock()
+        defer { groupLock.unlock() }
+        disabledGroups.insert(group)
+    }
+
+    /// Enables logging for a specific group.
+    /// - Parameter group: The group to enable.
+    public func enableGroup(_ group: LogGroup) {
+        groupLock.lock()
+        defer { groupLock.unlock() }
+        disabledGroups.remove(group)
+    }
+
+    /// Disables multiple groups at once.
+    /// - Parameter groups: The groups to disable.
+    public func disableGroups(_ groups: [LogGroup]) {
+        groupLock.lock()
+        defer { groupLock.unlock() }
+        disabledGroups.formUnion(groups)
+    }
+
+    /// Enables multiple groups at once.
+    /// - Parameter groups: The groups to enable.
+    public func enableGroups(_ groups: [LogGroup]) {
+        groupLock.lock()
+        defer { groupLock.unlock() }
+        groups.forEach { disabledGroups.remove($0) }
+    }
+
+    /// Checks if an group is currently enabled.
+    /// - Parameter group: The group to check.
+    /// - Returns: `true` if the group is enabled (not disabled).
+    public func isGroupEnabled(_ group: LogGroup) -> Bool {
+        groupLock.lock()
+        defer { groupLock.unlock() }
+        return !disabledGroups.contains(group)
+    }
+
+    /// Returns all currently disabled groups.
+    /// - Returns: A set of disabled groups.
+    public func getDisabledGroups() -> Set<LogGroup> {
+        groupLock.lock()
+        defer { groupLock.unlock() }
+        return disabledGroups
+    }
+
+    /// Enables all groups (clears the disabled list).
+    public func enableAllGroups() {
+        groupLock.lock()
+        defer { groupLock.unlock() }
+        disabledGroups.removeAll()
     }
 
     /// Logs a message at the specified level.
@@ -63,8 +154,20 @@ public final class PolyLog: @unchecked Sendable {
     /// - Parameters:
     ///   - message: The message to log.
     ///   - level:   The level of the message.
-    private func log(_ message: String, level: LogLevel) {
-        let formattedMessage = formatConsoleMessage(message, level: level)
+    ///   - group:    Optional group for categorization and filtering.
+    private func log(_ message: String, level: LogLevel, group: LogGroup? = nil) {
+        // Check if this group is disabled
+        if let group {
+            groupLock.lock()
+            let isDisabled = disabledGroups.contains(group)
+            groupLock.unlock()
+
+            if isDisabled {
+                return // Skip logging for disabled groups
+            }
+        }
+
+        let formattedMessage = formatConsoleMessage(message, level: level, group: group)
 
         // Print to console if we're in a real terminal (supports ANSI colors)
         if PolyTerm.supportsANSI() {
@@ -95,15 +198,25 @@ public final class PolyLog: @unchecked Sendable {
     // - Parameters:
     //   - message: The message to format.
     //   - level:   The level of the message.
+    //   - group:    Optional group identifier.
     // - Returns: The formatted message with colors (if real terminal) and timestamps.
-    private func formatConsoleMessage(_ message: String, level: LogLevel) -> String {
+    private func formatConsoleMessage(_ message: String, level: LogLevel, group: LogGroup? = nil) -> String {
         if PolyTerm.supportsANSI() {
             let timestampFormatted = "\(ANSIColor.reset.rawValue)\(ANSIColor.gray.rawValue)\(timestamp())\(ANSIColor.reset.rawValue) "
             let levelFormatted = "\(ANSIColor.bold.rawValue)\(level.color.rawValue)\(level.displayText)\(ANSIColor.reset.rawValue)"
+
+            // Add group tag if present
+            let groupFormatted = if let group {
+                "\(ANSIColor.cyan.rawValue)[\(group.identifier)]\(ANSIColor.reset.rawValue) "
+            } else {
+                ""
+            }
+
             let messageFormatted = "\(level.color.rawValue)\(message)\(ANSIColor.reset.rawValue)"
-            return "\(timestampFormatted)\(levelFormatted)\(messageFormatted)"
+            return "\(timestampFormatted)\(levelFormatted)\(groupFormatted)\(messageFormatted)"
         } else {
-            return "\(timestamp()) \(level.displayText)\(message)"
+            let groupTag = group.map { "[\($0.identifier)] " } ?? ""
+            return "\(timestamp()) \(level.displayText)\(groupTag)\(message)"
         }
     }
 
