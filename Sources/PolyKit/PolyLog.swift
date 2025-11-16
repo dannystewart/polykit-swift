@@ -157,15 +157,18 @@ public final class PolyLog: @unchecked Sendable {
     ///   - message: The message to log.
     ///   - level:   The level of the message.
     ///   - group:    Optional group for categorization and filtering.
+    ///
+    /// - Note: Warnings, errors, and faults always print regardless of group filtering.
+    ///         Only debug and info messages are filtered by disabled groups.
     private func log(_ message: String, level: LogLevel, group: LogGroup? = nil) {
-        // Check if this group is disabled
-        if let group {
+        // Check if this group is disabled (but only for debug/info - warnings and above always print)
+        if let group, level.isFilterable {
             groupLock.lock()
             let isDisabled = disabledGroups.contains(group)
             groupLock.unlock()
 
             if isDisabled {
-                return // Skip logging for disabled groups
+                return // Skip logging for disabled groups (debug/info only)
             }
         }
 
@@ -306,6 +309,15 @@ public enum LogLevel: String, CaseIterable, Sendable {
         case .warning: "⚠️ "
         case .error: "❌ "
         case .fault: "🔥 "
+        }
+    }
+
+    /// Whether this log level can be filtered by disabled groups.
+    /// Warnings, errors, and faults always print regardless of group filtering.
+    var isFilterable: Bool {
+        switch self {
+        case .debug, .info: true
+        case .warning, .error, .fault: false
         }
     }
 }
