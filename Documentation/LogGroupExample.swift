@@ -9,10 +9,10 @@ import PolyKit
 // MARK: - Define Your App's Log Groups
 
 extension LogGroup {
-    static let networking: LogGroup = .init("networking")
-    static let database: LogGroup = .init("database")
-    static let ui: LogGroup = .init("ui")
-    static let authentication: LogGroup = .init("auth")
+    static let networking: LogGroup = .init("networking", emoji: "🌐")
+    static let database: LogGroup = .init("database", emoji: "💾")
+    static let ui: LogGroup = .init("ui", emoji: "🎨")
+    static let authentication: LogGroup = .init("auth", emoji: "🔐")
 }
 
 // MARK: - Example Usage
@@ -129,6 +129,39 @@ func configureForProduction() {
     logger.debug("Login attempt", group: .authentication) // Shows in production
 }
 
+// MARK: - Emoji Example: Visual Clarity
+
+func demonstrateEmojiGroups() {
+    let logger = PolyLog()
+
+    print("\n=== Example 7: Visual Clarity with Emojis ===\n")
+
+    // Groups with emojis provide compact, visually distinct output
+    logger.info("Starting system initialization")
+    logger.debug("Connecting to API server", group: .networking)
+    logger.debug("Loading user preferences", group: .database)
+    logger.debug("Rendering main interface", group: .ui)
+    logger.debug("Validating session token", group: .authentication)
+
+    print("\n=== Comparison: With and Without Emojis ===\n")
+
+    // Define groups without emojis for comparison
+    let plainNetworking = LogGroup("networking-plain")
+    let plainDatabase = LogGroup("database-plain")
+
+    logger.debug("Plain group output", group: plainNetworking)
+    logger.debug("Emoji group output", group: .networking)
+
+    print("\n=== Mixed Usage: Flexibility ===\n")
+
+    // You can mix emoji and non-emoji groups as needed
+    let debugGroup = LogGroup("debug") // No emoji for less important logs
+    let criticalGroup = LogGroup("critical", emoji: "🚨") // Emoji for high visibility
+
+    logger.debug("Regular debug info", group: debugGroup)
+    logger.error("Critical system alert!", group: criticalGroup)
+}
+
 // MARK: - Helper Functions
 
 private func buildExpensiveReport() -> String {
@@ -142,3 +175,4 @@ private func buildExpensiveReport() -> String {
 // demonstrateLogGroups()
 // developNewFeature()
 // configureForProduction()
+// demonstrateEmojiGroups()

@@ -23,20 +23,22 @@ import Foundation
 /// Example usage:
 /// ```swift
 /// extension LogGroup {
-///     static let networking = LogGroup("networking")
-///     static let database = LogGroup("database")
-///     static let ui = LogGroup("ui")
+///     static let networking = LogGroup("networking", emoji: "🌐")
+///     static let database = LogGroup("database", emoji: "💾")
+///     static let ui = LogGroup("ui", emoji: "🎨")
 /// }
 /// ```
 public struct LogGroup: Hashable, Sendable {
     // MARK: Properties
 
     public let identifier: String
+    public let emoji: String?
 
     // MARK: Lifecycle
 
-    public init(_ identifier: String) {
+    public init(_ identifier: String, emoji: String? = nil) {
         self.identifier = identifier
+        self.emoji = emoji
     }
 }
 
@@ -205,9 +207,15 @@ public final class PolyLog: @unchecked Sendable {
             let timestampFormatted = "\(ANSIColor.reset.rawValue)\(ANSIColor.gray.rawValue)\(timestamp())\(ANSIColor.reset.rawValue) "
             let levelFormatted = "\(ANSIColor.bold.rawValue)\(level.color.rawValue)\(level.displayText)\(ANSIColor.reset.rawValue)"
 
-            // Add group tag if present
+            // Add group tag if present - use emoji if available, otherwise identifier in brackets
             let groupFormatted = if let group {
-                "\(ANSIColor.cyan.rawValue)[\(group.identifier)]\(ANSIColor.reset.rawValue) "
+                if let emoji = group.emoji {
+                    // Use emoji directly (no brackets, no color needed - emoji is already colorful)
+                    "\(emoji) "
+                } else {
+                    // Fall back to identifier in brackets with color
+                    "\(ANSIColor.cyan.rawValue)[\(group.identifier)]\(ANSIColor.reset.rawValue) "
+                }
             } else {
                 ""
             }
@@ -215,7 +223,16 @@ public final class PolyLog: @unchecked Sendable {
             let messageFormatted = "\(level.color.rawValue)\(message)\(ANSIColor.reset.rawValue)"
             return "\(timestampFormatted)\(levelFormatted)\(groupFormatted)\(messageFormatted)"
         } else {
-            let groupTag = group.map { "[\($0.identifier)] " } ?? ""
+            // Non-ANSI terminals: use emoji if present, otherwise identifier in brackets
+            let groupTag = if let group {
+                if let emoji = group.emoji {
+                    "\(emoji) "
+                } else {
+                    "[\(group.identifier)] "
+                }
+            } else {
+                ""
+            }
             return "\(timestamp()) \(level.displayText)\(groupTag)\(message)"
         }
     }

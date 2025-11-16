@@ -146,6 +146,109 @@ Without terminal color support:
 9:15:23.456 PM ✅ [networking] Successfully connected to server
 ```
 
+## Using Emojis for Visual Clarity
+
+Groups support optional emojis for more compact and visually scannable output. When an emoji is provided, it's used in the log output instead of the bracketed identifier.
+
+### Defining Groups with Emojis
+
+```swift
+extension LogGroup {
+    static let networking = LogGroup("networking", emoji: "🌐")
+    static let database = LogGroup("database", emoji: "💾")
+    static let ui = LogGroup("ui", emoji: "🎨")
+    static let authentication = LogGroup("auth", emoji: "🔐")
+    static let fileSystem = LogGroup("filesystem", emoji: "📁")
+    static let performance = LogGroup("performance", emoji: "⚡️")
+
+    // Can mix and match - groups without emojis still work
+    static let legacy = LogGroup("legacy")
+}
+```
+
+### Output Comparison
+
+**With emojis:**
+
+```text
+9:15:23.456 PM ✅ 🌐 Successfully connected to server
+9:15:23.789 PM 🛠️  💾 Executing query...
+9:15:24.012 PM ⚠️  🎨 View layout update took 45ms
+9:15:24.234 PM ❌ 🔐 Authentication failed
+9:15:24.567 PM ✅ [legacy] Old system message
+```
+
+**Without emojis (traditional):**
+
+```text
+9:15:23.456 PM ✅ [networking] Successfully connected to server
+9:15:23.789 PM 🛠️  [database] Executing query...
+9:15:24.012 PM ⚠️  [ui] View layout update took 45ms
+9:15:24.234 PM ❌ [auth] Authentication failed
+9:15:24.567 PM ✅ [legacy] Old system message
+```
+
+### Benefits of Emojis
+
+- 🎯 **Glanceability** - Instantly spot specific subsystems in log output
+- 📏 **Brevity** - `🌐` vs `[networking]` saves ~12 characters per line
+- 🌈 **Visual Distinction** - Color-coded at a glance without ANSI color support
+- 🔍 **Quick Scanning** - Emoji patterns stand out when scrolling through logs
+- 🧹 **Cleaner Output** - Less visual clutter in dense log streams
+
+### Recommended Emojis
+
+Here are some commonly useful emojis for logging:
+
+```swift
+extension LogGroup {
+    // Network & Communication
+    static let networking = LogGroup("networking", emoji: "🌐")
+    static let api = LogGroup("api", emoji: "🔌")
+    static let websocket = LogGroup("websocket", emoji: "📡")
+
+    // Data & Storage
+    static let database = LogGroup("database", emoji: "💾")
+    static let cache = LogGroup("cache", emoji: "💿")
+    static let fileIO = LogGroup("file-io", emoji: "📁")
+
+    // UI & Presentation
+    static let ui = LogGroup("ui", emoji: "🎨")
+    static let layout = LogGroup("layout", emoji: "📐")
+    static let animation = LogGroup("animation", emoji: "✨")
+
+    // Security & Auth
+    static let authentication = LogGroup("auth", emoji: "🔐")
+    static let encryption = LogGroup("encryption", emoji: "🔒")
+    static let permissions = LogGroup("permissions", emoji: "🛡️")
+
+    // Performance & Monitoring
+    static let performance = LogGroup("performance", emoji: "⚡️")
+    static let memory = LogGroup("memory", emoji: "🧠")
+    static let diagnostics = LogGroup("diagnostics", emoji: "🔬")
+
+    // Business Logic
+    static let payments = LogGroup("payments", emoji: "💳")
+    static let analytics = LogGroup("analytics", emoji: "📊")
+    static let notifications = LogGroup("notifications", emoji: "🔔")
+}
+```
+
+### Best Practices with Emojis
+
+**Do:**
+
+- ✅ Choose emojis that are semantically meaningful
+- ✅ Use consistent emoji patterns across your codebase
+- ✅ Keep identifiers clear even when emojis are used (code references `.networking`, not `.globe`)
+- ✅ Mix emoji and non-emoji groups as needed
+
+**Don't:**
+
+- ❌ Use multiple emojis per group (creates visual clutter)
+- ❌ Choose confusing or ambiguous emojis
+- ❌ Rely solely on emojis - identifiers remain the source of truth
+
 ## API Reference
 
 ### Creating Groups
@@ -154,10 +257,12 @@ Without terminal color support:
 // Type-safe approach (recommended)
 extension LogGroup {
     static let myGroup = LogGroup("myGroup")
+    static let withEmoji = LogGroup("withEmoji", emoji: "🎯")
 }
 
 // Direct creation
 let customGroup = LogGroup("custom-feature")
+let emojiGroup = LogGroup("important", emoji: "⭐️")
 ```
 
 ### Logging with Groups
