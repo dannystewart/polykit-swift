@@ -72,7 +72,9 @@ public enum PolyTerm {
         /// Windows-specific implementation using Console API
         private static func readSingleCharWindows() -> String {
             // Ensure output is flushed before reading input
-            fflush(stdout)
+            // Flush all output streams without referencing the global `stdout`,
+            // which Swift 6 considers non-concurrency-safe on some platforms.
+            fflush(nil)
 
             let hStdin = GetStdHandle(STD_INPUT_HANDLE)
             if hStdin == INVALID_HANDLE_VALUE {
@@ -112,7 +114,9 @@ public enum PolyTerm {
         /// POSIX implementation using termios (Unix/Linux/macOS)
         private static func readSingleCharPOSIX() -> String {
             // Ensure output is flushed before reading input
-            fflush(stdout)
+            // Flush all output streams without referencing the global `stdout`,
+            // which Swift 6 considers non-concurrency-safe on some platforms.
+            fflush(nil)
 
             // Prefer reading directly from the controlling TTY to avoid redirected stdin issues
             var fd: Int32 = STDIN_FILENO

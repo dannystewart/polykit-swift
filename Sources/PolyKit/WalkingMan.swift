@@ -98,7 +98,10 @@ public class WalkingMan: @unchecked Sendable {
 
         // Clear the entire line and print Walking Man
         print("\r\u{001B}[K\(spaces)\(coloredCharacter)", terminator: "")
-        fflush(stdout)
+        // Flush all output streams to ensure the frame is visible immediately.
+        // Using `nil` avoids directly touching the global `stdout`, which is
+        // treated as non-concurrency-safe by Swift 6 on some platforms.
+        fflush(nil)
     }
 
     private func getCurrentCharacter() -> String {
