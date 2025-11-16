@@ -4,8 +4,9 @@
 //  https://github.com/dannystewart/polykit-swift
 //
 
-import Darwin
 import Foundation
+
+// MARK: - PolyTerm
 
 public enum PolyTerm {
     /// Returns a string with the specified color and style attributes.

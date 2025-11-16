@@ -5,7 +5,16 @@
 //
 
 import Foundation
-import os
+
+#if canImport(os)
+    import os
+#endif
+
+#if canImport(Darwin)
+    import Darwin
+#elseif canImport(Glibc)
+    import Glibc
+#endif
 
 // MARK: - PolyLog
 
@@ -13,14 +22,18 @@ import os
 public final class PolyLog: @unchecked Sendable {
     // MARK: Properties
 
-    private let osLogger: Logger
+    #if canImport(os)
+        private let osLogger: Logger
+    #endif
 
     // MARK: Lifecycle
 
     public nonisolated init() {
-        // Use the app's bundle identifier
-        let subsystem = Bundle.main.bundleIdentifier ?? "com.unknown.app.polylog"
-        osLogger = Logger(subsystem: subsystem, category: "PolyLog")
+        #if canImport(os)
+            /// Use the app's bundle identifier
+            let subsystem = Bundle.main.bundleIdentifier ?? "com.unknown.app.polylog"
+            osLogger = Logger(subsystem: subsystem, category: "PolyLog")
+        #endif
     }
 
     // MARK: Functions
@@ -58,29 +71,31 @@ public final class PolyLog: @unchecked Sendable {
             print(formattedMessage)
         }
 
-        // Always log to unified logging system
-        switch level.osLogType {
-        case .debug:
-            osLogger.debug("\(formattedMessage, privacy: .public)")
-        case .info:
-            osLogger.info("\(formattedMessage, privacy: .public)")
-        case .default:
-            osLogger.notice("\(formattedMessage, privacy: .public)")
-        case .error:
-            osLogger.error("\(formattedMessage, privacy: .public)")
-        case .fault:
-            osLogger.fault("\(formattedMessage, privacy: .public)")
-        default:
-            osLogger.log("\(formattedMessage, privacy: .public)")
-        }
+        #if canImport(os)
+            // Always log to unified logging system
+            switch level.osLogType {
+            case .debug:
+                osLogger.debug("\(formattedMessage, privacy: .public)")
+            case .info:
+                osLogger.info("\(formattedMessage, privacy: .public)")
+            case .default:
+                osLogger.notice("\(formattedMessage, privacy: .public)")
+            case .error:
+                osLogger.error("\(formattedMessage, privacy: .public)")
+            case .fault:
+                osLogger.fault("\(formattedMessage, privacy: .public)")
+            default:
+                osLogger.log("\(formattedMessage, privacy: .public)")
+            }
+        #endif
     }
 
-    /// Formats a message for console output in DEBUG builds.
-    ///
-    /// - Parameters:
-    ///   - message: The message to format.
-    ///   - level:   The level of the message.
-    /// - Returns: The formatted message with colors (if real terminal) and timestamps.
+    // Formats a message for console output in DEBUG builds.
+    //
+    // - Parameters:
+    //   - message: The message to format.
+    //   - level:   The level of the message.
+    // - Returns: The formatted message with colors (if real terminal) and timestamps.
     private func formatConsoleMessage(_ message: String, level: LogLevel) -> String {
         if PolyTerm.supportsANSI() {
             let timestampFormatted = "\(ANSIColor.reset.rawValue)\(ANSIColor.gray.rawValue)\(timestamp())\(ANSIColor.reset.rawValue) "
@@ -92,9 +107,9 @@ public final class PolyLog: @unchecked Sendable {
         }
     }
 
-    /// Formats the current time for use in a log message.
-    ///
-    /// - Returns: The current timestamp in the format "h:mm:ss a".
+    // Formats the current time for use in a log message.
+    //
+    // - Returns: The current timestamp in the format "h:mm:ss a".
     private func timestamp() -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "h:mm:ss.SSS a"
@@ -104,10 +119,10 @@ public final class PolyLog: @unchecked Sendable {
 
 // MARK: - LoggableError
 
-/// Protocol for errors that can be logged and thrown.
+// Protocol for errors that can be logged and thrown.
 public protocol LoggableError: Error { var logMessage: String { get }}
 
-/// Extension for PolyLog to add logging and throwing capabilities.
+// Extension for PolyLog to add logging and throwing capabilities.
 public extension PolyLog {
     func logAndThrow(_ error: some LoggableError) throws {
         self.error(error.logMessage)
@@ -116,13 +131,13 @@ public extension PolyLog {
 
     func logAndExit(_ error: some LoggableError) -> Never {
         self.error(error.logMessage)
-        Foundation.exit(1)
+        exit(1)
     }
 }
 
 // MARK: - LogLevel
 
-/// Enum representing various log levels.
+// Enum representing various log levels.
 public enum LogLevel: String, CaseIterable, Sendable {
     case debug
     case info
@@ -132,15 +147,17 @@ public enum LogLevel: String, CaseIterable, Sendable {
 
     // MARK: Computed Properties
 
-    var osLogType: OSLogType {
-        switch self {
-        case .debug: .default
-        case .info: .default
-        case .warning: .default
-        case .error: .error
-        case .fault: .fault
+    #if canImport(os)
+        var osLogType: OSLogType {
+            switch self {
+            case .debug: .default
+            case .info: .default
+            case .warning: .default
+            case .error: .error
+            case .fault: .fault
+            }
         }
-    }
+    #endif
 
     var color: ANSIColor {
         switch self {
