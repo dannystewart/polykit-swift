@@ -56,6 +56,10 @@ public final class PolyLog: @unchecked Sendable {
     /// You can customize this per-logger instance if needed.
     public var filterableLevels: Set<LogLevel> = [.debug]
 
+    /// Registered groups for this logger.
+    /// Apps can register their groups here for easy management via UI, persistence, etc.
+    public var registeredGroups: [LogGroup] = []
+
     #if canImport(os)
         private let osLogger: Logger
     #endif
@@ -154,6 +158,60 @@ public final class PolyLog: @unchecked Sendable {
         groupLock.lock()
         defer { groupLock.unlock() }
         disabledGroups.removeAll()
+    }
+
+    // MARK: Persistence
+
+    /// Saves the currently enabled groups to UserDefaults.
+    /// Only saves groups from `registeredGroups` that are currently enabled.
+    ///
+    /// - Parameter key: The UserDefaults key to use. Defaults to "EnabledLogGroups".
+    public func saveEnabledGroups(key: String = "EnabledLogGroups") {
+        groupLock.lock()
+        let disabled = disabledGroups
+        groupLock.unlock()
+
+        // Find which registered groups are enabled (not in disabled set)
+        let enabledIdentifiers = registeredGroups
+            .filter { !disabled.contains($0) }
+            .map(\.identifier)
+
+        UserDefaults.standard.set(enabledIdentifiers, forKey: key)
+    }
+
+    /// Loads persisted group states from UserDefaults and applies them.
+    /// Groups found in UserDefaults are enabled, all others from `registeredGroups` are disabled.
+    ///
+    /// - Parameters:
+    ///   - key: The UserDefaults key to read from. Defaults to "EnabledLogGroups".
+    ///   - defaultToDisabled: If `true`, groups not in UserDefaults are disabled (opt-in).
+    ///                        If `false`, groups not in UserDefaults are enabled (opt-out).
+    ///                        Defaults to `true` (opt-in behavior).
+    public func loadPersistedStates(key: String = "EnabledLogGroups", defaultToDisabled: Bool = true) {
+        let enabledIdentifiers = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
+
+        for group in registeredGroups {
+            if enabledIdentifiers.contains(group.identifier) {
+                enableGroup(group)
+            } else if defaultToDisabled {
+                disableGroup(group)
+            }
+            // If !defaultToDisabled and not in saved set, leave as-is (enabled by default)
+        }
+    }
+
+    /// Applies different group configurations based on build type.
+    /// In DEBUG: Loads persisted states (opt-in by default).
+    /// In RELEASE: Disables all registered groups for performance.
+    ///
+    /// - Parameter key: The UserDefaults key to use. Defaults to "EnabledLogGroups".
+    public func applyBuildConfiguration(key: String = "EnabledLogGroups") {
+        #if DEBUG
+            loadPersistedStates(key: key, defaultToDisabled: true)
+        #else
+            // Disable all groups in release builds for performance
+            disableGroups(registeredGroups)
+        #endif
     }
 
     /// Logs a message at the specified level.
