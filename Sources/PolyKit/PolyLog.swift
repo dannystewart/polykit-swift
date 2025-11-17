@@ -51,6 +51,11 @@ public struct LogGroup: Hashable, Sendable {
 public final class PolyLog: @unchecked Sendable {
     // MARK: Properties
 
+    /// Log levels that can be filtered by disabled groups.
+    /// By default, only debug messages are filterable. Warnings, errors, and faults always print.
+    /// You can customize this per-logger instance if needed.
+    public var filterableLevels: Set<LogLevel> = [.debug]
+
     #if canImport(os)
         private let osLogger: Logger
     #endif
@@ -158,17 +163,17 @@ public final class PolyLog: @unchecked Sendable {
     ///   - level:   The level of the message.
     ///   - group:    Optional group for categorization and filtering.
     ///
-    /// - Note: Warnings, errors, and faults always print regardless of group filtering.
-    ///         Only debug and info messages are filtered by disabled groups.
+    /// - Note: By default, only debug messages are filtered by disabled groups.
+    ///         Warnings, errors, and faults always print. You can customize this via `filterableLevels`.
     private func log(_ message: String, level: LogLevel, group: LogGroup? = nil) {
-        // Check if this group is disabled (but only for debug/info - warnings and above always print)
-        if let group, level.isFilterable {
+        // Check if this group is disabled (but only for filterable levels)
+        if let group, filterableLevels.contains(level) {
             groupLock.lock()
             let isDisabled = disabledGroups.contains(group)
             groupLock.unlock()
 
             if isDisabled {
-                return // Skip logging for disabled groups (debug/info only)
+                return // Skip logging for disabled groups (filterable levels only)
             }
         }
 
@@ -309,15 +314,6 @@ public enum LogLevel: String, CaseIterable, Sendable {
         case .warning: "⚠️ "
         case .error: "❌ "
         case .fault: "🔥 "
-        }
-    }
-
-    /// Whether this log level can be filtered by disabled groups.
-    /// Warnings, errors, and faults always print regardless of group filtering.
-    var isFilterable: Bool {
-        switch self {
-        case .debug, .info: true
-        case .warning, .error, .fault: false
         }
     }
 }
