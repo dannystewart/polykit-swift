@@ -1,8 +1,13 @@
+//
+//  PlayerEngine.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 import AVFoundation
 import Foundation
 import MediaPlayer
 import Observation
-import PolyKit
 
 // MARK: - Logger
 
@@ -48,6 +53,8 @@ private struct CacheEntry {
 @MainActor
 @Observable
 public class PlayerEngine<T: Playable> {
+    // MARK: Properties
+
     public var maxCacheSizeBytes: Int64 = 500000000 { // 500 MB default
         didSet {
             UserDefaults.standard.set(maxCacheSizeBytes, forKey: "DSPlayerEngine_maxCacheSizeBytes")
@@ -100,6 +107,8 @@ public class PlayerEngine<T: Playable> {
     private var originalPlaylist: [T] = []
     private var currentlyDownloadingItemID: Int?
 
+    // MARK: Computed Properties
+
     public var hasCurrentItem: Bool {
         currentItem != nil
     }
@@ -147,6 +156,8 @@ public class PlayerEngine<T: Playable> {
         }
     }
 
+    // MARK: Lifecycle
+
     // MARK: - Initialization
 
     public init() {
@@ -168,6 +179,8 @@ public class PlayerEngine<T: Playable> {
         // Initial state sync
         syncStateFromCore()
     }
+
+    // MARK: Functions
 
     // MARK: - Playback Control
 

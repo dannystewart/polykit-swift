@@ -1,3 +1,9 @@
+//
+//  Playable.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 import Foundation
 
 /// Protocol that defines the requirements for any media item that can be played

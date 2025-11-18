@@ -1,3 +1,9 @@
+//
+//  PlayerCore.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 @preconcurrency import AVFoundation
 @preconcurrency import Combine
 @preconcurrency import Foundation
@@ -5,7 +11,6 @@
 #if canImport(UIKit)
     import UIKit
 #endif
-import PolyKit
 
 // MARK: - PlayerCore
 
@@ -16,6 +21,8 @@ import PolyKit
 /// It works with `any Playable` existential types internally.
 @MainActor
 final class PlayerCore: @unchecked Sendable {
+    // MARK: Properties
+
     // MARK: - Public State
 
     var currentItem: (any Playable)?
@@ -50,9 +57,13 @@ final class PlayerCore: @unchecked Sendable {
         private var defaultArtwork: MPMediaItemArtwork?
     #endif
 
+    // MARK: Lifecycle
+
     init() {
         setupInterruptionHandling()
     }
+
+    // MARK: Functions
 
     // MARK: - Playback Control
 
@@ -408,6 +419,12 @@ final class PlayerCore: @unchecked Sendable {
 
     private func handlePlaybackEnded() {
         logger.debug("Playback ended normally at time: \(currentTime)")
+
+        // Mark playback as stopped so UIs can correctly reflect a non-playing state
+        // when we reach the natural end of an item.
+        isPlaying = false
+        notifyStateChanged()
+
         onPlaybackEnded?()
     }
 
