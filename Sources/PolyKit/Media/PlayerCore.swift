@@ -183,10 +183,10 @@ final class PlayerCore: @unchecked Sendable {
         let cmTime = CMTime(seconds: time, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
         lastObservedTime = time
 
-        player.seek(to: cmTime) { [weak self] finished in
+        player.seek(to: cmTime) { [weak self] _ in
             DispatchQueue.main.async {
                 guard let self else { return }
-                logger.debug("   Seek completed: \(finished), new time: \(player.currentTime().seconds)")
+                logger.debug("Seek completed to \(player.currentTime().seconds)s")
                 self.updateNowPlayingInfo()
             }
         }
@@ -309,7 +309,7 @@ final class PlayerCore: @unchecked Sendable {
             .sink { [weak self] isLikelyToKeepUp in
                 guard let self else { return }
                 if !isLikelyToKeepUp, isPlaying {
-                    logger.debug("Buffering may cause playback issues")
+                    logger.debug("File is buffering; playback may stall or stutter")
                 }
             }
             .store(in: &cancellables)
@@ -337,8 +337,7 @@ final class PlayerCore: @unchecked Sendable {
                         let rangeDuration = range.duration.seconds
 
                         if currentPlaybackTime > start + rangeDuration - 5.0, isPlaying {
-                            logger.debug("Approaching end of loaded data at time: \(currentPlaybackTime)s")
-                            logger.debug("   Loaded range: \(start)s - \(start + rangeDuration)s")
+                            logger.debug("Approaching end of loaded data at \(currentPlaybackTime)s; range: \(start)s to \(start + rangeDuration)s")
                         }
                     }
                 }
@@ -443,8 +442,6 @@ final class PlayerCore: @unchecked Sendable {
     }
 
     private func handlePlaybackEnded() {
-        logger.debug("Playback ended normally at time: \(currentTime)")
-
         // Mark playback as stopped so UIs can correctly reflect a non-playing state
         // when we reach the natural end of an item.
         isPlaying = false

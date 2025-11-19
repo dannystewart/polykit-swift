@@ -205,7 +205,7 @@ public class PlayerEngine<T: Playable> {
             // Use cached file from our cache directory
             playbackURL = getCachedFileURL(for: item.id)
             treatedAsCached = true
-            logger.debug("Using cached file - seeking enabled")
+            logger.debug("Using cached file; seeking is enabled")
         } else if audioURL.isFileURL {
             // Local file - check if it's actually accessible
             let isAccessible = FileManager.default.isReadableFile(atPath: audioURL.path)
@@ -214,13 +214,13 @@ public class PlayerEngine<T: Playable> {
                 // File is immediately playable - no caching needed
                 playbackURL = audioURL
                 treatedAsCached = true
-                logger.debug("Using local file - seeking enabled")
+                logger.debug("Using local file; seeking is enabled")
             } else {
                 // File exists but not accessible (likely iCloud stub)
                 // Try to cache it to make it accessible
                 playbackURL = audioURL
                 treatedAsCached = false // Disable seeking until we verify it works
-                logger.debug("Local file not accessible - may need iCloud download")
+                logger.debug("Local file not accessible; may need iCloud download")
 
                 // Note: We don't try to download file:// URLs - let AVPlayer handle it
                 // If this causes issues, the app should download before passing the URL
@@ -229,7 +229,7 @@ public class PlayerEngine<T: Playable> {
             // Remote URL - stream and download in background
             playbackURL = audioURL
             treatedAsCached = false
-            logger.debug("Using streaming - seeking disabled until cached")
+            logger.debug("Streaming started; seeking disabled until file is cached")
 
             // Start background download
             if currentlyDownloadingItemID != item.id {
@@ -375,7 +375,6 @@ public class PlayerEngine<T: Playable> {
 
         // Don't try to cache local files - they're already available
         guard let audioURL = item.audioURL, !audioURL.isFileURL else {
-            logger.debug("Skipping cache for local file - already available")
             return
         }
 
@@ -424,11 +423,6 @@ public class PlayerEngine<T: Playable> {
     // MARK: - Private Methods
 
     private func handlePlaybackEnded() {
-        // Detailed logging to help diagnose end-of-queue behavior in host apps.
-        logger.debug(
-            "Playback ended normally, index: \(currentIndex), playlist count: \(playlist.count), has next: \(hasNextTrack), has previous: \(hasPreviousTrack), current item: \(currentItem?.id ?? -1) ",
-        )
-
         switch repeatMode {
         case .one:
             core.seekToStart()
