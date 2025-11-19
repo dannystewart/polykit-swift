@@ -117,8 +117,7 @@ final class PlayerCore: @unchecked Sendable {
         player = newPlayer
 
         currentPlayerItemID = UUID().uuidString
-        logger.debug("Created new player item: \(currentPlayerItemID!) for URL: \(playbackURL.lastPathComponent)")
-        logger.debug("   Using \(isCached ? "CACHED" : "STREAMING") playback")
+        logger.debug("Created new player item \(currentPlayerItemID!) from \(isCached ? "cache" : "stream") for URL: \(playbackURL.lastPathComponent)")
 
         setupObservers(playerItem: playerItem, player: newPlayer)
 
@@ -175,7 +174,7 @@ final class PlayerCore: @unchecked Sendable {
     func seek(to time: TimeInterval) {
         guard let player else { return }
         guard canSeek else {
-            logger.debug("Seeking disabled - file is streaming and not yet cached")
+            logger.debug("Seeking is disabled; the file is streaming and not yet cached")
             return
         }
 
@@ -221,7 +220,7 @@ final class PlayerCore: @unchecked Sendable {
 
         // Verify the file exists
         guard FileManager.default.fileExists(atPath: cachedURL.path) else {
-            logger.error("Cannot switch: cached file does not exist")
+            logger.error("Cannot switch to cached version: cached file does not exist")
             return
         }
 
@@ -229,7 +228,7 @@ final class PlayerCore: @unchecked Sendable {
         let currentPlaybackTime = currentPlayerItem.currentTime()
         let wasPlaying = isPlaying
 
-        logger.info("Switching to cached version at \(currentPlaybackTime.seconds)s")
+        logger.debug("Switching to cached version at \(currentPlaybackTime.seconds)s")
 
         // Create new player item - just replace immediately
         // Local files should load much faster than waiting for ready status
@@ -243,7 +242,6 @@ final class PlayerCore: @unchecked Sendable {
         cancellables.removeAll()
 
         // Replace immediately
-        logger.debug("Replacing player item")
         player.replaceCurrentItem(with: newPlayerItem)
 
         // Re-setup observers for the new item
@@ -259,7 +257,7 @@ final class PlayerCore: @unchecked Sendable {
                     if wasPlaying {
                         player.play()
                     }
-                    logger.info("Successfully switched to cached version")
+                    logger.debug("Switched to cached version")
                     self.isStreamingPlayback = false
                     self.currentPlaybackURL = cachedURL
                     self.canSeek = true
@@ -311,7 +309,7 @@ final class PlayerCore: @unchecked Sendable {
             .sink { [weak self] isLikelyToKeepUp in
                 guard let self else { return }
                 if !isLikelyToKeepUp, isPlaying {
-                    logger.warning("Buffering may cause playback issues")
+                    logger.debug("Buffering may cause playback issues")
                 }
             }
             .store(in: &cancellables)
@@ -321,7 +319,7 @@ final class PlayerCore: @unchecked Sendable {
             .sink { [weak self] isBufferEmpty in
                 guard let self else { return }
                 if isBufferEmpty, isPlaying {
-                    logger.warning("Playback buffer is empty")
+                    logger.debug("Playback buffer is empty")
                 }
             }
             .store(in: &cancellables)
@@ -339,8 +337,7 @@ final class PlayerCore: @unchecked Sendable {
                         let rangeDuration = range.duration.seconds
 
                         if currentPlaybackTime > start + rangeDuration - 5.0, isPlaying {
-                            logger.warning("Approaching end of loaded data!")
-                            logger.debug("   Current time: \(currentPlaybackTime)s")
+                            logger.debug("Approaching end of loaded data at time: \(currentPlaybackTime)s")
                             logger.debug("   Loaded range: \(start)s - \(start + rangeDuration)s")
                         }
                     }
@@ -433,7 +430,7 @@ final class PlayerCore: @unchecked Sendable {
 
         case .waitingToPlayAtSpecifiedRate:
             if let reason = player.reasonForWaitingToPlay {
-                logger.debug("Player is waiting to play. Reason: \(reason.rawValue)")
+                logger.debug("Player is waiting to play: \(reason.rawValue)")
 
                 if reason == .toMinimizeStalls {
                     logger.debug("Player is buffering to minimize stalls")
@@ -457,10 +454,10 @@ final class PlayerCore: @unchecked Sendable {
     }
 
     private func handlePlaybackStalled() {
-        logger.warning("PLAYBACK STALLED at time: \(currentTime), duration: \(duration)")
+        logger.warning("Playback stalled at time: \(currentTime), duration: \(duration)")
 
         guard !isHandlingStall else {
-            logger.debug("Already handling stall, ignoring duplicate notification")
+            logger.debug("Already handling stall; ignoring duplicate notification")
             return
         }
 
@@ -517,7 +514,7 @@ final class PlayerCore: @unchecked Sendable {
             let playerItem = notification.object as? AVPlayerItem,
             let errorLog = playerItem.errorLog() else { return }
 
-        logger.error("ERROR LOG ENTRY at time: \(currentTime)")
+        logger.error("Error log entry at time: \(currentTime)")
 
         for event in errorLog.events {
             logger.error("Error event:")
@@ -533,7 +530,7 @@ final class PlayerCore: @unchecked Sendable {
     }
 
     private func handleFailedToPlayToEndTime(_ notification: Notification) {
-        logger.error("FAILED TO PLAY TO END TIME at time: \(currentTime), duration: \(duration)")
+        logger.error("Failed to play to end time: \(currentTime), duration: \(duration)")
 
         if let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error {
             logger.error("Error: \(error.localizedDescription)")

@@ -57,7 +57,7 @@ public class PlayerEngine<T: Playable> {
 
     public var maxCacheSizeBytes: Int64 = 500000000 { // 500 MB default
         didSet {
-            UserDefaults.standard.set(maxCacheSizeBytes, forKey: "DSPlayerEngine_maxCacheSizeBytes")
+            UserDefaults.standard.set(maxCacheSizeBytes, forKey: "PlayerEngine_maxCacheSizeBytes")
             pruneCache()
         }
     }
@@ -341,8 +341,10 @@ public class PlayerEngine<T: Playable> {
             playlist = newPlaylist
         }
 
-        if let current = currentItem,
-           let index = playlist.firstIndex(where: { $0.id == current.id }) {
+        if
+            let current = currentItem,
+            let index = playlist.firstIndex(where: { $0.id == current.id })
+        {
             currentIndex = index
         } else {
             currentIndex = 0
@@ -422,7 +424,10 @@ public class PlayerEngine<T: Playable> {
     // MARK: - Private Methods
 
     private func handlePlaybackEnded() {
-        logger.debug("Playback ended normally")
+        // Detailed logging to help diagnose end-of-queue behavior in host apps.
+        logger.debug(
+            "Playback ended normally, index: \(currentIndex), playlist count: \(playlist.count), has next: \(hasNextTrack), has previous: \(hasPreviousTrack), current item: \(currentItem?.id ?? -1) ",
+        )
 
         switch repeatMode {
         case .one:
@@ -440,7 +445,7 @@ public class PlayerEngine<T: Playable> {
 
     private func getCacheDirectory() -> URL {
         let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-        let mediaCacheDir = cacheDir.appendingPathComponent("DSPlayerEngine", isDirectory: true)
+        let mediaCacheDir = cacheDir.appendingPathComponent("PlayerEngine", isDirectory: true)
 
         if !FileManager.default.fileExists(atPath: mediaCacheDir.path) {
             try? FileManager.default.createDirectory(at: mediaCacheDir, withIntermediateDirectories: true)
@@ -454,23 +459,23 @@ public class PlayerEngine<T: Playable> {
     }
 
     private func saveCachedItems() {
-        UserDefaults.standard.set(Array(cachedItemIDs), forKey: "DSPlayerEngine_cachedItemIDs")
-        UserDefaults.standard.set(Array(favoriteCachedIDs), forKey: "DSPlayerEngine_favoriteCachedIDs")
+        UserDefaults.standard.set(Array(cachedItemIDs), forKey: "PlayerEngine_cachedItemIDs")
+        UserDefaults.standard.set(Array(favoriteCachedIDs), forKey: "PlayerEngine_favoriteCachedIDs")
     }
 
     private func loadCacheSettings() {
-        let savedMaxSize = UserDefaults.standard.object(forKey: "DSPlayerEngine_maxCacheSizeBytes") as? Int64
+        let savedMaxSize = UserDefaults.standard.object(forKey: "PlayerEngine_maxCacheSizeBytes") as? Int64
         maxCacheSizeBytes = savedMaxSize ?? 500000000
 
-        if let idArray = UserDefaults.standard.array(forKey: "DSPlayerEngine_cachedItemIDs") as? [Int] {
+        if let idArray = UserDefaults.standard.array(forKey: "PlayerEngine_cachedItemIDs") as? [Int] {
             cachedItemIDs = Set(idArray)
         }
 
-        if let favoriteIDArray = UserDefaults.standard.array(forKey: "DSPlayerEngine_favoriteCachedIDs") as? [Int] {
+        if let favoriteIDArray = UserDefaults.standard.array(forKey: "PlayerEngine_favoriteCachedIDs") as? [Int] {
             favoriteCachedIDs = Set(favoriteIDArray)
         }
 
-        if let savedTimes = UserDefaults.standard.dictionary(forKey: "DSPlayerEngine_lastPlayedTimes") as? [String: Date] {
+        if let savedTimes = UserDefaults.standard.dictionary(forKey: "PlayerEngine_lastPlayedTimes") as? [String: Date] {
             lastPlayedTimes = savedTimes.reduce(into: [:]) { result, entry in
                 if let id = Int(entry.key) {
                     result[id] = entry.value
@@ -483,7 +488,7 @@ public class PlayerEngine<T: Playable> {
         let stringKeyDict = lastPlayedTimes.reduce(into: [:]) { result, entry in
             result[String(entry.key)] = entry.value
         }
-        UserDefaults.standard.set(stringKeyDict, forKey: "DSPlayerEngine_lastPlayedTimes")
+        UserDefaults.standard.set(stringKeyDict, forKey: "PlayerEngine_lastPlayedTimes")
     }
 
     private func downloadItem(_ item: T, enablePlaybackOptimizations: Bool, markAsFavorite: Bool) {
@@ -495,7 +500,7 @@ public class PlayerEngine<T: Playable> {
             guard let tempURL, error == nil else { return }
 
             let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-            let mediaCacheDir = cacheDir.appendingPathComponent("DSPlayerEngine", isDirectory: true)
+            let mediaCacheDir = cacheDir.appendingPathComponent("PlayerEngine", isDirectory: true)
             let cachedFileURL = mediaCacheDir.appendingPathComponent("\(itemID).mp3")
 
             do {
@@ -568,7 +573,7 @@ public class PlayerEngine<T: Playable> {
         let currentSize = currentCacheSizeBytes
         guard currentSize > maxCacheSizeBytes else { return }
 
-        logger.info("Cache over limit (\(currentSize) > \(maxCacheSizeBytes)), pruning...")
+        logger.info("Cache is over the limit (\(currentSize) > \(maxCacheSizeBytes)), pruning...")
 
         let nonFavoriteIDs = cachedItemIDs.subtracting(favoriteCachedIDs)
         var entries = [CacheEntry]()
@@ -620,7 +625,7 @@ public class PlayerEngine<T: Playable> {
                 try audioSession.setCategory(.playback, mode: .default, options: [])
                 try audioSession.setActive(true)
             } catch {
-                logger.error("Failed to setup audio session: \(error)")
+                logger.error("Failed to set up audio session: \(error)")
             }
         #endif // os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
     }
