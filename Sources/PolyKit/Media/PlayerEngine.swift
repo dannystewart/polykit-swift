@@ -329,6 +329,28 @@ public class PlayerEngine<T: Playable> {
         }
     }
 
+    /// Update the current playlist to a new ordering/content while keeping
+    /// the same `currentItem` whenever possible. This is primarily used by
+    /// host apps that present an editable queue UI.
+    ///
+    /// - Parameter newPlaylist: The new canonical playlist ordering.
+    public func updatePlaylistKeepingCurrentItem(_ newPlaylist: [T]) {
+        originalPlaylist = newPlaylist
+
+        if isShuffleEnabled {
+            playlist = newPlaylist.shuffled()
+        } else {
+            playlist = newPlaylist
+        }
+
+        if let current = currentItem,
+           let index = playlist.firstIndex(where: { $0.id == current.id }) {
+            currentIndex = index
+        } else {
+            currentIndex = 0
+        }
+    }
+
     // MARK: - Cache Management
 
     public func clearCache() {
