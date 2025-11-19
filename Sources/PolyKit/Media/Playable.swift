@@ -35,4 +35,9 @@ public protocol Playable: Identifiable, Hashable {
     /// URL to the audio file
     /// Can be a remote URL for streaming or local file URL for cached playback
     var audioURL: URL? { get }
+
+    /// Optional artwork image data for the media item
+    /// If provided, this will be displayed in lock screen controls and player UI
+    /// If nil, the default artwork will be used
+    var artworkImageData: Data? { get }
 }

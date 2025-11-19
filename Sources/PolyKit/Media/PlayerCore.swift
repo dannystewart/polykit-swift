@@ -10,6 +10,8 @@
 @preconcurrency import MediaPlayer
 #if canImport(UIKit)
     import UIKit
+#elseif canImport(AppKit)
+    import AppKit
 #endif
 
 // MARK: - PlayerCore
@@ -19,7 +21,10 @@
 /// This class is intentionally non-generic to avoid Swift 6 Sendable issues
 /// with capturing generic types in closures used by AVFoundation callbacks.
 /// It works with `any Playable` existential types internally.
-@MainActor
+///
+/// Note: Not marked with @MainActor because MPNowPlayingInfoCenter has strict
+/// dispatch queue requirements that conflict with MainActor isolation.
+/// All methods that interact with MPNowPlayingInfoCenter run on main queue explicitly.
 final class PlayerCore: @unchecked Sendable {
     // MARK: Properties
 
@@ -53,9 +58,8 @@ final class PlayerCore: @unchecked Sendable {
     private var currentPlayerItemID: String?
     private var isStreamingPlayback: Bool = false
     private var defaultArtworkImageName: String?
-    #if canImport(UIKit)
-        private var defaultArtwork: MPMediaItemArtwork?
-    #endif
+    private var defaultArtwork: MPMediaItemArtwork?
+    private var currentItemArtwork: MPMediaItemArtwork?
 
     // MARK: Lifecycle
 
@@ -85,6 +89,27 @@ final class PlayerCore: @unchecked Sendable {
         canSeek = isCached
         notifyStateChanged()
 
+        // Pre-create artwork for this item if it has artwork data
+        if let artworkData = item.artworkImageData {
+            #if canImport(UIKit)
+                if let image = UIImage(data: artworkData) {
+                    let imageSize = image.size
+                    currentItemArtwork = MPMediaItemArtwork(boundsSize: imageSize) { _ in
+                        UIImage(data: artworkData) ?? UIImage()
+                    }
+                }
+            #elseif canImport(AppKit)
+                if let image = NSImage(data: artworkData) {
+                    let imageSize = image.size
+                    currentItemArtwork = MPMediaItemArtwork(boundsSize: imageSize) { _ in
+                        NSImage(data: artworkData) ?? NSImage()
+                    }
+                }
+            #endif
+        } else {
+            currentItemArtwork = nil
+        }
+
         currentPlaybackURL = playbackURL
 
         let playerItem = AVPlayerItem(url: playbackURL)
@@ -100,9 +125,8 @@ final class PlayerCore: @unchecked Sendable {
         newPlayer.play()
         isPlaying = true
         notifyStateChanged()
-        // Immediately publish basic Now Playing info (title/artist/artwork). Timing fields
-        // are guarded in updateNowPlayingInfo() and will be added once available.
-        updateNowPlayingInfo()
+        // Don't call updateNowPlayingInfo() here - let the time observer handle it
+        // to avoid dispatch queue conflicts with MPNowPlayingInfoCenter
     }
 
     // MARK: - Configuration
@@ -115,14 +139,18 @@ final class PlayerCore: @unchecked Sendable {
             } else {
                 defaultArtwork = nil
             }
+        #elseif canImport(AppKit)
+            if let name, let image = NSImage(named: name) {
+                defaultArtwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+            } else {
+                defaultArtwork = nil
+            }
         #endif
     }
 
-    #if canImport(UIKit)
-        func setDefaultArtwork(_ artwork: MPMediaItemArtwork?) {
-            defaultArtwork = artwork
-        }
-    #endif
+    func setDefaultArtwork(_ artwork: MPMediaItemArtwork?) {
+        defaultArtwork = artwork
+    }
 
     func togglePlayPause() {
         guard let player else { return }
@@ -135,7 +163,7 @@ final class PlayerCore: @unchecked Sendable {
             isPlaying = true
         }
         notifyStateChanged()
-        updateNowPlayingInfo()
+        // Don't call updateNowPlayingInfo() here - let the time observer handle it
     }
 
     func stop() {
@@ -273,7 +301,7 @@ final class PlayerCore: @unchecked Sendable {
                 guard let self, duration.isNumeric else { return }
                 self.duration = duration.seconds
                 notifyStateChanged()
-                updateNowPlayingInfo()
+                // Don't call updateNowPlayingInfo() here - let the time observer handle it
             }
             .store(in: &cancellables)
 
@@ -325,15 +353,14 @@ final class PlayerCore: @unchecked Sendable {
         timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             guard let self else { return }
             // We're on main queue since we explicitly passed queue: .main
-            MainActor.assumeIsolated {
-                self.currentTime = time.seconds
-                self.notifyStateChanged()
+            // Don't use MainActor.assumeIsolated - it creates dispatch barriers that conflict with MPNowPlayingInfoCenter
+            currentTime = time.seconds
+            notifyStateChanged()
 
-                // Update Now Playing info every second
-                if time.seconds - self.lastNowPlayingUpdate >= 1.0 {
-                    self.lastNowPlayingUpdate = time.seconds
-                    self.updateNowPlayingInfo()
-                }
+            // Update Now Playing info every second
+            if time.seconds - lastNowPlayingUpdate >= 1.0 {
+                lastNowPlayingUpdate = time.seconds
+                updateNowPlayingInfo()
             }
         }
 
@@ -378,6 +405,7 @@ final class PlayerCore: @unchecked Sendable {
             isLoading = false
             errorMessage = nil
             notifyStateChanged()
+            // Update now playing info immediately when ready
             updateNowPlayingInfo()
 
         case .failed:
@@ -534,6 +562,7 @@ final class PlayerCore: @unchecked Sendable {
         var nowPlayingInfo = [String: Any]()
         nowPlayingInfo[MPMediaItemPropertyTitle] = currentItem.title
         nowPlayingInfo[MPMediaItemPropertyArtist] = currentItem.artist
+
         // Add duration only when known and valid. Prefer item's declared duration for immediacy.
         let declaredDuration = currentItem.duration
         if declaredDuration.isFinite, declaredDuration > 0 {
@@ -542,11 +571,10 @@ final class PlayerCore: @unchecked Sendable {
             nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = duration
         }
 
-        #if canImport(UIKit)
-            if let artwork = defaultArtwork {
-                nowPlayingInfo[MPMediaItemPropertyArtwork] = artwork
-            }
-        #endif
+        // Use pre-created artwork (created once when item starts playing)
+        if let artwork = currentItemArtwork ?? defaultArtwork {
+            nowPlayingInfo[MPMediaItemPropertyArtwork] = artwork
+        }
 
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
     }
@@ -578,6 +606,7 @@ final class PlayerCore: @unchecked Sendable {
         currentPlayerItemID = nil
         isStreamingPlayback = false
         canSeek = true
+        currentItemArtwork = nil
 
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }

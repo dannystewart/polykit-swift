@@ -89,15 +89,13 @@ public class PlayerEngine<T: Playable> {
         }
     }
 
-    #if os(iOS)
-        /// Preconstructed artwork object to use for Now Playing info (preferred).
-        /// Setting this overrides any image name set in `defaultArtworkImageName`.
-        public var defaultArtwork: MPMediaItemArtwork? {
-            didSet {
-                core.setDefaultArtwork(defaultArtwork)
-            }
+    /// Preconstructed artwork object to use for Now Playing info (preferred).
+    /// Setting this overrides any image name set in `defaultArtworkImageName`.
+    public var defaultArtwork: MPMediaItemArtwork? {
+        didSet {
+            core.setDefaultArtwork(defaultArtwork)
         }
-    #endif // os(iOS)
+    }
 
     // MARK: - Private Properties
 
