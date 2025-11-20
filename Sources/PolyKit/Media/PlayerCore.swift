@@ -570,6 +570,10 @@ final class PlayerCore: @unchecked Sendable {
             nowPlayingInfo[MPMediaItemPropertyArtwork] = artwork
         }
 
+        // Set current playback position and rate for lock screen controls
+        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
+        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
     }
 
