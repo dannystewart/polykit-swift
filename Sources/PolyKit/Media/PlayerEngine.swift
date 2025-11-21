@@ -197,50 +197,39 @@ public class PlayerEngine<T: Playable> {
         }
 
         // Determine which URL to use for playback
-        let isCached = cachedItemIDs.contains(item.id)
         let playbackURL: URL
         let treatedAsCached: Bool // Whether to enable seeking (cached or local file)
 
-        if isCached {
-            // Use cached file from our cache directory
-            playbackURL = getCachedFileURL(for: item.id)
-            treatedAsCached = true
-            logger.debug("Using cached file; seeking is enabled")
-        } else if audioURL.isFileURL {
-            // Local file - check if it's actually accessible
-            let isAccessible = FileManager.default.isReadableFile(atPath: audioURL.path)
-
-            if isAccessible {
-                // File is immediately playable - no caching needed
-                playbackURL = audioURL
-                treatedAsCached = true
-                logger.debug("Using local file; seeking is enabled")
-            } else {
-                // File exists but not accessible (likely iCloud stub)
-                // Try to cache it to make it accessible
-                playbackURL = audioURL
-                treatedAsCached = false // Disable seeking until we verify it works
-                logger.debug("Local file not accessible; may need iCloud download")
-
-                // Note: We don't try to download file:// URLs - let AVPlayer handle it
-                // If this causes issues, the app should download before passing the URL
-            }
-        } else {
-            // Remote URL - stream and download in background
+        if audioURL.isFileURL {
+            // Local or iCloud file - never cache these
+            // For iCloud files, iOS/macOS handles downloading and caching automatically
             playbackURL = audioURL
-            treatedAsCached = false
-            logger.debug("Streaming started; seeking disabled until file is cached")
+            treatedAsCached = true // Enable seeking immediately (iCloud downloads are handled by AVPlayer)
+            logger.debug("Using local/iCloud file; seeking is enabled, no manual caching needed")
+        } else {
+            // Remote HTTP(S) URL - check if we have a cached copy
+            let isCached = cachedItemIDs.contains(item.id)
 
-            // Start background download
-            if currentlyDownloadingItemID != item.id {
-                currentlyDownloadingItemID = item.id
-                logger.debug("Starting background download")
-                downloadItem(item, enablePlaybackOptimizations: true, markAsFavorite: false)
+            if isCached {
+                // Use our cached copy from previous download
+                playbackURL = getCachedFileURL(for: item.id)
+                treatedAsCached = true
+                logger.debug("Using cached file from previous download; seeking is enabled")
+            } else {
+                // Stream the remote file and download in background
+                playbackURL = audioURL
+                treatedAsCached = false
+                logger.debug("Streaming remote URL; seeking disabled until file is cached")
+
+                // Start background download for caching
+                if currentlyDownloadingItemID != item.id {
+                    currentlyDownloadingItemID = item.id
+                    logger.debug("Starting background download for remote file")
+                    downloadItem(item, enablePlaybackOptimizations: true, markAsFavorite: false)
+                }
             }
-        }
 
-        // Track playback for LRU cache (only for remote files that get cached)
-        if !audioURL.isFileURL {
+            // Track playback for LRU cache (only for remote files that get cached)
             lastPlayedTimes[item.id] = Date()
             saveLastPlayedTimes()
         }
