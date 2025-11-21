@@ -242,6 +242,40 @@ public class PlayerEngine<T: Playable> {
         core.togglePlayPause()
     }
 
+    /// Smart play/pause that handles edge cases for better UX.
+    ///
+    /// Behavior:
+    /// - If no current item but playlist exists: starts playback from first track
+    /// - If at end of current track (within threshold): restarts current track
+    /// - Otherwise: toggles play/pause state
+    ///
+    /// This provides more intuitive behavior than plain `togglePlayPause()`,
+    /// especially when triggered by hardware media keys or play buttons at the
+    /// end of playback.
+    ///
+    /// - Parameter restartThreshold: Time in seconds from the end of a track to
+    ///   trigger restart behavior. Default is 0.5 seconds.
+    public func smartPlayPause(restartThreshold: TimeInterval = 0.5) {
+        // If no item is playing but we have a playlist, start from the beginning
+        if !hasCurrentItem {
+            guard let first = playlist.first else { return }
+            play(first, in: playlist)
+            return
+        }
+
+        // If we're effectively at the end of the track, restart it
+        if duration > 0, currentTime >= duration - restartThreshold {
+            if let current = currentItem {
+                play(current, in: playlist)
+            } else {
+                seek(to: 0)
+            }
+        } else {
+            // Normal toggle behavior
+            togglePlayPause()
+        }
+    }
+
     public func stop() {
         core.stop()
     }
