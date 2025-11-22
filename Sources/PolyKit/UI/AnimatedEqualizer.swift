@@ -84,6 +84,12 @@ public struct AnimatedEqualizer: View {
                 }
             }
         }
+        // View-level animation keeps motion fluid at display refresh rate,
+        // instead of restarting a spring for every individual value change.
+        .animation(
+            .spring(response: 0.12, dampingFraction: 0.8, blendDuration: 0.02),
+            value: barHeights,
+        )
         .onAppear {
             initializeBarHeights()
         }
@@ -152,10 +158,8 @@ public struct AnimatedEqualizer: View {
             let clampedMagnitude = max(0, min(1, interpolated))
             let targetHeight = max(minimumBarHeight, clampedMagnitude)
 
-            // Ultra-fast spring – nearly instant response with slight bounce
-            withAnimation(.spring(response: 0.05, dampingFraction: 0.65, blendDuration: 0)) {
-                barHeights[barIndex] = targetHeight
-            }
+            // Let the view-level spring interpolate between heights smoothly.
+            barHeights[barIndex] = targetHeight
         }
     }
 

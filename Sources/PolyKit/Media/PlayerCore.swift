@@ -263,9 +263,9 @@ final class PlayerCore: @unchecked Sendable {
             guard let self else { return }
 
             // Create analyzer
-            // Use relatively light smoothing so the visualization feels fast and reactive
-            // while still avoiding jitter. 0.4 = quick attack with modest decay.
-            let analyzer = AudioAnalyzer(engine: audioEngine, numberOfBands: 8, smoothingFactor: 0.4)
+            // Moderate smoothing so the visualization feels fast but still glides
+            // between updates instead of stepping. 0.6 ≈ ~40ms time constant at 60 FPS.
+            let analyzer = AudioAnalyzer(engine: audioEngine, numberOfBands: 8, smoothingFactor: 0.6)
 
             // Start analyzing the main mixer output
             analyzer.start()
@@ -416,10 +416,12 @@ final class PlayerCore: @unchecked Sendable {
                 MainActor.assumeIsolated {
                     switch type {
                     case .began:
-                        // Interruption began - player auto-pauses
-                        // System handles pausing; we just update state if needed
+                        // Interruption began (phone call, Siri, etc.)
+                        // Audio engine is automatically paused by the system
+                        // Update our state to reflect this
                         if self.isPlaying {
-                            self._isPlaying = false
+                            self.isPlaying = false
+                            self.stopTimeObserver()
                         }
 
                     case .ended:

@@ -224,8 +224,8 @@ public final class AudioAnalyzer: @unchecked Sendable {
         // Use LOGARITHMIC frequency distribution like the article suggests
         // This matches human hearing and music perception
         let nyquistFreq: Float = 22050.0 // Half of 44.1kHz
-        let minFreq: Float = 440.0 // Start at 440Hz (upper bass/low mids)
-        let maxFreq: Float = 10000.0 // End at 10kHz (upper treble)
+        let minFreq: Float = 80.0 // Start at 80Hz (upper bass/low mids)
+        let maxFreq: Float = 16000.0 // End at 16kHz (upper treble)
 
         let logMin = log10(minFreq)
         let logMax = log10(maxFreq)
@@ -270,7 +270,7 @@ public final class AudioAnalyzer: @unchecked Sendable {
             // Extra visual tilt based on band index: lowest band is slightly reduced,
             // highest band significantly boosted. This is purely for the visual feel.
             let bandPosition = Float(band) / Float(max(numberOfBands - 1, 1))
-            let indexWeight: Float = 0.5 + 1.8 * bandPosition // 0.5 → 2.3 across the range
+            let indexWeight: Float = 0.5 + 1.5 * bandPosition
 
             bands[band] *= frequencyWeight * indexWeight
         }
