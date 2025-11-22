@@ -263,7 +263,9 @@ final class PlayerCore: @unchecked Sendable {
             guard let self else { return }
 
             // Create analyzer
-            let analyzer = AudioAnalyzer(engine: audioEngine, numberOfBands: 8, smoothingFactor: 0.85)
+            // Use relatively light smoothing so the visualization feels fast and reactive
+            // while still avoiding jitter. 0.4 = quick attack with modest decay.
+            let analyzer = AudioAnalyzer(engine: audioEngine, numberOfBands: 8, smoothingFactor: 0.4)
 
             // Start analyzing the main mixer output
             analyzer.start()
@@ -394,6 +396,45 @@ final class PlayerCore: @unchecked Sendable {
     // MARK: - Audio Session & Interruptions
 
     private func setupInterruptionHandling() {
-        // TODO: Add interruption handling like the old PlayerCore
+        #if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
+            NotificationCenter.default.addObserver(
+                forName: AVAudioSession.interruptionNotification,
+                object: AVAudioSession.sharedInstance(),
+                queue: .main,
+            ) { [weak self] notification in
+                guard let self else { return }
+
+                // Extract data before entering MainActor context to avoid sending notification
+                guard
+                    let userInfo = notification.userInfo,
+                    let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+                    let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+                let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt
+
+                // We're on main queue since we specified queue: .main
+                MainActor.assumeIsolated {
+                    switch type {
+                    case .began:
+                        // Interruption began - player auto-pauses
+                        // System handles pausing; we just update state if needed
+                        if self.isPlaying {
+                            self._isPlaying = false
+                        }
+
+                    case .ended:
+                        guard let optionsValue else { return }
+                        let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+                        if options.contains(.shouldResume), !self.isPlaying {
+                            // Resume playback
+                            self.togglePlayPause()
+                        }
+
+                    @unknown default:
+                        break
+                    }
+                }
+            }
+        #endif // os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
     }
 }

@@ -255,14 +255,24 @@ public final class AudioAnalyzer: @unchecked Sendable {
                 bands[band] = sum / Float(count)
             }
 
-            // Apply frequency-dependent weighting to compensate for energy distribution
-            // Lower frequencies (even 200Hz+) are still louder, so we apply inverse weighting
+            // Apply frequency-dependent weighting to compensate for energy distribution.
+            // Music typically has much more energy in lower bands; visually that can make
+            // the spectrum feel “bass heavy” unless we intentionally tilt it.
             let centerFreq = sqrt(freqStart * freqEnd) // Geometric mean
 
-            // Inverse square law-inspired weighting: higher frequencies get boosted
-            // This compensates for the natural energy drop-off
-            let frequencyWeight = sqrt(centerFreq / minFreq)
-            bands[band] *= frequencyWeight
+            // Base psychoacoustic-ish weight that boosts higher frequencies.
+            // Compared to the previous sqrt(centerFreq / minFreq) weighting, this
+            // combines a mild frequency tilt with an explicit index-based tilt
+            // so the top bars stay visually active even on mid-heavy material.
+            let normalizedFreq = max(centerFreq / minFreq, 1)
+            let frequencyWeight = pow(normalizedFreq, 0.6) // 0.6 ≈ stronger than sqrt, still stable
+
+            // Extra visual tilt based on band index: lowest band is slightly reduced,
+            // highest band significantly boosted. This is purely for the visual feel.
+            let bandPosition = Float(band) / Float(max(numberOfBands - 1, 1))
+            let indexWeight: Float = 0.5 + 1.8 * bandPosition // 0.5 → 2.3 across the range
+
+            bands[band] *= frequencyWeight * indexWeight
         }
 
         // Apply Y-AXIS CUT: threshold out low amplitudes for dynamic range

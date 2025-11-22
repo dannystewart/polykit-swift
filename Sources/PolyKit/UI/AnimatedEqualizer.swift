@@ -122,19 +122,39 @@ public struct AnimatedEqualizer: View {
     }
 
     private func updateFromFrequencyData(_ data: [Float]) {
-        for i in 0 ..< min(barCount, data.count) {
-            guard i < barHeights.count else { continue }
+        guard !data.isEmpty, barCount > 0 else { return }
 
-            // Use frequency magnitude directly (already 0-1)
-            let magnitude = CGFloat(data[i])
+        let sourceCount = data.count
+
+        for barIndex in 0 ..< barCount {
+            guard barIndex < barHeights.count else { continue }
+
+            // Map each visual bar across the *entire* frequency range so we
+            // don't over-represent the lowest bands when `data.count > barCount`.
+            let barPosition: CGFloat = if barCount == 1 {
+                0
+            } else {
+                CGFloat(barIndex) / CGFloat(barCount - 1)
+            }
+
+            let sourcePosition = barPosition * CGFloat(sourceCount - 1)
+            let lowerIndex = Int(sourcePosition.rounded(.down))
+            let upperIndex = min(lowerIndex + 1, sourceCount - 1)
+            let t = sourcePosition - CGFloat(lowerIndex)
+
+            let lowerValue = data[lowerIndex]
+            let upperValue = data[upperIndex]
+
+            // Simple linear interpolation between the two nearest bands
+            let interpolated = (1 - t) * CGFloat(lowerValue) + t * CGFloat(upperValue)
 
             // Clamp to 0-1 range and ensure minimum visibility
-            let targetHeight = max(minimumBarHeight, min(1.0, magnitude))
+            let clampedMagnitude = max(0, min(1, interpolated))
+            let targetHeight = max(minimumBarHeight, clampedMagnitude)
 
-            // ULTRA-FAST spring - nearly instant response, slight bounce
-            // 0.05s response = 20 updates per second, super snappy!
+            // Ultra-fast spring – nearly instant response with slight bounce
             withAnimation(.spring(response: 0.05, dampingFraction: 0.65, blendDuration: 0)) {
-                barHeights[i] = targetHeight
+                barHeights[barIndex] = targetHeight
             }
         }
     }
