@@ -82,6 +82,7 @@ final class PlayerCore: @unchecked Sendable {
             isPlaying = true
             startTimeObserver()
             notifyStateChanged()
+            updateNowPlayingInfo() // Sync playback state to lock screen
             return
         }
 
