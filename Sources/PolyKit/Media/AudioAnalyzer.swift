@@ -24,6 +24,9 @@ public final class AudioAnalyzer {
     /// Current frequency band levels (0.0 to 1.0), smoothed for animation
     public private(set) var frequencyBands: [Float] = []
 
+    /// Current volume level (0.0 to 1.0), representing overall amplitude
+    public private(set) var currentVolume: Float = 0
+
     /// Whether audio analysis is currently active
     public private(set) var isAnalyzing: Bool = false
 
@@ -42,6 +45,7 @@ public final class AudioAnalyzer {
 
     /// State updated on MainActor
     private var smoothedBands: [Float]
+    private var smoothedVolume: Float = 0
 
     // MARK: Lifecycle
 
@@ -118,6 +122,8 @@ public final class AudioAnalyzer {
             frequencyBands[i] = 0
             smoothedBands[i] = 0
         }
+        currentVolume = 0
+        smoothedVolume = 0
     }
 
     // MARK: - Private Processing
@@ -129,6 +135,17 @@ public final class AudioAnalyzer {
 
         let frameCount = Int(buffer.frameLength)
         let channel = channelData[0]
+
+        // Calculate RMS volume of the audio signal for noise gate
+        var rmsVolume: Float = 0
+        vDSP_rmsqv(channel, 1, &rmsVolume, vDSP_Length(frameCount))
+
+        // Noise gate: below this threshold, treat as silence
+        // This is approximately -50dB, which filters out noise floor and very quiet passages
+        let noiseGateThreshold: Float = 0.003
+
+        // Simple boolean gate - either we process the signal or we don't
+        let isAboveNoiseGate = rmsVolume >= noiseGateThreshold
 
         // Copy and window the input data
         var windowedSamples = [Float](repeating: 0, count: fftSize)
@@ -161,15 +178,21 @@ public final class AudioAnalyzer {
         }
 
         // Convert to frequency bands
-        let bands = calculateFrequencyBands(from: magnitudes)
+        let bands = calculateFrequencyBands(from: magnitudes, isAboveNoiseGate: isAboveNoiseGate)
 
         // Update on main actor
         Task { @MainActor in
-            self.updateFrequencyBands(bands)
+            self.updateFrequencyBands(bands, volume: rmsVolume)
         }
     }
 
-    private nonisolated func calculateFrequencyBands(from magnitudes: [Float]) -> [Float] {
+    private nonisolated func calculateFrequencyBands(from magnitudes: [Float], isAboveNoiseGate: Bool) -> [Float] {
+        // If we're below the noise gate, just return zeros
+        // Don't even bother with FFT analysis - it's just noise
+        guard isAboveNoiseGate else {
+            return [Float](repeating: 0, count: numberOfBands)
+        }
+
         var bands = [Float](repeating: 0, count: numberOfBands)
 
         // Use logarithmic distribution for more musical frequency representation
@@ -193,23 +216,33 @@ public final class AudioAnalyzer {
             }
         }
 
-        // Normalize to 0-1 range
-        if let maxMagnitude = bands.max(), maxMagnitude > 0 {
-            for i in 0 ..< numberOfBands {
-                bands[i] = bands[i] / maxMagnitude
-                // Apply some compression for better visualization
-                bands[i] = powf(bands[i], 0.5) // Square root for compression
-            }
+        // Use a FIXED reference level instead of normalizing to each frame's max
+        // This preserves the actual amplitude - quiet sounds stay quiet, loud sounds are loud
+        // Typical peak FFT magnitude for full-scale audio is around 100-200 (depends on FFT size)
+        // We'll use 150 as our reference for "full scale"
+        let referenceLevel: Float = 150.0
+
+        for i in 0 ..< numberOfBands {
+            // Scale by reference level
+            bands[i] = bands[i] / referenceLevel
+
+            // Apply compression for better visualization (square root)
+            // This makes quieter sounds more visible while preventing loud sounds from clipping
+            bands[i] = sqrtf(min(bands[i], 1.0))
         }
 
         return bands
     }
 
-    private func updateFrequencyBands(_ newBands: [Float]) {
+    private func updateFrequencyBands(_ newBands: [Float], volume: Float) {
         // Apply smoothing for less jittery animation
         for i in 0 ..< numberOfBands {
             smoothedBands[i] = smoothedBands[i] * smoothingFactor + newBands[i] * (1.0 - smoothingFactor)
             frequencyBands[i] = smoothedBands[i]
         }
+
+        // Smooth the volume as well
+        smoothedVolume = smoothedVolume * smoothingFactor + volume * (1.0 - smoothingFactor)
+        currentVolume = smoothedVolume
     }
 }
