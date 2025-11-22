@@ -54,6 +54,7 @@ final class PlayerCore: @unchecked Sendable {
     private var currentItemArtwork: MPMediaItemArtwork?
 
     private var analysisCancellable: AnyCancellable?
+    private var hasTriggeredEndCallback: Bool = false
 
     // MARK: Lifecycle
 
@@ -90,6 +91,7 @@ final class PlayerCore: @unchecked Sendable {
         isStreamingPlayback = !isCached
         canSeek = isCached
         currentPlaybackURL = playbackURL
+        hasTriggeredEndCallback = false
         notifyStateChanged()
 
         // Create artwork
@@ -101,12 +103,8 @@ final class PlayerCore: @unchecked Sendable {
             audioFile = file
             duration = Double(file.length) / file.fileFormat.sampleRate
 
-            // Schedule file for playback
-            playerNode.scheduleFile(file, at: nil) { [weak self] in
-                DispatchQueue.main.async {
-                    self?.handlePlaybackEnded()
-                }
-            }
+            // Schedule file for playback (no completion handler - we detect end via time observer)
+            playerNode.scheduleFile(file, at: nil)
 
             // Start playback
             playerNode.play()
@@ -169,17 +167,13 @@ final class PlayerCore: @unchecked Sendable {
             return
         }
 
-        // Schedule from the seek position
+        // Schedule from the seek position (no completion handler - time observer detects end)
         playerNode.scheduleSegment(
             file,
             startingFrame: startFrame,
             frameCount: AVAudioFrameCount(framesToPlay),
             at: nil,
-        ) { [weak self] in
-            DispatchQueue.main.async {
-                self?.handlePlaybackEnded()
-            }
-        }
+        )
 
         currentTime = time
 
@@ -306,6 +300,14 @@ final class PlayerCore: @unchecked Sendable {
                 let sampleRate = file.fileFormat.sampleRate
                 currentTime = Double(playerTime.sampleTime) / sampleRate
                 notifyStateChanged()
+
+                // Check if we've reached the end naturally
+                // Only fire once per track using the flag
+                if isPlaying, duration > 0, currentTime >= duration - 0.15, !hasTriggeredEndCallback {
+                    logger.debug("[Playback] Reached end of file at \(currentTime)s / \(duration)s")
+                    hasTriggeredEndCallback = true
+                    handlePlaybackEnded()
+                }
 
                 // Update Now Playing every second
                 if Int(currentTime) % 1 == 0 {
