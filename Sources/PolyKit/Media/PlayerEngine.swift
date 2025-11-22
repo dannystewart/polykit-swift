@@ -443,8 +443,6 @@ public class PlayerEngine<T: Playable> {
     // MARK: - State Synchronization
 
     private func syncStateFromCore() {
-        let wasPlaying = isPlaying
-
         currentItem = core.currentItem as? T
         isPlaying = core.isPlaying
         currentTime = core.currentTime
@@ -452,13 +450,6 @@ public class PlayerEngine<T: Playable> {
         canSeek = core.canSeek
         isLoading = core.isLoading
         errorMessage = core.errorMessage
-
-        // Keep remote command center play/pause state in sync with actual playback.
-        // This ensures the lock screen shows the correct icon and prevents
-        // "ghost" state changes when commands are no-ops.
-        if isPlaying != wasPlaying {
-            updateRemoteCommandCenterPlaybackState()
-        }
     }
 
     // MARK: - Private Methods
@@ -715,26 +706,13 @@ public class PlayerEngine<T: Playable> {
         disableRemoteCommandCenter()
     }
 
-    /// Enable/disable play vs pause commands based on `isPlaying`.
-    ///
-    /// The system decides which icon (play vs pause) to show on the lock screen
-    /// based on which command is enabled. Keeping this in sync with our actual
-    /// playback state avoids the "double-tap to sync" behavior.
-    private func updateRemoteCommandCenterPlaybackState() {
-        let commandCenter = MPRemoteCommandCenter.shared()
-        commandCenter.playCommand.isEnabled = !isPlaying
-        commandCenter.pauseCommand.isEnabled = isPlaying
-    }
-
     private func enableRemoteCommandCenter() {
         let commandCenter = MPRemoteCommandCenter.shared()
-        // Next/previous/seek are always available while we have an active session.
+        commandCenter.playCommand.isEnabled = true
+        commandCenter.pauseCommand.isEnabled = true
         commandCenter.nextTrackCommand.isEnabled = true
         commandCenter.previousTrackCommand.isEnabled = true
         commandCenter.changePlaybackPositionCommand.isEnabled = true
-
-        // Ensure play/pause start in a consistent state with current playback.
-        updateRemoteCommandCenterPlaybackState()
     }
 
     private func disableRemoteCommandCenter() {
