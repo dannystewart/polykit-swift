@@ -55,6 +55,8 @@ final class PlayerCore: @unchecked Sendable {
 
     private var analysisCancellable: AnyCancellable?
     private var hasTriggeredEndCallback: Bool = false
+    private var lastNowPlayingUpdateSecond: Int = -1
+    private var currentSegmentStartTime: TimeInterval = 0
 
     // MARK: Lifecycle
 
@@ -105,6 +107,7 @@ final class PlayerCore: @unchecked Sendable {
 
             // Schedule file for playback (no completion handler - we detect end via time observer)
             playerNode.scheduleFile(file, at: nil)
+            currentSegmentStartTime = 0 // Full file scheduled from start
 
             // Start playback
             playerNode.play()
@@ -119,6 +122,9 @@ final class PlayerCore: @unchecked Sendable {
 
             logger.debug("[Playback] Started playing: \(playbackURL.lastPathComponent)")
             notifyStateChanged()
+
+            // Update now playing immediately with the new track info
+            // The time observer will update the elapsed time as playback progresses
             updateNowPlayingInfo()
 
         } catch {
@@ -140,11 +146,14 @@ final class PlayerCore: @unchecked Sendable {
             startTimeObserver()
         }
         notifyStateChanged()
+        updateNowPlayingInfo() // Update lock screen play/pause state
     }
 
     func stop() {
         cleanup()
         currentItem = nil
+        // Clear now playing info when actually stopping
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         notifyStateChanged()
     }
 
@@ -175,7 +184,9 @@ final class PlayerCore: @unchecked Sendable {
             at: nil,
         )
 
+        currentSegmentStartTime = time // Track where this segment starts in the file
         currentTime = time
+        lastNowPlayingUpdateSecond = Int(time) // Track the new time for proper updates
 
         if isPlaying {
             playerNode.play()
@@ -300,7 +311,9 @@ final class PlayerCore: @unchecked Sendable {
                 let file = audioFile
             {
                 let sampleRate = file.fileFormat.sampleRate
-                currentTime = Double(playerTime.sampleTime) / sampleRate
+                // playerTime.sampleTime is relative to the currently scheduled segment
+                // Add the segment start time to get absolute position in the file
+                currentTime = currentSegmentStartTime + Double(playerTime.sampleTime) / sampleRate
                 notifyStateChanged()
 
                 // Check if we've reached the end naturally
@@ -311,10 +324,15 @@ final class PlayerCore: @unchecked Sendable {
                     handlePlaybackEnded()
                 }
 
-                // Update Now Playing every second
-                if Int(currentTime) % 1 == 0 {
+                // Update Now Playing when the second changes
+                let currentSecond = Int(currentTime)
+                if currentSecond != lastNowPlayingUpdateSecond {
+                    lastNowPlayingUpdateSecond = currentSecond
                     updateNowPlayingInfo()
                 }
+            } else {
+                // If we can't get player time, keep currentTime as is (don't reset to 0)
+                logger.debug("[TimeObserver] Could not get player time - keeping currentTime at \(currentTime)s")
             }
         }
     }
@@ -344,6 +362,7 @@ final class PlayerCore: @unchecked Sendable {
 
     private func handlePlaybackEnded() {
         isPlaying = false
+        updateNowPlayingInfo()
         notifyStateChanged()
         onPlaybackEnded?()
     }
@@ -364,7 +383,10 @@ final class PlayerCore: @unchecked Sendable {
         isStreamingPlayback = false
         canSeek = true
         currentItemArtwork = nil
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        lastNowPlayingUpdateSecond = -1
+        currentSegmentStartTime = 0
+        // Don't clear now playing info here - let it transition smoothly between tracks
+        // It will be cleared explicitly when stop() is called
     }
 
     // MARK: - Now Playing
@@ -389,6 +411,10 @@ final class PlayerCore: @unchecked Sendable {
 
         nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
         nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+
+        logger.debug(
+            "[NowPlaying] Updated info - title: \(currentItem.title), isPlaying: \(isPlaying), time: \(currentTime)",
+        )
 
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
     }
@@ -422,6 +448,7 @@ final class PlayerCore: @unchecked Sendable {
                         if self.isPlaying {
                             self.isPlaying = false
                             self.stopTimeObserver()
+                            self.updateNowPlayingInfo()
                         }
 
                     case .ended:
