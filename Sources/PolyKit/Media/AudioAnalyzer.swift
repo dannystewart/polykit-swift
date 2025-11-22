@@ -99,10 +99,16 @@ public final class AudioAnalyzer: @unchecked Sendable {
 
     /// Start analyzing audio from the engine's main mixer node.
     public func start() {
-        guard !_isAnalyzing else { return }
+        // If already analyzing, stop first to handle audio device changes
+        if _isAnalyzing {
+            stop()
+        }
 
         let mainMixer = engine.mainMixerNode
         let format = mainMixer.outputFormat(forBus: 0)
+
+        // Remove any existing tap first (defensive)
+        mainMixer.removeTap(onBus: 0)
 
         mainMixer.installTap(
             onBus: 0,
@@ -122,11 +128,19 @@ public final class AudioAnalyzer: @unchecked Sendable {
         engine.mainMixerNode.removeTap(onBus: 0)
         _isAnalyzing = false
 
-        // Reset frequency bands to zero
-        // These are nonisolated(unsafe) so we can access them here
+        // Reset frequency bands and smoothed state to zero
         for i in 0 ..< numberOfBands {
             frequencyBands[i] = 0
+            smoothedBands[i] = 0
         }
+        smoothedVolume = 0
+        currentVolume = 0
+    }
+
+    /// Restart audio analysis (useful after audio device changes)
+    public func restart() {
+        stop()
+        start()
     }
 
     // MARK: - Private Processing
@@ -137,6 +151,16 @@ public final class AudioAnalyzer: @unchecked Sendable {
             let setup = fftSetup else { return }
 
         let frameCount = Int(buffer.frameLength)
+
+        // Edge case: invalid buffer size (can happen during device switch)
+        guard frameCount > 0 else {
+            // Reset to zeros when we get bad data
+            Task { @MainActor in
+                self.updateFrequencyBands([Float](repeating: 0, count: numberOfBands), volume: 0)
+            }
+            return
+        }
+
         let channel = channelData[0]
 
         // Calculate RMS volume of the audio signal for noise gate
@@ -243,7 +267,14 @@ public final class AudioAnalyzer: @unchecked Sendable {
 
         // Apply Y-AXIS CUT: threshold out low amplitudes for dynamic range
         // This creates the "bars disappear and reappear" effect
-        let maxMagnitude = bands.max() ?? 1.0
+        let maxMagnitude = bands.max() ?? 0.0
+
+        // Edge case protection: if all bands are zero or very low, return zeros
+        // This prevents stuck "solid block" when audio device switches
+        guard maxMagnitude > 0.001 else {
+            return [Float](repeating: 0, count: numberOfBands)
+        }
+
         let threshold = maxMagnitude * 0.30 // Cut bottom 30% of the range
 
         for i in 0 ..< numberOfBands {
@@ -252,14 +283,19 @@ public final class AudioAnalyzer: @unchecked Sendable {
                 bands[i] = 0.0
             } else {
                 // Shift range so threshold becomes 0 and max becomes max
-                bands[i] = (bands[i] - threshold) / (maxMagnitude - threshold)
+                let range = maxMagnitude - threshold
+                if range > 0.001 { // Prevent divide by near-zero
+                    bands[i] = (bands[i] - threshold) / range
+                } else {
+                    bands[i] = 0.0
+                }
             }
         }
 
         // Now normalize the remaining values to 0-1 range
         for i in 0 ..< numberOfBands {
             // Light compression for visibility
-            bands[i] = sqrtf(bands[i])
+            bands[i] = sqrtf(max(0, bands[i])) // Ensure non-negative for sqrt
         }
 
         return bands
