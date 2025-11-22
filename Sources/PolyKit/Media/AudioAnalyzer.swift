@@ -40,8 +40,9 @@ public final class AudioAnalyzer {
     // Using nonisolated(unsafe) because vDSP operations are thread-safe
     // and these values are immutable after initialization
     private nonisolated(unsafe) let fftSetup: vDSP_DFT_Setup?
-    private let fftSize: Int = 2048
+    private let fftSize: Int = 4096 // Increased from 2048 for better frequency resolution
     private let window: [Float]
+    private let magnitudeLimit: Float = 150.0 // Cap extreme spikes
 
     /// State updated on MainActor
     private var smoothedBands: [Float]
@@ -179,12 +180,23 @@ public final class AudioAnalyzer {
         // Perform FFT
         vDSP_DFT_Execute(setup, real, imaginary, &real, &imaginary)
 
-        // Calculate magnitudes
+        // Calculate magnitudes using vDSP (much faster than manual calculation)
         var magnitudes = [Float](repeating: 0, count: fftSize / 2)
-        for i in 0 ..< fftSize / 2 {
-            let realPart = real[i]
-            let imagPart = imaginary[i]
-            magnitudes[i] = sqrtf(realPart * realPart + imagPart * imagPart)
+
+        // Use proper buffer pointers for Swift 6 strict concurrency
+        real.withUnsafeMutableBufferPointer { realBuffer in
+            imaginary.withUnsafeMutableBufferPointer { imagBuffer in
+                var splitComplex = DSPSplitComplex(
+                    realp: realBuffer.baseAddress!,
+                    imagp: imagBuffer.baseAddress!,
+                )
+                vDSP_zvabs(&splitComplex, 1, &magnitudes, 1, vDSP_Length(fftSize / 2))
+            }
+        }
+
+        // Cap extreme spikes to prevent visualization distortion
+        for i in 0 ..< magnitudes.count {
+            magnitudes[i] = min(magnitudes[i], magnitudeLimit)
         }
 
         // Convert to frequency bands
@@ -209,9 +221,28 @@ public final class AudioAnalyzer {
         let maxFrequencyIndex = magnitudes.count
 
         for band in 0 ..< numberOfBands {
-            // Logarithmic band calculation (more emphasis on lower frequencies)
-            let startIndex = Int(pow(Float(maxFrequencyIndex), Float(band) / Float(numberOfBands)))
-            let endIndex = Int(pow(Float(maxFrequencyIndex), Float(band + 1) / Float(numberOfBands)))
+            // Logarithmic band calculation using proper log scale
+            // This distributes bands more evenly across the audible spectrum
+            // Map band indices to log scale, then back to linear for FFT bins
+            let minFreq: Float = 20.0 // 20 Hz (low bass)
+            let maxFreq: Float = 20000.0 // 20 kHz (upper treble)
+
+            let logMin = log10(minFreq)
+            let logMax = log10(maxFreq)
+            let logRange = logMax - logMin
+
+            // Calculate frequency range for this band
+            let logStart = logMin + (logRange * Float(band) / Float(numberOfBands))
+            let logEnd = logMin + (logRange * Float(band + 1) / Float(numberOfBands))
+
+            let freqStart = pow(10, logStart)
+            let freqEnd = pow(10, logEnd)
+
+            // Convert frequencies to FFT bin indices
+            // Sample rate is typically 44100 or 48000 Hz
+            let nyquistFreq: Float = 22050.0 // Half of 44100 Hz
+            let startIndex = Int((freqStart / nyquistFreq) * Float(maxFrequencyIndex))
+            let endIndex = Int((freqEnd / nyquistFreq) * Float(maxFrequencyIndex))
 
             var sum: Float = 0
             var count = 0
@@ -228,8 +259,8 @@ public final class AudioAnalyzer {
 
         // Use a FIXED reference level instead of normalizing to each frame's max
         // This preserves the actual amplitude - quiet sounds stay quiet, loud sounds are loud
-        // Lower reference level = more sensitive visualization
-        let referenceLevel: Float = 30.0
+        // With larger FFT size (4096) and magnitude limiting, adjust reference level
+        let referenceLevel: Float = 50.0
 
         for i in 0 ..< numberOfBands {
             // Scale by reference level
@@ -237,8 +268,9 @@ public final class AudioAnalyzer {
 
             // Apply frequency-dependent scaling to reduce bass prominence
             // Low frequencies (bass) are naturally stronger in FFT, so we attenuate them
+            // With the new log scale distribution, we need a gentler curve
             let frequencyPosition = Float(i) / Float(numberOfBands - 1)
-            let frequencyBias = 0.5 + (frequencyPosition * 0.5) // Range: 0.5 (bass) to 1.0 (treble)
+            let frequencyBias = 0.7 + (frequencyPosition * 0.3) // Range: 0.7 (bass) to 1.0 (treble)
             bands[i] *= frequencyBias
 
             // Apply compression for better visualization (square root)
