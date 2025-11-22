@@ -81,11 +81,6 @@ public class PlayerEngine<T: Playable> {
     public private(set) var isLoading: Bool = false
     public private(set) var errorMessage: String?
 
-    /// Current frequency band levels for visualization (0.0 to 1.0)
-    public var frequencyBands: [Float] {
-        core.frequencyBands
-    }
-
     /// Name of an image in the host app's asset catalog to use as default
     /// artwork for Now Playing info when the current item has no artwork.
     public var defaultArtworkImageName: String? {
@@ -111,6 +106,11 @@ public class PlayerEngine<T: Playable> {
     private var currentlyDownloadingItemID: Int?
 
     // MARK: Computed Properties
+
+    /// Current frequency band levels for visualization (0.0 to 1.0)
+    public var frequencyBands: [Float] {
+        core.frequencyBands
+    }
 
     public var hasCurrentItem: Bool {
         currentItem != nil
@@ -210,7 +210,7 @@ public class PlayerEngine<T: Playable> {
             // For iCloud files, iOS/macOS handles downloading and caching automatically
             playbackURL = audioURL
             treatedAsCached = true // Enable seeking immediately (iCloud downloads are handled by AVPlayer)
-            logger.debug("Using local/iCloud file; seeking is enabled, no manual caching needed")
+            logger.debug("Using local file; seeking is enabled, no manual caching needed")
         } else {
             // Remote HTTP(S) URL - check if we have a cached copy
             let isCached = cachedItemIDs.contains(item.id)
