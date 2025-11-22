@@ -44,6 +44,8 @@ final class PlayerCore: @unchecked Sendable {
     var onNeedsSwitchToCachedVersion: ((URL) -> Void)?
     var onStateChanged: (() -> Void)?
 
+    fileprivate nonisolated(unsafe) var audioFormat: AVAudioFormat?
+
     // MARK: - Private State
 
     private var player: AVPlayer?
@@ -60,6 +62,15 @@ final class PlayerCore: @unchecked Sendable {
     private var defaultArtworkImageName: String?
     private var defaultArtwork: MPMediaItemArtwork?
     private var currentItemArtwork: MPMediaItemArtwork?
+
+    /// Audio analysis
+    private nonisolated(unsafe) var audioAnalyzer: AudioAnalyzer?
+
+    // MARK: Computed Properties
+
+    nonisolated var frequencyBands: [Float] {
+        audioAnalyzer?.frequencyBands ?? []
+    }
 
     // MARK: Lifecycle
 
@@ -120,6 +131,7 @@ final class PlayerCore: @unchecked Sendable {
         logger.debug("Created new player item \(currentPlayerItemID!) from \(isCached ? "cache" : "stream") for URL: \(playbackURL.lastPathComponent)")
 
         setupObservers(playerItem: playerItem, player: newPlayer)
+        setupAudioAnalysis(player: newPlayer)
 
         newPlayer.play()
         isPlaying = true
@@ -269,6 +281,66 @@ final class PlayerCore: @unchecked Sendable {
         }
     }
 
+    // MARK: - Audio Tap Callbacks
+
+    fileprivate nonisolated func processAudioTap(
+        tap: MTAudioProcessingTap,
+        numberFrames: CMItemCount,
+        flags _: MTAudioProcessingTapFlags,
+        bufferList: UnsafeMutablePointer<AudioBufferList>,
+        numberFramesOut: UnsafeMutablePointer<CMItemCount>,
+        flagsOut: UnsafeMutablePointer<MTAudioProcessingTapFlags>,
+    ) {
+        var timeRange = CMTimeRange()
+        let status = MTAudioProcessingTapGetSourceAudio(
+            tap,
+            numberFrames,
+            bufferList,
+            flagsOut,
+            &timeRange,
+            numberFramesOut,
+        )
+
+        guard status == noErr else {
+            logger.warning("[AudioTap] GetSourceAudio failed with status: \(status)")
+            return
+        }
+
+        guard let analyzer = audioAnalyzer else {
+            logger.warning("[AudioTap] No analyzer available")
+            return
+        }
+
+        guard let format = audioFormat else {
+            logger.warning("[AudioTap] No audio format available")
+            return
+        }
+
+        // Create an AVAudioPCMBuffer from the AudioBufferList
+        guard
+            let pcmBuffer = AVAudioPCMBuffer(
+                pcmFormat: format,
+                frameCapacity: AVAudioFrameCount(numberFrames),
+            ) else { return }
+
+        pcmBuffer.frameLength = AVAudioFrameCount(numberFrames)
+
+        // Copy audio data from the tap to the PCM buffer
+        let audioBuffer = bufferList.pointee
+        for bufferIndex in 0 ..< Int(audioBuffer.mNumberBuffers) {
+            let buffer = UnsafeMutableAudioBufferListPointer(bufferList)[bufferIndex]
+            if
+                let channelData = pcmBuffer.floatChannelData?[bufferIndex],
+                let sourceData = buffer.mData?.assumingMemoryBound(to: Float.self)
+            {
+                channelData.update(from: sourceData, count: Int(numberFrames))
+            }
+        }
+
+        // Feed the buffer to the analyzer for FFT processing
+        analyzer.processBuffer(pcmBuffer)
+    }
+
     // MARK: - State Notification
 
     private func notifyStateChanged() {
@@ -391,6 +463,64 @@ final class PlayerCore: @unchecked Sendable {
                 self?.handleFailedToPlayToEndTime(notification)
             }
             .store(in: &cancellables)
+    }
+
+    private nonisolated func setupAudioAnalysis(player: AVPlayer) {
+        guard let playerItem = player.currentItem else {
+            logger.warning("[AudioAnalysis] No current item, cannot setup audio analysis")
+            return
+        }
+
+        logger.debug("[AudioAnalysis] Setting up audio analysis")
+
+        // Create audio analyzer without an engine (we'll feed it buffers manually)
+        Task { @MainActor in
+            let analyzer = AudioAnalyzer(engine: nil, numberOfBands: 8, smoothingFactor: 0.82)
+            self.audioAnalyzer = analyzer
+            logger.debug("[AudioAnalysis] AudioAnalyzer created and assigned")
+            // Don't call start() - we're feeding buffers manually
+        }
+
+        // Create an AVAudioMix to tap into the player's audio asynchronously
+        Task { @MainActor in
+            let audioMix = AVMutableAudioMix()
+            let audioTracks = try? await playerItem.asset.load(.tracks)
+            let audioTrack = audioTracks?.first(where: { $0.mediaType == .audio })
+
+            guard let firstAudioTrack = audioTrack else {
+                logger.warning("No audio track found for analysis")
+                return
+            }
+
+            let inputParams = AVMutableAudioMixInputParameters(track: firstAudioTrack)
+
+            // Create the audio tap that will feed samples to our analyzer
+            var callbacks = MTAudioProcessingTapCallbacks(
+                version: kMTAudioProcessingTapCallbacksVersion_0,
+                clientInfo: UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque()),
+                init: tapInit,
+                finalize: tapFinalize,
+                prepare: tapPrepare,
+                unprepare: tapUnprepare,
+                process: tapProcess,
+            )
+
+            var tap: MTAudioProcessingTap?
+            let status = MTAudioProcessingTapCreate(
+                kCFAllocatorDefault,
+                &callbacks,
+                kMTAudioProcessingTapCreationFlag_PreEffects,
+                &tap,
+            )
+
+            if status == noErr, let tap {
+                inputParams.audioTapProcessor = tap
+                audioMix.inputParameters = [inputParams]
+                playerItem.audioMix = audioMix
+            } else {
+                logger.error("Failed to create audio processing tap: \(status)")
+            }
+        }
     }
 
     // MARK: - Event Handlers
@@ -647,4 +777,58 @@ final class PlayerCore: @unchecked Sendable {
             }
         #endif // os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
     }
+}
+
+// MARK: - MTAudioProcessingTap Callbacks
+
+private func tapInit(
+    tap _: MTAudioProcessingTap,
+    clientInfo: UnsafeMutableRawPointer?,
+    tapStorageOut: UnsafeMutablePointer<UnsafeMutableRawPointer?>,
+) {
+    tapStorageOut.pointee = clientInfo
+}
+
+private func tapFinalize(tap _: MTAudioProcessingTap) {
+    // Cleanup if needed
+}
+
+private func tapPrepare(
+    tap: MTAudioProcessingTap,
+    maxFrames _: CMItemCount,
+    processingFormat: UnsafePointer<AudioStreamBasicDescription>,
+) {
+    let clientInfo = MTAudioProcessingTapGetStorage(tap)
+    let core = Unmanaged<PlayerCore>.fromOpaque(clientInfo).takeUnretainedValue()
+
+    // Store the audio format for creating buffers later
+    let format = AVAudioFormat(streamDescription: processingFormat)
+    core.audioFormat = format
+}
+
+private func tapUnprepare(tap: MTAudioProcessingTap) {
+    let clientInfo = MTAudioProcessingTapGetStorage(tap)
+    let core = Unmanaged<PlayerCore>.fromOpaque(clientInfo).takeUnretainedValue()
+    core.audioFormat = nil
+}
+
+private func tapProcess(
+    tap: MTAudioProcessingTap,
+    numberFrames: CMItemCount,
+    flags: MTAudioProcessingTapFlags,
+    bufferListInOut: UnsafeMutablePointer<AudioBufferList>,
+    numberFramesOut: UnsafeMutablePointer<CMItemCount>,
+    flagsOut: UnsafeMutablePointer<MTAudioProcessingTapFlags>,
+) {
+    let clientInfo = MTAudioProcessingTapGetStorage(tap)
+    let core = Unmanaged<PlayerCore>.fromOpaque(clientInfo).takeUnretainedValue()
+
+    core.processAudioTap(
+        tap: tap,
+        numberFrames: numberFrames,
+        flags: flags,
+        bufferList: bufferListInOut,
+        numberFramesOut: numberFramesOut,
+        flagsOut: flagsOut,
+    )
 }

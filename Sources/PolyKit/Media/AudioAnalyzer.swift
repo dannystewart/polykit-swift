@@ -22,7 +22,7 @@ public final class AudioAnalyzer {
     // MARK: Properties
 
     /// Current frequency band levels (0.0 to 1.0), smoothed for animation
-    public private(set) var frequencyBands: [Float] = []
+    @ObservationIgnored public nonisolated(unsafe) var frequencyBands: [Float] = []
 
     /// Current volume level (0.0 to 1.0), representing overall amplitude
     public private(set) var currentVolume: Float = 0
@@ -52,15 +52,15 @@ public final class AudioAnalyzer {
     /// Initialize the audio analyzer.
     ///
     /// - Parameters:
-    ///   - engine: The AVAudioEngine to analyze audio from
+    ///   - engine: The AVAudioEngine to analyze audio from (optional for manual buffer processing)
     ///   - numberOfBands: Number of frequency bands to divide spectrum into (default: 8)
     ///   - smoothingFactor: Amount of smoothing applied to band levels, 0.0-1.0 (default: 0.75)
     public init(
-        engine: AVAudioEngine,
+        engine: AVAudioEngine? = nil,
         numberOfBands: Int = 8,
         smoothingFactor: Float = 0.75,
     ) {
-        self.engine = engine
+        self.engine = engine ?? AVAudioEngine()
         self.numberOfBands = numberOfBands
         self.smoothingFactor = smoothingFactor
 
@@ -124,6 +124,16 @@ public final class AudioAnalyzer {
         }
         currentVolume = 0
         smoothedVolume = 0
+    }
+
+    /// Process a raw audio buffer for analysis (alternative to using audio tap).
+    ///
+    /// Use this method when you have audio data from sources other than AVAudioEngine,
+    /// such as MTAudioProcessingTap with AVPlayer.
+    ///
+    /// - Parameter buffer: The audio buffer to analyze
+    public nonisolated func processBuffer(_ buffer: AVAudioPCMBuffer) {
+        processAudioBuffer(buffer)
     }
 
     // MARK: - Private Processing
@@ -218,13 +228,18 @@ public final class AudioAnalyzer {
 
         // Use a FIXED reference level instead of normalizing to each frame's max
         // This preserves the actual amplitude - quiet sounds stay quiet, loud sounds are loud
-        // Typical peak FFT magnitude for full-scale audio is around 100-200 (depends on FFT size)
-        // We'll use 150 as our reference for "full scale"
-        let referenceLevel: Float = 150.0
+        // Lower reference level = more sensitive visualization
+        let referenceLevel: Float = 30.0
 
         for i in 0 ..< numberOfBands {
             // Scale by reference level
             bands[i] = bands[i] / referenceLevel
+
+            // Apply frequency-dependent scaling to reduce bass prominence
+            // Low frequencies (bass) are naturally stronger in FFT, so we attenuate them
+            let frequencyPosition = Float(i) / Float(numberOfBands - 1)
+            let frequencyBias = 0.5 + (frequencyPosition * 0.5) // Range: 0.5 (bass) to 1.0 (treble)
+            bands[i] *= frequencyBias
 
             // Apply compression for better visualization (square root)
             // This makes quieter sounds more visible while preventing loud sounds from clipping

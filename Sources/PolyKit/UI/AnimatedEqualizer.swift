@@ -189,46 +189,53 @@ public struct AnimatedEqualizer: View {
             return
         }
 
-        // Otherwise, use simulated realistic animation
+        // SIMULATION DISABLED FOR DEBUGGING
+        // If no real data, just show minimum height bars (flat)
         for i in 0 ..< barCount {
             guard i < barHeights.count else { continue }
-
-            // Create realistic "music-like" movement patterns with DRAMATIC variation
-            let frequencyPosition = Float(i) / Float(barCount - 1)
-
-            // Minimal energy bias across frequencies
-            let energyBias = 1.0 - (frequencyPosition * 0.1)
-
-            // Constant rapid variation - different pattern per bar for independence
-            let randomness = Float.random(in: 0.0 ... 1.0)
-
-            // Use different randomness patterns for more varied movement
-            // Some bars get squared (more spiky), some get cubed (very spiky), some linear
-            let variationPattern = i % 3
-            let processedRandomness: Float = switch variationPattern {
-            case 0: randomness * randomness * randomness // Cubic - super spiky
-            case 1: randomness * randomness // Squared - spiky
-            default: randomness // Linear - more consistent
-            }
-
-            // Apply different movement characteristics per frequency range
-            // ULTRA-low base, FULL variation range for constant dramatic motion
-            let targetHeight = if frequencyPosition < 0.3 {
-                // Bass: constant dramatic motion
-                CGFloat(energyBias * (0.01 + processedRandomness * 0.99))
-            } else if frequencyPosition < 0.6 {
-                // Mids: constant dramatic motion
-                CGFloat(energyBias * (0.01 + processedRandomness * 0.99))
-            } else {
-                // Highs: constant dramatic motion
-                CGFloat(energyBias * (0.005 + processedRandomness * 0.995))
-            }
-
-            // Minimal smoothing - very responsive but not flickery
-            let currentHeight = barHeights[i]
-            let smoothingFactor: CGFloat = 0.2
-            barHeights[i] = currentHeight * (1 - smoothingFactor) + targetHeight * smoothingFactor
+            barHeights[i] = minimumBarHeight
         }
+
+        // // Otherwise, use simulated realistic animation
+        // for i in 0 ..< barCount {
+        //     guard i < barHeights.count else { continue }
+        //
+        //     // Create realistic "music-like" movement patterns with DRAMATIC variation
+        //     let frequencyPosition = Float(i) / Float(barCount - 1)
+        //
+        //     // Minimal energy bias across frequencies
+        //     let energyBias = 1.0 - (frequencyPosition * 0.1)
+        //
+        //     // Constant rapid variation - different pattern per bar for independence
+        //     let randomness = Float.random(in: 0.0 ... 1.0)
+        //
+        //     // Use different randomness patterns for more varied movement
+        //     // Some bars get squared (more spiky), some get cubed (very spiky), some linear
+        //     let variationPattern = i % 3
+        //     let processedRandomness: Float = switch variationPattern {
+        //     case 0: randomness * randomness * randomness // Cubic - super spiky
+        //     case 1: randomness * randomness // Squared - spiky
+        //     default: randomness // Linear - more consistent
+        //     }
+        //
+        //     // Apply different movement characteristics per frequency range
+        //     // ULTRA-low base, FULL variation range for constant dramatic motion
+        //     let targetHeight = if frequencyPosition < 0.3 {
+        //         // Bass: constant dramatic motion
+        //         CGFloat(energyBias * (0.01 + processedRandomness * 0.99))
+        //     } else if frequencyPosition < 0.6 {
+        //         // Mids: constant dramatic motion
+        //         CGFloat(energyBias * (0.01 + processedRandomness * 0.99))
+        //     } else {
+        //         // Highs: constant dramatic motion
+        //         CGFloat(energyBias * (0.005 + processedRandomness * 0.995))
+        //     }
+        //
+        //     // Minimal smoothing - very responsive but not flickery
+        //     let currentHeight = barHeights[i]
+        //     let smoothingFactor: CGFloat = 0.2
+        //     barHeights[i] = currentHeight * (1 - smoothingFactor) + targetHeight * smoothingFactor
+        // }
     }
 
     private func updateFromFrequencyData(_ data: [Float]) {
