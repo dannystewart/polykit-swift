@@ -241,6 +241,9 @@ public class PlayerEngine<T: Playable> {
 
         // Delegate to core
         core.play(item, playbackURL: playbackURL, isCached: treatedAsCached)
+
+        // Ensure remote command center is enabled for playback
+        enableRemoteCommandCenter()
     }
 
     public func togglePlayPause() {
@@ -283,6 +286,7 @@ public class PlayerEngine<T: Playable> {
 
     public func stop() {
         core.stop()
+        disableRemoteCommandCenter()
     }
 
     public func seek(to time: TimeInterval) {
@@ -655,7 +659,6 @@ public class PlayerEngine<T: Playable> {
     private func setupRemoteCommandCenter() {
         let commandCenter = MPRemoteCommandCenter.shared()
 
-        commandCenter.playCommand.isEnabled = true
         commandCenter.playCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
             if !isPlaying {
@@ -664,7 +667,6 @@ public class PlayerEngine<T: Playable> {
             return .success
         }
 
-        commandCenter.pauseCommand.isEnabled = true
         commandCenter.pauseCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
             if isPlaying {
@@ -673,21 +675,18 @@ public class PlayerEngine<T: Playable> {
             return .success
         }
 
-        commandCenter.nextTrackCommand.isEnabled = true
         commandCenter.nextTrackCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
             nextTrack()
             return .success
         }
 
-        commandCenter.previousTrackCommand.isEnabled = true
         commandCenter.previousTrackCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
             previousTrack()
             return .success
         }
 
-        commandCenter.changePlaybackPositionCommand.isEnabled = true
         commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
             guard let self, let event = event as? MPChangePlaybackPositionCommandEvent else {
                 return .commandFailed
@@ -695,5 +694,26 @@ public class PlayerEngine<T: Playable> {
             seek(to: event.positionTime)
             return .success
         }
+
+        // Start with commands disabled - they'll be enabled when playback starts
+        disableRemoteCommandCenter()
+    }
+
+    private func enableRemoteCommandCenter() {
+        let commandCenter = MPRemoteCommandCenter.shared()
+        commandCenter.playCommand.isEnabled = true
+        commandCenter.pauseCommand.isEnabled = true
+        commandCenter.nextTrackCommand.isEnabled = true
+        commandCenter.previousTrackCommand.isEnabled = true
+        commandCenter.changePlaybackPositionCommand.isEnabled = true
+    }
+
+    private func disableRemoteCommandCenter() {
+        let commandCenter = MPRemoteCommandCenter.shared()
+        commandCenter.playCommand.isEnabled = false
+        commandCenter.pauseCommand.isEnabled = false
+        commandCenter.nextTrackCommand.isEnabled = false
+        commandCenter.previousTrackCommand.isEnabled = false
+        commandCenter.changePlaybackPositionCommand.isEnabled = false
     }
 }
