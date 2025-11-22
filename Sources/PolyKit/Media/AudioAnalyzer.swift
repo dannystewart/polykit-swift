@@ -196,48 +196,70 @@ public final class AudioAnalyzer: @unchecked Sendable {
         }
 
         var bands = [Float](repeating: 0, count: numberOfBands)
-        let maxFrequencyIndex = magnitudes.count
 
-        // IGNORE frequencies below 300Hz - they're MASSIVE and skew everything
-        // At 44.1kHz sample rate with 2048 FFT: each bin is ~21.5 Hz
-        // 80Hz / 21.5Hz ≈ 3.7, so start at bin 4
+        // Use LOGARITHMIC frequency distribution like the article suggests
+        // This matches human hearing and music perception
         let nyquistFreq: Float = 22050.0 // Half of 44.1kHz
-        let hzPerBin = nyquistFreq / Float(maxFrequencyIndex)
-        let minFreq: Float = 300.0 // Ignore everything below 300Hz
-        let minBin = Int(minFreq / hzPerBin)
+        let minFreq: Float = 440.0 // Start at 440Hz (upper bass/low mids)
+        let maxFreq: Float = 10000.0 // End at 10kHz (upper treble)
 
-        // Distribute bands from 80Hz to 20kHz
-        let usableRange = maxFrequencyIndex - minBin
-        let binsPerBand = usableRange / numberOfBands
+        let logMin = log10(minFreq)
+        let logMax = log10(maxFreq)
+        let logRange = logMax - logMin
 
         for band in 0 ..< numberOfBands {
-            let startIndex = minBin + (band * binsPerBand)
-            let endIndex = min(startIndex + binsPerBand, maxFrequencyIndex)
+            // Calculate frequency range for this band using log scale
+            let logStart = logMin + (logRange * Float(band) / Float(numberOfBands))
+            let logEnd = logMin + (logRange * Float(band + 1) / Float(numberOfBands))
+
+            let freqStart = pow(10, logStart)
+            let freqEnd = pow(10, logEnd)
+
+            // Convert to FFT bin indices
+            let startIndex = Int((freqStart / nyquistFreq) * Float(magnitudes.count))
+            let endIndex = Int((freqEnd / nyquistFreq) * Float(magnitudes.count))
 
             var sum: Float = 0
-            for i in startIndex ..< endIndex {
+            var count = 0
+
+            for i in startIndex ..< min(endIndex, magnitudes.count) {
                 sum += magnitudes[i]
+                count += 1
             }
 
-            // Average magnitude for this band
-            let count = endIndex - startIndex
             if count > 0 {
                 bands[band] = sum / Float(count)
             }
+
+            // Apply frequency-dependent weighting to compensate for energy distribution
+            // Lower frequencies (even 200Hz+) are still louder, so we apply inverse weighting
+            let centerFreq = sqrt(freqStart * freqEnd) // Geometric mean
+
+            // Inverse square law-inspired weighting: higher frequencies get boosted
+            // This compensates for the natural energy drop-off
+            let frequencyWeight = sqrt(centerFreq / minFreq)
+            bands[band] *= frequencyWeight
         }
 
-        // Lower reference since we cut out the bass frequencies
-        let referenceLevel: Float = 25.0
+        // Apply Y-AXIS CUT: threshold out low amplitudes for dynamic range
+        // This creates the "bars disappear and reappear" effect
+        let maxMagnitude = bands.max() ?? 1.0
+        let threshold = maxMagnitude * 0.30 // Cut bottom 30% of the range
 
         for i in 0 ..< numberOfBands {
-            // Normalize to reference
-            bands[i] = bands[i] / referenceLevel
+            // Apply threshold - anything below this becomes zero
+            if bands[i] < threshold {
+                bands[i] = 0.0
+            } else {
+                // Shift range so threshold becomes 0 and max becomes max
+                bands[i] = (bands[i] - threshold) / (maxMagnitude - threshold)
+            }
+        }
 
-            // Light compression to expand dynamic range
+        // Now normalize the remaining values to 0-1 range
+        for i in 0 ..< numberOfBands {
+            // Light compression for visibility
             bands[i] = sqrtf(bands[i])
-
-            // Moderate boost for dynamic range - natural levels without clipping
-            bands[i] = min(bands[i] * 3.0, 1.0)
         }
 
         return bands
