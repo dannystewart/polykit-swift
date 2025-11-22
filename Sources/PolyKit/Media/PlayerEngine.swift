@@ -443,6 +443,8 @@ public class PlayerEngine<T: Playable> {
     // MARK: - State Synchronization
 
     private func syncStateFromCore() {
+        let wasPlaying = isPlaying
+
         currentItem = core.currentItem as? T
         isPlaying = core.isPlaying
         currentTime = core.currentTime
@@ -450,6 +452,13 @@ public class PlayerEngine<T: Playable> {
         canSeek = core.canSeek
         isLoading = core.isLoading
         errorMessage = core.errorMessage
+
+        // Redundantly ensure Now Playing playback rate matches our current state.
+        // This guards against any timing quirks in the core's own updates so the
+        // lock screen button reflects the real play/pause state.
+        if isPlaying != wasPlaying {
+            syncNowPlayingPlaybackRate()
+        }
     }
 
     // MARK: - Private Methods
@@ -690,6 +699,15 @@ public class PlayerEngine<T: Playable> {
 
         // Start with commands disabled - they'll be enabled when playback starts
         disableRemoteCommandCenter()
+    }
+
+    /// Force the system Now Playing center to reflect our current play/pause state.
+    /// This supplements the core's own Now Playing updates in case of timing issues.
+    private func syncNowPlayingPlaybackRate() {
+        var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
+        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
     private func enableRemoteCommandCenter() {
