@@ -473,28 +473,26 @@ final class PlayerCore: @unchecked Sendable {
 
         logger.debug("[AudioAnalysis] Setting up audio analysis")
 
-        // Create audio analyzer without an engine (we'll feed it buffers manually)
+        // Single async task to ensure analyzer is created BEFORE audio tap starts firing
         Task { @MainActor in
+            // Step 1: Create analyzer synchronously on main actor
             let analyzer = AudioAnalyzer(engine: nil, numberOfBands: 8, smoothingFactor: 0.82)
             self.audioAnalyzer = analyzer
-            logger.debug("[AudioAnalysis] AudioAnalyzer created and assigned")
-            // Don't call start() - we're feeding buffers manually
-        }
+            logger.debug("[AudioAnalysis] AudioAnalyzer created")
 
-        // Create an AVAudioMix to tap into the player's audio asynchronously
-        Task { @MainActor in
-            let audioMix = AVMutableAudioMix()
+            // Step 2: Load audio tracks
             let audioTracks = try? await playerItem.asset.load(.tracks)
             let audioTrack = audioTracks?.first(where: { $0.mediaType == .audio })
 
             guard let firstAudioTrack = audioTrack else {
-                logger.warning("No audio track found for analysis")
+                logger.warning("[AudioAnalysis] No audio track found")
                 return
             }
 
+            // Step 3: Create audio mix and tap (analyzer is now guaranteed to exist)
+            let audioMix = AVMutableAudioMix()
             let inputParams = AVMutableAudioMixInputParameters(track: firstAudioTrack)
 
-            // Create the audio tap that will feed samples to our analyzer
             var callbacks = MTAudioProcessingTapCallbacks(
                 version: kMTAudioProcessingTapCallbacksVersion_0,
                 clientInfo: UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque()),
@@ -517,8 +515,9 @@ final class PlayerCore: @unchecked Sendable {
                 inputParams.audioTapProcessor = tap
                 audioMix.inputParameters = [inputParams]
                 playerItem.audioMix = audioMix
+                logger.debug("[AudioAnalysis] Audio tap attached successfully")
             } else {
-                logger.error("Failed to create audio processing tap: \(status)")
+                logger.error("[AudioAnalysis] Failed to create audio processing tap: \(status)")
             }
         }
     }
@@ -736,6 +735,11 @@ final class PlayerCore: @unchecked Sendable {
         canSeek = true
         currentItemArtwork = nil
 
+        // Clear audio analysis state when switching tracks
+        audioFormat = nil
+        audioAnalyzer = nil // Clear analyzer so it gets recreated fresh for new track
+        logger.debug("[AudioAnalysis] Cleared analyzer and format in cleanup")
+
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 
@@ -804,12 +808,15 @@ private func tapPrepare(
     // Store the audio format for creating buffers later
     let format = AVAudioFormat(streamDescription: processingFormat)
     core.audioFormat = format
+    logger.debug("[AudioTap] Prepare called, audio format set: \(format?.sampleRate ?? 0) Hz, \(format?.channelCount ?? 0) channels")
 }
 
 private func tapUnprepare(tap: MTAudioProcessingTap) {
     let clientInfo = MTAudioProcessingTapGetStorage(tap)
-    let core = Unmanaged<PlayerCore>.fromOpaque(clientInfo).takeUnretainedValue()
-    core.audioFormat = nil
+    _ = Unmanaged<PlayerCore>.fromOpaque(clientInfo).takeUnretainedValue()
+    // Don't clear audioFormat - it persists across pause/play cycles
+    // Only gets cleared when switching tracks (via cleanup())
+    logger.debug("[AudioTap] Unprepare called, keeping audio format")
 }
 
 private func tapProcess(
