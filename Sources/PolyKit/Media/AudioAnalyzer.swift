@@ -143,6 +143,15 @@ public final class AudioAnalyzer: @unchecked Sendable {
         start()
     }
 
+    /// Process a raw audio buffer for analysis (alternative to using audio tap).
+    ///
+    /// This is used by the legacy AVPlayer-based pipeline, which forwards audio
+    /// samples from an `MTAudioProcessingTap` into the analyzer.
+    /// - Parameter buffer: The audio buffer to analyze.
+    public nonisolated func processBuffer(_ buffer: AVAudioPCMBuffer) {
+        processAudioBuffer(buffer)
+    }
+
     // MARK: - Private Processing
 
     private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
