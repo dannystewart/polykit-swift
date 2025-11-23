@@ -125,6 +125,14 @@ final class PlayerCore: @unchecked Sendable {
 
         let playerItem = AVPlayerItem(url: playbackURL)
         let newPlayer = AVPlayer(playerItem: playerItem)
+
+        // For local or fully cached files, favor immediacy over extra buffering.
+        // Disabling `automaticallyWaitsToMinimizeStalling` reduces the delay
+        // AVPlayer introduces after seeks or play/pause toggles in order to
+        // build up a larger safety buffer. On local files this trade-off is
+        // typically worth it for snappier +/- 5s skips.
+        newPlayer.automaticallyWaitsToMinimizeStalling = !isCached
+
         player = newPlayer
 
         currentPlayerItemID = UUID().uuidString
