@@ -293,6 +293,16 @@ public class PlayerEngine<T: Playable> {
         core.seek(to: time)
     }
 
+    /// Seeks forward or backward by the specified number of seconds.
+    ///
+    /// The resulting time is clamped to `[0, duration]` to ensure valid playback position.
+    ///
+    /// - Parameter offset: Time offset in seconds. Positive values seek forward, negative values seek backward.
+    public func seekBy(offset: TimeInterval) {
+        let newTime = max(0, min(currentTime + offset, duration))
+        seek(to: newTime)
+    }
+
     public func nextTrack() {
         guard !playlist.isEmpty else { return }
 
