@@ -234,7 +234,7 @@ public final class AudioAnalyzer: @unchecked Sendable {
         // This matches human hearing and music perception
         let nyquistFreq: Float = 22050.0 // Half of 44.1kHz
         let minFreq: Float = 80.0 // Start at 80Hz (upper bass/low mids)
-        let maxFreq: Float = 16000.0 // End at 16kHz (upper treble)
+        let maxFreq: Float = 12000.0 // End at 12kHz (upper treble)
 
         let logMin = log10(minFreq)
         let logMax = log10(maxFreq)
