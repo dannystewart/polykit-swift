@@ -29,12 +29,8 @@ import Foundation
 /// }
 /// ```
 public struct LogGroup: Hashable, Sendable {
-    // MARK: Properties
-
     public let identifier: String
     public let emoji: String?
-
-    // MARK: Lifecycle
 
     public init(_ identifier: String, emoji: String? = nil) {
         self.identifier = identifier
@@ -49,8 +45,6 @@ public struct LogGroup: Hashable, Sendable {
 /// Supports categorizing logs into groups that can be individually enabled/disabled at runtime.
 /// All group functionality is optional - logs without groups are always printed.
 public final class PolyLog: @unchecked Sendable {
-    // MARK: Properties
-
     /// Log levels that can be filtered by disabled groups.
     /// By default, only debug messages are filterable. Warnings, errors, and faults always print.
     /// You can customize this per-logger instance if needed.
@@ -68,8 +62,6 @@ public final class PolyLog: @unchecked Sendable {
     private let groupLock: NSLock = .init()
     private var disabledGroups: Set<LogGroup> = []
 
-    // MARK: Lifecycle
-
     public nonisolated init() {
         #if canImport(os)
             /// Use the app's bundle identifier
@@ -77,8 +69,6 @@ public final class PolyLog: @unchecked Sendable {
             osLogger = Logger(subsystem: subsystem, category: "PolyLog")
         #endif
     }
-
-    // MARK: Functions
 
     // MARK: Public Logging Methods
 

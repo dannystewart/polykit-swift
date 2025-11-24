@@ -11,14 +11,10 @@ import Foundation
 /// Walking Man is the unsung hero who brings a bit of joy to operations that would otherwise be
 /// frustrating or tedious. He's a simple character, but he's always there when you need him.
 public class WalkingMan: @unchecked Sendable {
-    // MARK: Static Properties
-
     // The ASCII, the myth, the legend: it's SWIFT Walking Man!
     static let characterLeft = "<('-'<) "
     static let characterMiddle = "<('-')>"
     static let characterRight = " (>'-')>"
-
-    // MARK: Properties
 
     // Swift Walking Man properties
     let loadingText: String?
@@ -32,8 +28,6 @@ public class WalkingMan: @unchecked Sendable {
     private var turnState: Int = 0 // 0 = normal, 1 = showing middle, 2 = completed turn
     private var isRunning: Bool = false
 
-    // MARK: Lifecycle
-
     public init(
         loadingText: String? = nil,
         color: ANSIColor? = .cyan,
@@ -45,8 +39,6 @@ public class WalkingMan: @unchecked Sendable {
         self.speed = speed
         self.width = width
     }
-
-    // MARK: Functions
 
     public func start() {
         // Reset animation state to ensure clean start

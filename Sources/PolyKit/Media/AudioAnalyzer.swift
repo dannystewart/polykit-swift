@@ -19,8 +19,6 @@ import Observation
 ///
 /// Note: Audio processing happens on audio thread, frequency band access is thread-safe.
 public final class AudioAnalyzer: @unchecked Sendable {
-    // MARK: Properties
-
     /// Current frequency band levels (0.0 to 1.0), smoothed for animation
     public var frequencyBands: [Float] = []
 
@@ -45,14 +43,10 @@ public final class AudioAnalyzer: @unchecked Sendable {
     private var smoothedBands: [Float]
     private var smoothedVolume: Float = 0
 
-    // MARK: Computed Properties
-
     /// Whether audio analysis is currently active
     public var isAnalyzing: Bool {
         _isAnalyzing
     }
-
-    // MARK: Lifecycle
 
     /// Initialize the audio analyzer.
     ///
@@ -92,8 +86,6 @@ public final class AudioAnalyzer: @unchecked Sendable {
             vDSP_DFT_DestroySetup(setup)
         }
     }
-
-    // MARK: Functions
 
     // MARK: - Control
 

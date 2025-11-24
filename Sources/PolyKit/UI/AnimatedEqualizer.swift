@@ -11,13 +11,9 @@ import SwiftUI
 /// Displays animated frequency bars that respond to real audio FFT data.
 /// Optimized for very small sizes (20px height) where dramatic motion matters.
 public struct AnimatedEqualizer: View {
-    // MARK: SwiftUI Properties
-
     // MARK: - Private State
 
     @State private var barHeights: [CGFloat] = []
-
-    // MARK: Properties
 
     // MARK: - Public Properties
 
@@ -38,8 +34,6 @@ public struct AnimatedEqualizer: View {
 
     /// Minimum bar height as fraction of container (0.0 to 1.0)
     public let minimumBarHeight: CGFloat
-
-    // MARK: Lifecycle
 
     /// Create an animated equalizer.
     ///
@@ -65,8 +59,6 @@ public struct AnimatedEqualizer: View {
         self.spacing = spacing
         self.minimumBarHeight = minimumBarHeight
     }
-
-    // MARK: Content Properties
 
     // MARK: - View
 
@@ -106,8 +98,6 @@ public struct AnimatedEqualizer: View {
             }
         }
     }
-
-    // MARK: Functions
 
     // MARK: - Private Methods
 

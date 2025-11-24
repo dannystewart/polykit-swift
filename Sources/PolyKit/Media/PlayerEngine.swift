@@ -53,8 +53,6 @@ private struct CacheEntry {
 @MainActor
 @Observable
 public class PlayerEngine<T: Playable> {
-    // MARK: Properties
-
     public var maxCacheSizeBytes: Int64 = 500000000 { // 500 MB default
         didSet {
             UserDefaults.standard.set(maxCacheSizeBytes, forKey: "PlayerEngine_maxCacheSizeBytes")
@@ -104,8 +102,6 @@ public class PlayerEngine<T: Playable> {
     private var currentIndex: Int = 0
     private var originalPlaylist: [T] = []
     private var currentlyDownloadingItemID: Int?
-
-    // MARK: Computed Properties
 
     /// Canonical playlist as last provided by the host app.
     ///
@@ -169,8 +165,6 @@ public class PlayerEngine<T: Playable> {
         }
     }
 
-    // MARK: Lifecycle
-
     // MARK: - Initialization
 
     public init() {
@@ -192,8 +186,6 @@ public class PlayerEngine<T: Playable> {
         // Initial state sync
         syncStateFromCore()
     }
-
-    // MARK: Functions
 
     // MARK: - Playback Control
 

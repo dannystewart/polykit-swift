@@ -26,8 +26,6 @@
 /// dispatch queue requirements that conflict with MainActor isolation.
 /// All methods that interact with MPNowPlayingInfoCenter run on main queue explicitly.
 final class PlayerCore: @unchecked Sendable {
-    // MARK: Properties
-
     // MARK: - Public State
 
     var currentItem: (any Playable)?
@@ -66,19 +64,13 @@ final class PlayerCore: @unchecked Sendable {
     /// Audio analysis
     private nonisolated(unsafe) var audioAnalyzer: AudioAnalyzer?
 
-    // MARK: Computed Properties
-
     nonisolated var frequencyBands: [Float] {
         audioAnalyzer?.frequencyBands ?? []
     }
 
-    // MARK: Lifecycle
-
     init() {
         setupInterruptionHandling()
     }
-
-    // MARK: Functions
 
     // MARK: - Playback Control
 
