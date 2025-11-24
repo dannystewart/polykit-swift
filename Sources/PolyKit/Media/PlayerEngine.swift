@@ -105,6 +105,8 @@ public class PlayerEngine<T: Playable> {
     private var originalPlaylist: [T] = []
     private var currentlyDownloadingItemID: Int?
 
+    // MARK: Computed Properties
+
     /// Canonical playlist as last provided by the host app.
     ///
     /// This reflects the app's "intended" ordering of items (for example,
@@ -114,8 +116,6 @@ public class PlayerEngine<T: Playable> {
     public var canonicalPlaylist: [T] {
         originalPlaylist
     }
-
-    // MARK: Computed Properties
 
     /// Current frequency band levels for visualization (0.0 to 1.0)
     public var frequencyBands: [Float] {
@@ -175,7 +175,7 @@ public class PlayerEngine<T: Playable> {
 
     public init() {
         core = PlayerCore()
-        setupAudioSession()
+        configureAudioSession()
         setupRemoteCommandCenter()
         loadCacheSettings()
         core.setDefaultArtworkImageName(defaultArtworkImageName)
@@ -249,6 +249,9 @@ public class PlayerEngine<T: Playable> {
             saveLastPlayedTimes()
         }
 
+        // Activate audio session before playback begins
+        activateAudioSession()
+
         // Delegate to core
         core.play(item, playbackURL: playbackURL, isCached: treatedAsCached)
 
@@ -297,6 +300,7 @@ public class PlayerEngine<T: Playable> {
     public func stop() {
         core.stop()
         disableRemoteCommandCenter()
+        deactivateAudioSession()
     }
 
     public func seek(to time: TimeInterval) {
@@ -676,14 +680,37 @@ public class PlayerEngine<T: Playable> {
         }
     }
 
-    private func setupAudioSession() {
+    /// Configure audio session category and mode without activating it.
+    /// The session will be activated when playback actually begins.
+    private func configureAudioSession() {
         #if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
             do {
                 let audioSession = AVAudioSession.sharedInstance()
                 try audioSession.setCategory(.playback, mode: .default, options: [])
-                try audioSession.setActive(true)
             } catch {
-                logger.error("Failed to set up audio session: \(error)")
+                logger.error("Failed to configure audio session: \(error)")
+            }
+        #endif // os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
+    }
+
+    /// Activate the audio session when playback begins.
+    private func activateAudioSession() {
+        #if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
+            do {
+                try AVAudioSession.sharedInstance().setActive(true)
+            } catch {
+                logger.error("Failed to activate audio session: \(error)")
+            }
+        #endif // os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
+    }
+
+    /// Deactivate the audio session when playback stops.
+    private func deactivateAudioSession() {
+        #if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
+            do {
+                try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            } catch {
+                logger.error("Failed to deactivate audio session: \(error)")
             }
         #endif // os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
     }

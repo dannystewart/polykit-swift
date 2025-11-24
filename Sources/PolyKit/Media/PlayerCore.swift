@@ -772,8 +772,10 @@ final class PlayerCore: @unchecked Sendable {
                 MainActor.assumeIsolated {
                     switch type {
                     case .began:
-                        // Interruption began - player auto-pauses
-                        break
+                        // Interruption began - AVPlayer auto-pauses, but we need to sync our state
+                        self.isPlaying = false
+                        self.notifyStateChanged()
+                        self.updateNowPlayingInfo()
 
                     case .ended:
                         guard let optionsValue else { return }
