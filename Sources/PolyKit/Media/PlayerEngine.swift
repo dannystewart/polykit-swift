@@ -105,6 +105,16 @@ public class PlayerEngine<T: Playable> {
     private var originalPlaylist: [T] = []
     private var currentlyDownloadingItemID: Int?
 
+    /// Canonical playlist as last provided by the host app.
+    ///
+    /// This reflects the app's "intended" ordering of items (for example,
+    /// a directory listing, search results, or a curated queue). The engine
+    /// uses this for repeat and navigation, but higher-level behaviors like
+    /// shuffle are owned by the host app.
+    public var canonicalPlaylist: [T] {
+        originalPlaylist
+    }
+
     // MARK: Computed Properties
 
     /// Current frequency band levels for visualization (0.0 to 1.0)
@@ -191,7 +201,7 @@ public class PlayerEngine<T: Playable> {
         // Update playlist if provided
         if !itemList.isEmpty {
             originalPlaylist = itemList
-            playlist = isShuffleEnabled ? itemList.shuffled() : itemList
+            playlist = itemList
             currentIndex = playlist.firstIndex(where: { $0.id == item.id }) ?? 0
         }
 
@@ -347,20 +357,6 @@ public class PlayerEngine<T: Playable> {
         }
     }
 
-    public func toggleShuffle() {
-        isShuffleEnabled.toggle()
-
-        guard let currentItem else { return }
-
-        if isShuffleEnabled {
-            playlist = originalPlaylist.shuffled()
-        } else {
-            playlist = originalPlaylist
-        }
-
-        currentIndex = playlist.firstIndex(where: { $0.id == currentItem.id }) ?? 0
-    }
-
     public func cycleRepeatMode() {
         switch repeatMode {
         case .off: repeatMode = .one
@@ -376,12 +372,29 @@ public class PlayerEngine<T: Playable> {
     /// - Parameter newPlaylist: The new canonical playlist ordering.
     public func updatePlaylistKeepingCurrentItem(_ newPlaylist: [T]) {
         originalPlaylist = newPlaylist
+        playlist = newPlaylist
 
-        if isShuffleEnabled {
-            playlist = newPlaylist.shuffled()
+        if
+            let current = currentItem,
+            let index = playlist.firstIndex(where: { $0.id == current.id })
+        {
+            currentIndex = index
         } else {
-            playlist = newPlaylist
+            currentIndex = 0
         }
+    }
+
+    /// Adopt a new playback order for the current playlist without changing
+    /// the canonical playlist provided by the host app.
+    ///
+    /// This is a low-level helper intended for app-specific behaviors such as
+    /// shuffle. Apps decide *what* the new order should be (shuffled, sorted,
+    /// filtered, etc.) and the engine ensures that `currentItem` stays aligned
+    /// with the new ordering.
+    ///
+    /// - Parameter newOrder: The desired playback order for the existing items.
+    public func adoptPlaylistOrder(_ newOrder: [T]) {
+        playlist = newOrder
 
         if
             let current = currentItem,
