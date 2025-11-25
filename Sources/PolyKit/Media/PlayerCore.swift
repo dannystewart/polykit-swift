@@ -136,8 +136,10 @@ final class PlayerCore: @unchecked Sendable {
         newPlayer.play()
         isPlaying = true
         notifyStateChanged()
-        // Don't call updateNowPlayingInfo() here - let the time observer handle it
-        // to avoid dispatch queue conflicts with MPNowPlayingInfoCenter
+
+        // Update Now Playing info immediately with the new track's metadata
+        // to create a seamless A → B transition instead of A → blank → B
+        updateNowPlayingInfo()
     }
 
     // MARK: - Configuration
