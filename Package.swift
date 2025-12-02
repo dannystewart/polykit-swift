@@ -4,8 +4,8 @@ import PackageDescription
 let package = Package(
     name: "PolyKit",
     platforms: [
-        .macOS(.v26),
-        .iOS(.v26),
+        .macOS(.v15),
+        .iOS(.v18),
     ],
     products: [
         .library(name: "PolyKit", targets: ["PolyKit"]),
