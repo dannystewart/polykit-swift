@@ -91,7 +91,7 @@ public struct AnimatedEqualizer: View {
             }
         }
         .onChange(of: frequencyData) { _, newData in
-            if isPlaying, let data = newData, data.count >= barCount {
+            if isPlaying, let data = newData, !data.isEmpty {
                 updateFromFrequencyData(data)
             } else if !isPlaying {
                 resetToMinimum()
