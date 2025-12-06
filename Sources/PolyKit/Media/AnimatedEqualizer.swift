@@ -75,6 +75,7 @@ public struct AnimatedEqualizer: View {
                         .frame(maxHeight: .infinity, alignment: .center)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         // View-level animation keeps motion fluid at display refresh rate,
         // instead of restarting a spring for every individual value change.
