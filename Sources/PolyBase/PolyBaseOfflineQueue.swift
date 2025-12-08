@@ -202,7 +202,7 @@ public final class PolyBaseOfflineQueue: @unchecked Sendable {
     /// - Returns: The number of operations successfully processed.
     @discardableResult
     public func processQueue(
-        executor: (PolyBaseOfflineOperation) async throws -> Void,
+        executor: @Sendable (PolyBaseOfflineOperation) async throws -> Void,
     ) async -> Int {
         let operationsToProcess = getOperationsSnapshot()
 
