@@ -159,9 +159,9 @@ public final class PolyLog: @unchecked Sendable {
     }()
 
     /// Log levels that can be filtered by disabled groups.
-    /// By default, only debug messages are filterable. Warnings, errors, and faults always print.
+    /// By default, debug and info messages are filterable. Warnings, errors, and faults always print.
     /// You can customize this per-logger instance if needed.
-    public var filterableLevels: Set<LogLevel> = [.debug]
+    public var filterableLevels: Set<LogLevel> = [.debug, .info]
 
     /// Registered groups for this logger.
     /// Apps can register their groups here for easy management via UI, persistence, etc.
