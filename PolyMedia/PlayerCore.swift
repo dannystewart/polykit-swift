@@ -8,6 +8,7 @@
 @preconcurrency import Combine
 @preconcurrency import Foundation
 @preconcurrency import MediaPlayer
+import PolyKit
 #if canImport(UIKit)
     import UIKit
 #elseif canImport(AppKit)

@@ -9,6 +9,7 @@ let package = Package(
     ],
     products: [
         .library(name: "PolyKit", targets: ["PolyKit"]),
+        .library(name: "PolyMedia", targets: ["PolyMedia"]),
         .library(name: "PolyBase", targets: ["PolyBase"]),
     ],
     dependencies: [
@@ -18,6 +19,13 @@ let package = Package(
         .target(
             name: "PolyKit",
             path: "PolyKit",
+        ),
+        .target(
+            name: "PolyMedia",
+            dependencies: [
+                "PolyKit",
+            ],
+            path: "PolyMedia",
         ),
         .target(
             name: "PolyBase",

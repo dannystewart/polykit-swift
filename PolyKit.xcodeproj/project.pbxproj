@@ -13,7 +13,6 @@
 		30DAC3912EEE0AAE004F96CE /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 30DAC3902EEE0AAE004F96CE /* Realtime */; };
 		30DAC3932EEE0AAE004F96CE /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 30DAC3922EEE0AAE004F96CE /* Storage */; };
 		30DAC3E52EEE0B6E004F96CE /* PolyKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 30DAC2FD2EEE0988004F96CE /* PolyKit.framework */; };
-		30DAC3E62EEE0B6E004F96CE /* PolyKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 30DAC2FD2EEE0988004F96CE /* PolyKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -26,23 +25,10 @@
 		};
 /* End PBXContainerItemProxy section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		30DAC3E92EEE0B6E004F96CE /* Embed Frameworks */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				30DAC3E62EEE0B6E004F96CE /* PolyKit.framework in Embed Frameworks */,
-			);
-			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
 		30DAC2FD2EEE0988004F96CE /* PolyKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PolyKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		30DAC3402EEE0A4F004F96CE /* PolyBase.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PolyBase.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		30DAC4C92EEE1370004F96CE /* PolyMedia.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PolyMedia.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -54,6 +40,11 @@
 		30DAC3E32EEE0B62004F96CE /* PolyKit */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = PolyKit;
+			sourceTree = "<group>";
+		};
+		30DAC4C32EEE1365004F96CE /* PolyMedia */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PolyMedia;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -79,16 +70,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		30DAC4C62EEE1370004F96CE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		30DAC2F32EEE0988004F96CE = {
 			isa = PBXGroup;
 			children = (
-				30DAC2FE2EEE0988004F96CE /* Products */,
+				30DAC3E42EEE0B6E004F96CE /* Frameworks */,
 				30DAC3D42EEE0B62004F96CE /* PolyBase */,
 				30DAC3E32EEE0B62004F96CE /* PolyKit */,
-				30DAC3E42EEE0B6E004F96CE /* Frameworks */,
+				30DAC4C32EEE1365004F96CE /* PolyMedia */,
+				30DAC2FE2EEE0988004F96CE /* Products */,
 			);
 			sourceTree = "<group>";
 		};
@@ -97,6 +96,7 @@
 			children = (
 				30DAC2FD2EEE0988004F96CE /* PolyKit.framework */,
 				30DAC3402EEE0A4F004F96CE /* PolyBase.framework */,
+				30DAC4C92EEE1370004F96CE /* PolyMedia.framework */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -125,6 +125,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		30DAC4C42EEE1370004F96CE /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
@@ -144,7 +151,7 @@
 			name = PolyKit;
 			packageProductDependencies = (
 			);
-			productName = PolyKitSwift;
+			productName = PolyKit;
 			productReference = 30DAC2FD2EEE0988004F96CE /* PolyKit.framework */;
 			productType = "com.apple.product-type.framework";
 		};
@@ -156,7 +163,6 @@
 				30DAC33C2EEE0A4F004F96CE /* Sources */,
 				30DAC33D2EEE0A4F004F96CE /* Frameworks */,
 				30DAC33E2EEE0A4F004F96CE /* Resources */,
-				30DAC3E92EEE0B6E004F96CE /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -175,6 +181,26 @@
 			productReference = 30DAC3402EEE0A4F004F96CE /* PolyBase.framework */;
 			productType = "com.apple.product-type.framework";
 		};
+		30DAC4C82EEE1370004F96CE /* PolyMedia */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 30DAC4CD2EEE1370004F96CE /* Build configuration list for PBXNativeTarget "PolyMedia" */;
+			buildPhases = (
+				30DAC4C42EEE1370004F96CE /* Headers */,
+				30DAC4C52EEE1370004F96CE /* Sources */,
+				30DAC4C62EEE1370004F96CE /* Frameworks */,
+				30DAC4C72EEE1370004F96CE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PolyMedia;
+			packageProductDependencies = (
+			);
+			productName = PolyMedia;
+			productReference = 30DAC4C92EEE1370004F96CE /* PolyMedia.framework */;
+			productType = "com.apple.product-type.framework";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -189,6 +215,9 @@
 						CreatedOnToolsVersion = 26.1.1;
 					};
 					30DAC33F2EEE0A4F004F96CE = {
+						CreatedOnToolsVersion = 26.1.1;
+					};
+					30DAC4C82EEE1370004F96CE = {
 						CreatedOnToolsVersion = 26.1.1;
 					};
 				};
@@ -212,6 +241,7 @@
 			targets = (
 				30DAC2FC2EEE0988004F96CE /* PolyKit */,
 				30DAC33F2EEE0A4F004F96CE /* PolyBase */,
+				30DAC4C82EEE1370004F96CE /* PolyMedia */,
 			);
 		};
 /* End PBXProject section */
@@ -231,6 +261,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		30DAC4C72EEE1370004F96CE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -242,6 +279,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		30DAC33C2EEE0A4F004F96CE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		30DAC4C52EEE1370004F96CE /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -565,6 +609,96 @@
 			};
 			name = Release;
 		};
+		30DAC4CE2EEE1370004F96CE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PL2FTGT24W;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"@executable_path/../Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dannystewart.PolyMedia;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INSTALL_MODULE = YES;
+				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.1;
+			};
+			name = Debug;
+		};
+		30DAC4CF2EEE1370004F96CE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PL2FTGT24W;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"@executable_path/../Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dannystewart.PolyMedia;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INSTALL_MODULE = YES;
+				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -591,6 +725,15 @@
 			buildConfigurations = (
 				30DAC3452EEE0A4F004F96CE /* Debug */,
 				30DAC3462EEE0A4F004F96CE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		30DAC4CD2EEE1370004F96CE /* Build configuration list for PBXNativeTarget "PolyMedia" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				30DAC4CE2EEE1370004F96CE /* Debug */,
+				30DAC4CF2EEE1370004F96CE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
