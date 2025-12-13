@@ -17,7 +17,7 @@ let package = Package(
     targets: [
         .target(
             name: "PolyKit",
-            path: "Sources/PolyKit",
+            path: "PolyKit",
         ),
         .target(
             name: "PolyBase",
@@ -25,7 +25,7 @@ let package = Package(
                 "PolyKit",
                 .product(name: "Supabase", package: "supabase-swift"),
             ],
-            path: "Sources/PolyBase",
+            path: "PolyBase",
         ),
     ],
 )
