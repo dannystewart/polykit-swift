@@ -219,10 +219,31 @@ public class PlayerEngine<T: Playable> {
             let isCached = cachedItemIDs.contains(item.id)
 
             if isCached {
-                // Use our cached copy from previous download
-                playbackURL = getCachedFileURL(for: item.id)
-                treatedAsCached = true
-                logger.debug("Using cached file from previous download; seeking is enabled")
+                // Verify the cached file actually exists before using it
+                let cachedURL = getCachedFileURL(for: item.id)
+                if FileManager.default.fileExists(atPath: cachedURL.path) {
+                    // Use our cached copy from previous download
+                    playbackURL = cachedURL
+                    treatedAsCached = true
+                    logger.debug("Using cached file from previous download; seeking is enabled")
+                } else {
+                    // Cached file is missing - remove from cache set and stream instead
+                    logger.warning("Cached file \(item.id) is marked as cached but doesn't exist; removing from cache and streaming")
+                    cachedItemIDs.remove(item.id)
+                    favoriteCachedIDs.remove(item.id)
+                    saveCachedItems()
+
+                    // Stream the remote file and download in background
+                    playbackURL = audioURL
+                    treatedAsCached = false
+
+                    // Start background download for caching
+                    if currentlyDownloadingItemID != item.id {
+                        currentlyDownloadingItemID = item.id
+                        logger.debug("Starting background download for remote file")
+                        downloadItem(item, enablePlaybackOptimizations: true, markAsFavorite: false)
+                    }
+                }
             } else {
                 // Stream the remote file and download in background
                 playbackURL = audioURL
@@ -420,9 +441,20 @@ public class PlayerEngine<T: Playable> {
         let itemID = item.id
 
         if cachedItemIDs.contains(itemID) {
-            favoriteCachedIDs.insert(itemID)
-            saveCachedItems()
-            return
+            // Verify the cached file actually exists
+            let cachedURL = getCachedFileURL(for: itemID)
+            if FileManager.default.fileExists(atPath: cachedURL.path) {
+                favoriteCachedIDs.insert(itemID)
+                saveCachedItems()
+                return
+            } else {
+                // Cached file is missing - remove from cache set and re-download
+                logger.warning("Cached file \(itemID) is marked as cached but doesn't exist; re-downloading")
+                cachedItemIDs.remove(itemID)
+                favoriteCachedIDs.remove(itemID)
+                saveCachedItems()
+                // Fall through to download
+            }
         }
 
         // Don't try to cache local files - they're already available
@@ -450,10 +482,20 @@ public class PlayerEngine<T: Playable> {
                 continue
             }
 
-            if !cachedItemIDs.contains(itemID) {
-                downloadItem(item, enablePlaybackOptimizations: false, markAsFavorite: true)
+            if cachedItemIDs.contains(itemID) {
+                // Verify the cached file actually exists
+                let cachedURL = getCachedFileURL(for: itemID)
+                if FileManager.default.fileExists(atPath: cachedURL.path) {
+                    favoriteCachedIDs.insert(itemID)
+                } else {
+                    // Cached file is missing - remove from cache set and re-download
+                    logger.warning("Cached file \(itemID) is marked as cached but doesn't exist; re-downloading")
+                    cachedItemIDs.remove(itemID)
+                    favoriteCachedIDs.remove(itemID)
+                    downloadItem(item, enablePlaybackOptimizations: false, markAsFavorite: true)
+                }
             } else {
-                favoriteCachedIDs.insert(itemID)
+                downloadItem(item, enablePlaybackOptimizations: false, markAsFavorite: true)
             }
         }
 
