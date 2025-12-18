@@ -27,7 +27,7 @@ import Supabase
 /// ```swift
 /// PolyBaseClient.configureFromInfoPlist(
 ///     urlKey: "SUPABASE_URL",
-///     anonKeyKey: "SUPABASE_ANON_KEY"
+///     anonKeyKey: "SUPABASE_KEY"
 /// )
 /// ```
 public final class PolyBaseClient: @unchecked Sendable {
@@ -74,12 +74,12 @@ public final class PolyBaseClient: @unchecked Sendable {
     ///
     /// - Parameters:
     ///   - urlKey: The Info.plist key for the project URL. Defaults to "SUPABASE_URL".
-    ///   - anonKeyKey: The Info.plist key for the anon key. Defaults to "SUPABASE_ANON_KEY".
+    ///   - anonKeyKey: The Info.plist key for the anon key. Defaults to "SUPABASE_KEY".
     /// - Throws: `PolyBaseError.missingConfiguration` if keys are not found.
     @discardableResult
     public static func configureFromInfoPlist(
         urlKey: String = "SUPABASE_URL",
-        anonKeyKey: String = "SUPABASE_ANON_KEY",
+        anonKeyKey: String = "SUPABASE_KEY",
     ) throws -> PolyBaseClient {
         guard
             let urlString = Bundle.main.infoDictionary?[urlKey] as? String,
