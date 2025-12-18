@@ -10,6 +10,10 @@ let package = Package(
     products: [
         .library(name: "PolyKit", targets: ["PolyKit"]),
         .library(name: "PolyMedia", targets: ["PolyMedia"]),
+        .library(name: "PolyBase", targets: ["PolyBase"]),
+    ],
+    dependencies: [
+        .package(url: "https://github.com/supabase/supabase-swift.git", from: "2.0.0"),
     ],
     targets: [
         .target(
@@ -22,6 +26,14 @@ let package = Package(
                 "PolyKit",
             ],
             path: "PolyMedia",
+        ),
+        .target(
+            name: "PolyBase",
+            dependencies: [
+                "PolyKit",
+                .product(name: "Supabase", package: "supabase-swift"),
+            ],
+            path: "PolyBase",
         ),
     ],
 )

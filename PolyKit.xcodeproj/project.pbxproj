@@ -7,11 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		304B2B6B2EF3938800A1BF4A /* PolyKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 30DAC2FD2EEE0988004F96CE /* PolyKit.framework */; };
+		30DAC38B2EEE0AAE004F96CE /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 30DAC38A2EEE0AAE004F96CE /* Auth */; };
+		30DAC38D2EEE0AAE004F96CE /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 30DAC38C2EEE0AAE004F96CE /* Functions */; };
+		30DAC38F2EEE0AAE004F96CE /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 30DAC38E2EEE0AAE004F96CE /* PostgREST */; };
+		30DAC3912EEE0AAE004F96CE /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 30DAC3902EEE0AAE004F96CE /* Realtime */; };
+		30DAC3932EEE0AAE004F96CE /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 30DAC3922EEE0AAE004F96CE /* Storage */; };
+		30DAC3E52EEE0B6E004F96CE /* PolyKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 30DAC2FD2EEE0988004F96CE /* PolyKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		304B2B6D2EF3938800A1BF4A /* PBXContainerItemProxy */ = {
+		30DAC3E72EEE0B6E004F96CE /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 30DAC2F42EEE0988004F96CE /* Project object */;
 			proxyType = 1;
@@ -22,10 +27,16 @@
 
 /* Begin PBXFileReference section */
 		30DAC2FD2EEE0988004F96CE /* PolyKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PolyKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		30DAC3402EEE0A4F004F96CE /* PolyBase.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PolyBase.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		30DAC4C92EEE1370004F96CE /* PolyMedia.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PolyMedia.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		30DAC3D42EEE0B62004F96CE /* PolyBase */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PolyBase;
+			sourceTree = "<group>";
+		};
 		30DAC3E32EEE0B62004F96CE /* PolyKit */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = PolyKit;
@@ -46,11 +57,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		30DAC33D2EEE0A4F004F96CE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				30DAC38F2EEE0AAE004F96CE /* PostgREST in Frameworks */,
+				30DAC3E52EEE0B6E004F96CE /* PolyKit.framework in Frameworks */,
+				30DAC38D2EEE0AAE004F96CE /* Functions in Frameworks */,
+				30DAC38B2EEE0AAE004F96CE /* Auth in Frameworks */,
+				30DAC3932EEE0AAE004F96CE /* Storage in Frameworks */,
+				30DAC3912EEE0AAE004F96CE /* Realtime in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		30DAC4C62EEE1370004F96CE /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				304B2B6B2EF3938800A1BF4A /* PolyKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -61,6 +84,7 @@
 			isa = PBXGroup;
 			children = (
 				30DAC3E42EEE0B6E004F96CE /* Frameworks */,
+				30DAC3D42EEE0B62004F96CE /* PolyBase */,
 				30DAC3E32EEE0B62004F96CE /* PolyKit */,
 				30DAC4C32EEE1365004F96CE /* PolyMedia */,
 				30DAC2FE2EEE0988004F96CE /* Products */,
@@ -71,6 +95,7 @@
 			isa = PBXGroup;
 			children = (
 				30DAC2FD2EEE0988004F96CE /* PolyKit.framework */,
+				30DAC3402EEE0A4F004F96CE /* PolyBase.framework */,
 				30DAC4C92EEE1370004F96CE /* PolyMedia.framework */,
 			);
 			name = Products;
@@ -87,6 +112,13 @@
 
 /* Begin PBXHeadersBuildPhase section */
 		30DAC2F82EEE0988004F96CE /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		30DAC33B2EEE0A4F004F96CE /* Headers */ = {
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -123,6 +155,32 @@
 			productReference = 30DAC2FD2EEE0988004F96CE /* PolyKit.framework */;
 			productType = "com.apple.product-type.framework";
 		};
+		30DAC33F2EEE0A4F004F96CE /* PolyBase */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 30DAC3442EEE0A4F004F96CE /* Build configuration list for PBXNativeTarget "PolyBase" */;
+			buildPhases = (
+				30DAC33B2EEE0A4F004F96CE /* Headers */,
+				30DAC33C2EEE0A4F004F96CE /* Sources */,
+				30DAC33D2EEE0A4F004F96CE /* Frameworks */,
+				30DAC33E2EEE0A4F004F96CE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				30DAC3E82EEE0B6E004F96CE /* PBXTargetDependency */,
+			);
+			name = PolyBase;
+			packageProductDependencies = (
+				30DAC38A2EEE0AAE004F96CE /* Auth */,
+				30DAC38C2EEE0AAE004F96CE /* Functions */,
+				30DAC38E2EEE0AAE004F96CE /* PostgREST */,
+				30DAC3902EEE0AAE004F96CE /* Realtime */,
+				30DAC3922EEE0AAE004F96CE /* Storage */,
+			);
+			productName = PolyBase;
+			productReference = 30DAC3402EEE0A4F004F96CE /* PolyBase.framework */;
+			productType = "com.apple.product-type.framework";
+		};
 		30DAC4C82EEE1370004F96CE /* PolyMedia */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 30DAC4CD2EEE1370004F96CE /* Build configuration list for PBXNativeTarget "PolyMedia" */;
@@ -135,7 +193,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				304B2B6E2EF3938800A1BF4A /* PBXTargetDependency */,
 			);
 			name = PolyMedia;
 			packageProductDependencies = (
@@ -152,9 +209,12 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2610;
-				LastUpgradeCheck = 2620;
+				LastUpgradeCheck = 2610;
 				TargetAttributes = {
 					30DAC2FC2EEE0988004F96CE = {
+						CreatedOnToolsVersion = 26.1.1;
+					};
+					30DAC33F2EEE0A4F004F96CE = {
 						CreatedOnToolsVersion = 26.1.1;
 					};
 					30DAC4C82EEE1370004F96CE = {
@@ -172,6 +232,7 @@
 			mainGroup = 30DAC2F32EEE0988004F96CE;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				30DAC3892EEE0AAE004F96CE /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 30DAC2FE2EEE0988004F96CE /* Products */;
@@ -179,6 +240,7 @@
 			projectRoot = "";
 			targets = (
 				30DAC2FC2EEE0988004F96CE /* PolyKit */,
+				30DAC33F2EEE0A4F004F96CE /* PolyBase */,
 				30DAC4C82EEE1370004F96CE /* PolyMedia */,
 			);
 		};
@@ -186,6 +248,13 @@
 
 /* Begin PBXResourcesBuildPhase section */
 		30DAC2FB2EEE0988004F96CE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		30DAC33E2EEE0A4F004F96CE /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -209,6 +278,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		30DAC33C2EEE0A4F004F96CE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		30DAC4C52EEE1370004F96CE /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -219,10 +295,10 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		304B2B6E2EF3938800A1BF4A /* PBXTargetDependency */ = {
+		30DAC3E82EEE0B6E004F96CE /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 30DAC2FC2EEE0988004F96CE /* PolyKit */;
-			targetProxy = 304B2B6D2EF3938800A1BF4A /* PBXContainerItemProxy */;
+			targetProxy = 30DAC3E72EEE0B6E004F96CE /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -232,7 +308,6 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -263,7 +338,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = PL2FTGT24W;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -287,7 +361,6 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				VERSIONING_SYSTEM = "apple-generic";
@@ -300,7 +373,6 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -331,7 +403,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = PL2FTGT24W;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -348,7 +419,6 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";
@@ -360,10 +430,8 @@
 			buildSettings = {
 				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
-				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = PL2FTGT24W;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -408,10 +476,8 @@
 			buildSettings = {
 				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
-				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = PL2FTGT24W;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -451,15 +517,13 @@
 			};
 			name = Release;
 		};
-		30DAC4CE2EEE1370004F96CE /* Debug */ = {
+		30DAC3452EEE0A4F004F96CE /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
-				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = PL2FTGT24W;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -481,7 +545,7 @@
 				MARKETING_VERSION = 1.0;
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
-				PRODUCT_BUNDLE_IDENTIFIER = com.dannystewart.PolyMedia;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dannystewart.PolyBase;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SDKROOT = auto;
 				SKIP_INSTALL = YES;
@@ -499,15 +563,59 @@
 			};
 			name = Debug;
 		};
-		30DAC4CF2EEE1370004F96CE /* Release */ = {
+		30DAC3462EEE0A4F004F96CE /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
-				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = PL2FTGT24W;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"@executable_path/../Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dannystewart.PolyBase;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INSTALL_MODULE = YES;
+				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				XROS_DEPLOYMENT_TARGET = 26.1;
+			};
+			name = Release;
+		};
+		30DAC4CE2EEE1370004F96CE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = PL2FTGT24W;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -534,15 +642,59 @@
 				SDKROOT = auto;
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
-				SUPPORTS_MACCATALYST = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_INSTALL_MODULE = YES;
 				SWIFT_INSTALL_OBJC_HEADER = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.1;
+			};
+			name = Debug;
+		};
+		30DAC4CF2EEE1370004F96CE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PL2FTGT24W;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
+					"@executable_path/../Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dannystewart.PolyMedia;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INSTALL_MODULE = YES;
+				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
 				XROS_DEPLOYMENT_TARGET = 26.1;
 			};
 			name = Release;
@@ -568,6 +720,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		30DAC3442EEE0A4F004F96CE /* Build configuration list for PBXNativeTarget "PolyBase" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				30DAC3452EEE0A4F004F96CE /* Debug */,
+				30DAC3462EEE0A4F004F96CE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		30DAC4CD2EEE1370004F96CE /* Build configuration list for PBXNativeTarget "PolyMedia" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -578,6 +739,45 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		30DAC3892EEE0AAE004F96CE /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		30DAC38A2EEE0AAE004F96CE /* Auth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 30DAC3892EEE0AAE004F96CE /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Auth;
+		};
+		30DAC38C2EEE0AAE004F96CE /* Functions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 30DAC3892EEE0AAE004F96CE /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Functions;
+		};
+		30DAC38E2EEE0AAE004F96CE /* PostgREST */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 30DAC3892EEE0AAE004F96CE /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = PostgREST;
+		};
+		30DAC3902EEE0AAE004F96CE /* Realtime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 30DAC3892EEE0AAE004F96CE /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Realtime;
+		};
+		30DAC3922EEE0AAE004F96CE /* Storage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 30DAC3892EEE0AAE004F96CE /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Storage;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 30DAC2F42EEE0988004F96CE /* Project object */;
 }
