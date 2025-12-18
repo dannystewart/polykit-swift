@@ -94,7 +94,7 @@ public final class PolyBaseEncryption: @unchecked Sendable {
         return adminUserIDs.contains(userID)
     }
 
-    // MARK: - Encryption
+    // MARK: - String Encryption
 
     /// Encrypt a string for a specific user.
     ///
@@ -166,6 +166,84 @@ public final class PolyBaseEncryption: @unchecked Sendable {
     /// Check if a string is encrypted (has our prefix).
     public func isEncrypted(_ text: String) -> Bool {
         text.hasPrefix("enc:")
+    }
+
+    // MARK: - Binary Data Encryption
+
+    /// Encrypt binary data for a specific user.
+    ///
+    /// Uses AES-256-GCM with a per-user derived key. The output includes a 4-byte magic header
+    /// ("ENC\0") followed by the nonce, ciphertext, and authentication tag.
+    ///
+    /// - Parameters:
+    ///   - data: The data to encrypt.
+    ///   - userID: The user's ID (used in key derivation).
+    /// - Returns: The encrypted data with magic header, or the original data for admin users, or `nil` on failure.
+    public func encryptData(_ data: Data, forUserID userID: UUID) -> Data? {
+        guard !data.isEmpty else { return data }
+
+        // Skip encryption for admin users
+        if isAdminUser(userID) {
+            return data
+        }
+
+        do {
+            let key = deriveKey(forUserID: userID)
+
+            // Generate random nonce
+            let nonce = AES.GCM.Nonce()
+
+            // Encrypt
+            let sealedBox = try AES.GCM.seal(data, using: key, nonce: nonce)
+
+            // Combine nonce + ciphertext + tag into single data
+            guard let combined = sealedBox.combined else { return nil }
+
+            // Prepend magic header so we know it's encrypted
+            // "ENC\0" = 0x45 0x4E 0x43 0x00
+            var result = Data([0x45, 0x4E, 0x43, 0x00])
+            result.append(combined)
+            return result
+        } catch {
+            polyError("PolyBase: Data encryption failed: \(error)")
+            return nil
+        }
+    }
+
+    /// Decrypt binary data for a specific user.
+    ///
+    /// - Parameters:
+    ///   - data: The encrypted data (with magic header) or plaintext data.
+    ///   - userID: The user's ID (used in key derivation).
+    /// - Returns: The decrypted data, or the original if not encrypted, or `nil` on failure.
+    public func decryptData(_ data: Data, forUserID userID: UUID) -> Data? {
+        // Check for magic header "ENC\0"
+        guard
+            data.count > 4,
+            data[0] == 0x45, data[1] == 0x4E, data[2] == 0x43, data[3] == 0x00 else
+        {
+            // Not encrypted - return as-is (for backwards compatibility during migration)
+            return data
+        }
+
+        do {
+            let key = deriveKey(forUserID: userID)
+
+            // Remove magic header
+            let combined = data.dropFirst(4)
+
+            // Decrypt
+            let sealedBox = try AES.GCM.SealedBox(combined: combined)
+            return try AES.GCM.open(sealedBox, using: key)
+        } catch {
+            polyError("PolyBase: Data decryption failed: \(error)")
+            return nil
+        }
+    }
+
+    /// Check if binary data is encrypted (has our magic header).
+    public func isDataEncrypted(_ data: Data) -> Bool {
+        data.count > 4 && data[0] == 0x45 && data[1] == 0x4E && data[2] == 0x43 && data[3] == 0x00
     }
 
     // MARK: - Key Derivation
