@@ -404,23 +404,34 @@ public final class PolyLog: @unchecked Sendable {
     }
 
     /// Loads persisted group states from UserDefaults and applies them.
-    /// Groups found in UserDefaults are enabled, all others from `registeredGroups` are disabled.
     ///
-    /// - Parameters:
-    ///   - key: The UserDefaults key to read from. Defaults to "EnabledLogGroups".
-    ///   - defaultToDisabled: If `true`, groups not in UserDefaults are disabled (opt-in).
-    ///                        If `false`, groups not in UserDefaults are enabled (opt-out).
-    ///                        Defaults to `true` (opt-in behavior).
-    public func loadPersistedStates(key: String = "EnabledLogGroups", defaultToDisabled: Bool = false) {
-        let enabledIdentifiers = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
+    /// If saved preferences exist, they are treated as authoritative - groups in the saved list
+    /// are enabled, groups not in the list are disabled. If no saved preferences exist, the
+    /// current state (e.g., from `applyDefaultStates()`) is left unchanged.
+    ///
+    /// Typical workflow:
+    /// ```swift
+    /// logger.applyDefaultStates()    // Apply per-group defaults
+    /// logger.loadPersistedStates()   // Override with user preferences if saved
+    /// ```
+    ///
+    /// - Parameter key: The UserDefaults key to read from. Defaults to "EnabledLogGroups".
+    public func loadPersistedStates(key: String = "EnabledLogGroups") {
+        // Check if saved preferences exist
+        guard let savedIdentifiers = UserDefaults.standard.stringArray(forKey: key) else {
+            // No saved preferences - leave current state (from applyDefaultStates) unchanged
+            return
+        }
 
+        let enabledIdentifiers = Set(savedIdentifiers)
+
+        // Saved preferences exist - treat them as authoritative
         for group in registeredGroups {
             if enabledIdentifiers.contains(group.identifier) {
                 enableGroup(group)
-            } else if defaultToDisabled {
+            } else {
                 disableGroup(group)
             }
-            // If !defaultToDisabled and not in saved set, leave as-is (enabled by default)
         }
     }
 
