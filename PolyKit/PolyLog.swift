@@ -366,7 +366,7 @@ public final class PolyLog: @unchecked Sendable {
     ///   - defaultToDisabled: If `true`, groups not in UserDefaults are disabled (opt-in).
     ///                        If `false`, groups not in UserDefaults are enabled (opt-out).
     ///                        Defaults to `true` (opt-in behavior).
-    public func loadPersistedStates(key: String = "EnabledLogGroups", defaultToDisabled: Bool = true) {
+    public func loadPersistedStates(key: String = "EnabledLogGroups", defaultToDisabled: Bool = false) {
         let enabledIdentifiers = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
 
         for group in registeredGroups {
@@ -377,20 +377,6 @@ public final class PolyLog: @unchecked Sendable {
             }
             // If !defaultToDisabled and not in saved set, leave as-is (enabled by default)
         }
-    }
-
-    /// Applies different group configurations based on build type.
-    /// In DEBUG: Loads persisted states (opt-in by default).
-    /// In RELEASE: Disables all registered groups for performance.
-    ///
-    /// - Parameter key: The UserDefaults key to use. Defaults to "EnabledLogGroups".
-    public func applyBuildConfiguration(key: String = "EnabledLogGroups") {
-        #if DEBUG
-            loadPersistedStates(key: key, defaultToDisabled: true)
-        #else
-            // Disable all groups in release builds for performance
-            disableGroups(registeredGroups)
-        #endif
     }
 
     /// Logs a message at the specified level.
