@@ -118,16 +118,18 @@ public final class LogBuffer: @unchecked Sendable {
 /// extension LogGroup {
 ///     static let networking = LogGroup("networking", emoji: "🌐")
 ///     static let database = LogGroup("database", emoji: "💾")
-///     static let ui = LogGroup("ui", emoji: "🎨")
+///     static let verboseUI = LogGroup("verbose-ui", emoji: "🎨", defaultEnabled: false)
 /// }
 /// ```
 public struct LogGroup: Hashable, Sendable {
     public let identifier: String
     public let emoji: String?
+    public let defaultEnabled: Bool
 
-    public init(_ identifier: String, emoji: String? = nil) {
+    public init(_ identifier: String, emoji: String? = nil, defaultEnabled: Bool = true) {
         self.identifier = identifier
         self.emoji = emoji
+        self.defaultEnabled = defaultEnabled
     }
 }
 
@@ -137,6 +139,25 @@ public struct LogGroup: Hashable, Sendable {
 ///
 /// Supports categorizing logs into groups that can be individually enabled/disabled at runtime.
 /// All group functionality is optional - logs without groups are always printed.
+///
+/// ## Group Configuration
+///
+/// Define your log groups with their default states:
+///
+/// ```swift
+/// extension LogGroup {
+///     static let networking = LogGroup("networking", emoji: "🌐")
+///     static let verboseDB = LogGroup("verbose-db", emoji: "💾", defaultEnabled: false)
+/// }
+/// ```
+///
+/// Then configure the logger at startup:
+///
+/// ```swift
+/// logger.registeredGroups = [.networking, .verboseDB]
+/// logger.applyDefaultStates()       // Apply per-group defaults
+/// logger.loadPersistedStates()      // Override with saved user preferences
+/// ```
 ///
 /// ## In-App Console Capture
 ///
@@ -337,6 +358,30 @@ public final class PolyLog: @unchecked Sendable {
         groupLock.lock()
         defer { groupLock.unlock() }
         disabledGroups.removeAll()
+    }
+
+    /// Applies default enabled/disabled states based on `registeredGroups` and their `defaultEnabled` property.
+    ///
+    /// Call this during app initialization to set up initial group states. Groups with `defaultEnabled: false`
+    /// will be disabled, while groups with `defaultEnabled: true` (the default) will be enabled.
+    ///
+    /// Typical workflow:
+    /// ```swift
+    /// logger.registeredGroups = [.networking, .database, .verboseUI]
+    /// logger.applyDefaultStates()  // Apply defaults
+    /// logger.loadPersistedStates() // Override with user preferences if available
+    /// ```
+    public func applyDefaultStates() {
+        groupLock.lock()
+        defer { groupLock.unlock() }
+
+        for group in registeredGroups {
+            if group.defaultEnabled {
+                disabledGroups.remove(group)
+            } else {
+                disabledGroups.insert(group)
+            }
+        }
     }
 
     // MARK: Persistence
