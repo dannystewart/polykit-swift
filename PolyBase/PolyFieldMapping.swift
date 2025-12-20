@@ -47,6 +47,10 @@ public struct PolyFieldMapping<Entity: PolySyncable>: Sendable {
     /// Whether this field can be nil
     public let isOptional: Bool
 
+    /// If true, reject incoming empty values and keep the existing local value.
+    /// Prevents accidental data erasure during sync.
+    public let rejectIfEmpty: Bool
+
     /// Closure to get the value from an entity as AnyJSON
     let getValue: @Sendable (Entity) -> AnyJSON
 
@@ -67,10 +71,17 @@ public extension PolyFieldMapping {
     // MARK: String Fields
 
     /// Map a String property to a column.
+    ///
+    /// - Parameters:
+    ///   - keyPath: The property to map
+    ///   - column: The Supabase column name
+    ///   - encrypted: Whether this field should be encrypted
+    ///   - rejectIfEmpty: If true, incoming empty strings are rejected (existing value kept)
     static func map(
         _ keyPath: WritableKeyPath<Entity, String> & Sendable,
         to column: String,
         encrypted: Bool = false,
+        rejectIfEmpty: Bool = false,
     ) -> PolyFieldMapping {
         PolyFieldMapping(
             columnName: column,
@@ -78,6 +89,7 @@ public extension PolyFieldMapping {
             encrypted: encrypted,
             fieldType: .string,
             isOptional: false,
+            rejectIfEmpty: rejectIfEmpty,
             getValue: { entity in
                 .string(entity[keyPath: keyPath])
             },
@@ -98,10 +110,17 @@ public extension PolyFieldMapping {
     }
 
     /// Map an optional String property to a column.
+    ///
+    /// - Parameters:
+    ///   - keyPath: The property to map
+    ///   - column: The Supabase column name
+    ///   - encrypted: Whether this field should be encrypted
+    ///   - rejectIfEmpty: If true, incoming empty/null strings are rejected (existing value kept)
     static func map(
         _ keyPath: WritableKeyPath<Entity, String?> & Sendable,
         to column: String,
         encrypted: Bool = false,
+        rejectIfEmpty: Bool = false,
     ) -> PolyFieldMapping {
         PolyFieldMapping(
             columnName: column,
@@ -109,6 +128,7 @@ public extension PolyFieldMapping {
             encrypted: encrypted,
             fieldType: .optionalString,
             isOptional: true,
+            rejectIfEmpty: rejectIfEmpty,
             getValue: { entity in
                 if let value = entity[keyPath: keyPath] {
                     return .string(value)
@@ -149,6 +169,7 @@ public extension PolyFieldMapping {
             encrypted: false,
             fieldType: .int,
             isOptional: false,
+            rejectIfEmpty: false,
             getValue: { entity in
                 .integer(entity[keyPath: keyPath])
             },
@@ -174,6 +195,7 @@ public extension PolyFieldMapping {
             encrypted: false,
             fieldType: .optionalInt,
             isOptional: true,
+            rejectIfEmpty: false,
             getValue: { entity in
                 if let value = entity[keyPath: keyPath] {
                     return .integer(value)
@@ -209,6 +231,7 @@ public extension PolyFieldMapping {
             encrypted: false,
             fieldType: .double,
             isOptional: false,
+            rejectIfEmpty: false,
             getValue: { entity in
                 .double(entity[keyPath: keyPath])
             },
@@ -234,6 +257,7 @@ public extension PolyFieldMapping {
             encrypted: false,
             fieldType: .optionalDouble,
             isOptional: true,
+            rejectIfEmpty: false,
             getValue: { entity in
                 if let value = entity[keyPath: keyPath] {
                     return .double(value)
@@ -269,6 +293,7 @@ public extension PolyFieldMapping {
             encrypted: false,
             fieldType: .bool,
             isOptional: false,
+            rejectIfEmpty: false,
             getValue: { entity in
                 .bool(entity[keyPath: keyPath])
             },
@@ -296,6 +321,7 @@ public extension PolyFieldMapping {
             encrypted: false,
             fieldType: .date,
             isOptional: false,
+            rejectIfEmpty: false,
             getValue: { entity in
                 .string(ISO8601DateFormatter().string(from: entity[keyPath: keyPath]))
             },
@@ -323,6 +349,7 @@ public extension PolyFieldMapping {
             encrypted: false,
             fieldType: .optionalDate,
             isOptional: true,
+            rejectIfEmpty: false,
             getValue: { entity in
                 if let date = entity[keyPath: keyPath] {
                     return .string(ISO8601DateFormatter().string(from: date))
@@ -361,6 +388,7 @@ public extension PolyFieldMapping {
             encrypted: false,
             fieldType: .uuid,
             isOptional: false,
+            rejectIfEmpty: false,
             getValue: { entity in
                 .string(entity[keyPath: keyPath].uuidString)
             },
@@ -388,6 +416,7 @@ public extension PolyFieldMapping {
             encrypted: false,
             fieldType: .optionalUUID,
             isOptional: true,
+            rejectIfEmpty: false,
             getValue: { entity in
                 if let uuid = entity[keyPath: keyPath] {
                     return .string(uuid.uuidString)
@@ -427,6 +456,7 @@ public extension PolyFieldMapping {
             encrypted: false,
             fieldType: .string,
             isOptional: false,
+            rejectIfEmpty: false,
             getValue: { entity in
                 .string(entity[keyPath: keyPath].rawValue)
             },
@@ -455,6 +485,7 @@ public extension PolyFieldMapping {
             encrypted: false,
             fieldType: .optionalString,
             isOptional: true,
+            rejectIfEmpty: false,
             getValue: { entity in
                 if let value = entity[keyPath: keyPath] {
                     return .string(value.rawValue)
@@ -494,6 +525,9 @@ public struct AnyFieldMapping: Sendable {
     public let fieldType: PolyFieldType
     public let isOptional: Bool
 
+    /// If true, reject incoming empty values and keep the existing local value.
+    public let rejectIfEmpty: Bool
+
     private let _getValue: @Sendable (Any) -> AnyJSON?
     private let _setValue: @Sendable (Any, AnyJSON) -> Bool
     private let _getStringValue: (@Sendable (Any) -> String?)?
@@ -505,6 +539,7 @@ public struct AnyFieldMapping: Sendable {
         encrypted = mapping.encrypted
         fieldType = mapping.fieldType
         isOptional = mapping.isOptional
+        rejectIfEmpty = mapping.rejectIfEmpty
 
         _getValue = { entity in
             guard let typedEntity = entity as? Entity else { return nil }

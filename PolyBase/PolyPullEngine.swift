@@ -300,6 +300,15 @@ public final class PolyPullEngine {
         for field in config.fields {
             guard let value = record[field.columnName] else { continue }
 
+            // Check rejectIfEmpty - skip applying empty incoming values
+            if field.rejectIfEmpty {
+                let isEmpty = isValueEmpty(value, fieldType: field.fieldType)
+                if isEmpty {
+                    polyDebug("PolyPullEngine: Rejecting empty value for '\(field.columnName)'")
+                    continue
+                }
+            }
+
             // Handle decryption for encrypted fields
             if field.encrypted, let stringValue = value.stringValue, !stringValue.isEmpty {
                 // Check if the field is actually encrypted
@@ -326,6 +335,23 @@ public final class PolyPullEngine {
         }
 
         return needsHealing
+    }
+
+    /// Check if a value is "empty" for rejectIfEmpty purposes.
+    private func isValueEmpty(_ value: AnyJSON, fieldType _: PolyFieldType) -> Bool {
+        switch value {
+        case .null:
+            true
+        case let .string(s):
+            s.isEmpty
+        case let .array(arr):
+            arr.isEmpty
+        case let .object(dict):
+            dict.isEmpty
+        default:
+            // Numbers, bools, etc. are never considered "empty"
+            false
+        }
     }
 }
 
