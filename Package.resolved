@@ -1,13 +1,13 @@
 {
-  "originHash" : "44cad8d513edbf2db5e94c6f8f7811639247aee3b342d0862a4b92256d251b6b",
+  "originHash" : "aca620a60ee3cf50a9a33935f9373ebd4fd95f253c8ddda173a0f1158b4513ee",
   "pins" : [
     {
       "identity" : "supabase-swift",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/supabase/supabase-swift.git",
       "state" : {
-        "revision" : "90c7cf5a5f5cf6a52afbda038c7367aebdd8f1c1",
-        "version" : "2.38.1"
+        "revision" : "f633f1ce9ff6dac9f33a1717d191a6c3985148fa",
+        "version" : "2.39.0"
       }
     },
     {

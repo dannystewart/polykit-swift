@@ -6,6 +6,7 @@ let package = Package(
     platforms: [
         .macOS(.v15),
         .iOS(.v18),
+        .watchOS(.v26),
     ],
     products: [
         .library(name: "PolyKit", targets: ["PolyKit"]),
