@@ -11,7 +11,7 @@ import Supabase
 
 #if os(macOS)
     import AppKit
-#else
+#elseif os(iOS)
     import UIKit
 #endif
 
@@ -160,7 +160,9 @@ public final class PolyBaseAuth: NSObject {
 
                 let controller = ASAuthorizationController(authorizationRequests: [request])
                 controller.delegate = self
-                controller.presentationContextProvider = self
+                #if !os(watchOS)
+                    controller.presentationContextProvider = self
+                #endif
                 controller.performRequests()
             }
         }
@@ -189,28 +191,30 @@ extension PolyBaseAuth: ASAuthorizationControllerDelegate {
 
 // MARK: ASAuthorizationControllerPresentationContextProviding
 
-extension PolyBaseAuth: ASAuthorizationControllerPresentationContextProviding {
-    public func presentationAnchor(for _: ASAuthorizationController) -> ASPresentationAnchor {
-        #if os(macOS)
-            return NSApplication.shared.keyWindow ?? NSWindow()
-        #else
-            // Find the first available window scene and its key window
-            for scene in UIApplication.shared.connectedScenes {
-                guard let windowScene = scene as? UIWindowScene else { continue }
-                if let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow }) {
-                    return keyWindow
+#if !os(watchOS)
+    extension PolyBaseAuth: ASAuthorizationControllerPresentationContextProviding {
+        public func presentationAnchor(for _: ASAuthorizationController) -> ASPresentationAnchor {
+            #if os(macOS)
+                return NSApplication.shared.keyWindow ?? NSWindow()
+            #else
+                // Find the first available window scene and its key window
+                for scene in UIApplication.shared.connectedScenes {
+                    guard let windowScene = scene as? UIWindowScene else { continue }
+                    if let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow }) {
+                        return keyWindow
+                    }
+                    // No key window, but scene exists - return first window
+                    if let firstWindow = windowScene.windows.first {
+                        return firstWindow
+                    }
+                    return UIWindow(windowScene: windowScene)
                 }
-                // No key window, but scene exists - return first window
-                if let firstWindow = windowScene.windows.first {
-                    return firstWindow
-                }
-                return UIWindow(windowScene: windowScene)
-            }
-            // Should never reach here if app is running
-            fatalError("No window scene available for Sign in with Apple")
-        #endif
+                // Should never reach here if app is running
+                fatalError("No window scene available for Sign in with Apple")
+            #endif
+        }
     }
-}
+#endif
 
 // MARK: - Notification Names
 
