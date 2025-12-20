@@ -5,6 +5,7 @@
 //
 
 import Foundation
+import Supabase
 import SwiftData
 
 // MARK: - PolySyncCoordinator
@@ -124,26 +125,30 @@ public final class PolySyncCoordinator {
         // 3. Save locally
         try context.save()
 
-        // 4. Push to Supabase with echo tracking
-        pushEngine.markAsPushed(entity.id, table: config.tableName)
-        Task {
-            do {
-                try await pushEngine.push(entity)
+        // 4. Capture parent info BEFORE any async work (SwiftData entities can become stale)
+        let entityID = entity.id
+        let tableName = config.tableName
+        let parentID = bumpHierarchy ? config.parentRelation?.getParentID(from: entity) : nil
+        let parentTable = bumpHierarchy ? config.parentRelation?.parentTableName : nil
 
-                // Push parent if hierarchy was bumped
-                if bumpHierarchy, let parentRelation = config.parentRelation {
-                    await pushParentHierarchy(
-                        parentID: parentRelation.getParentID(from: entity),
-                        parentTable: parentRelation.parentTableName,
-                        context: context,
-                    )
-                }
-            } catch {
-                polyError("PolySyncCoordinator: Push failed for \(Entity.self) \(entity.id): \(error)")
+        // 5. Push to Supabase (await to ensure correct state is pushed)
+        pushEngine.markAsPushed(entityID, table: tableName)
+        do {
+            try await pushEngine.push(entity)
+
+            // Push parent if hierarchy was bumped
+            if let parentID, let parentTable {
+                await pushParentHierarchy(
+                    parentID: parentID,
+                    parentTable: parentTable,
+                    context: context,
+                )
             }
+        } catch {
+            polyError("PolySyncCoordinator: Push failed for \(Entity.self) \(entityID): \(error)")
         }
 
-        // 5. Post notification
+        // 6. Post notification
         if let notification = config.notification {
             NotificationCenter.default.post(name: notification, object: nil)
         }
@@ -196,28 +201,30 @@ public final class PolySyncCoordinator {
         // 4. Save locally (single save)
         try context.save()
 
-        // 5. Mark all as recently pushed
+        // 5. Capture parent info before async work
+        let tableName = config.tableName
+        let parentTable = config.parentRelation?.parentTableName
+
+        // 6. Mark all as recently pushed
         for entity in entities {
-            pushEngine.markAsPushed(entity.id, table: config.tableName)
+            pushEngine.markAsPushed(entity.id, table: tableName)
         }
 
-        // 6. Batch push to Supabase
-        Task {
-            await pushEngine.pushBatch(entities)
+        // 7. Batch push to Supabase (await to ensure correct state is pushed)
+        await pushEngine.pushBatch(entities)
 
-            // Push parents
-            if let parentRelation = config.parentRelation {
-                for parentID in parentIDs {
-                    await pushParentHierarchy(
-                        parentID: parentID,
-                        parentTable: parentRelation.parentTableName,
-                        context: context,
-                    )
-                }
+        // Push parents
+        if let parentTable {
+            for parentID in parentIDs {
+                await pushParentHierarchy(
+                    parentID: parentID,
+                    parentTable: parentTable,
+                    context: context,
+                )
             }
         }
 
-        // 7. Post notification
+        // 8. Post notification
         if let notification = config.notification {
             NotificationCenter.default.post(name: notification, object: nil)
         }
@@ -253,26 +260,30 @@ public final class PolySyncCoordinator {
         // 2. Save locally
         try context.save()
 
-        // 3. Push to Supabase with echo tracking
-        pushEngine.markAsPushed(entity.id, table: config.tableName)
-        Task {
-            do {
-                try await pushEngine.push(entity)
+        // 3. Capture values before async work
+        let entityID = entity.id
+        let tableName = config.tableName
+        let parentID = bumpHierarchy ? config.parentRelation?.getParentID(from: entity) : nil
+        let parentTable = bumpHierarchy ? config.parentRelation?.parentTableName : nil
 
-                // Push parent if hierarchy was bumped
-                if bumpHierarchy, let parentRelation = config.parentRelation {
-                    await pushParentHierarchy(
-                        parentID: parentRelation.getParentID(from: entity),
-                        parentTable: parentRelation.parentTableName,
-                        context: context,
-                    )
-                }
-            } catch {
-                polyError("PolySyncCoordinator: Push failed for new \(Entity.self) \(entity.id): \(error)")
+        // 4. Push to Supabase (await to ensure correct state is pushed)
+        pushEngine.markAsPushed(entityID, table: tableName)
+        do {
+            try await pushEngine.push(entity)
+
+            // Push parent if hierarchy was bumped
+            if let parentID, let parentTable {
+                await pushParentHierarchy(
+                    parentID: parentID,
+                    parentTable: parentTable,
+                    context: context,
+                )
             }
+        } catch {
+            polyError("PolySyncCoordinator: Push failed for new \(Entity.self) \(entityID): \(error)")
         }
 
-        // 4. Post notification
+        // 5. Post notification
         if let notification = config.notification {
             NotificationCenter.default.post(name: notification, object: nil)
         }
@@ -310,26 +321,37 @@ public final class PolySyncCoordinator {
         // 3. Save locally
         try context.save()
 
-        // 4. Push tombstone to Supabase
-        pushEngine.markAsPushed(entity.id, table: config.tableName)
-        Task {
-            do {
-                try await pushEngine.push(entity)
+        // 4. Capture values BEFORE any async work (SwiftData entities can become stale)
+        let entityID = entity.id
+        let entityVersion = entity.version
+        let entityDeleted = entity.deleted
+        let tableName = config.tableName
+        let parentID = bumpHierarchy ? config.parentRelation?.getParentID(from: entity) : nil
+        let parentTable = bumpHierarchy ? config.parentRelation?.parentTableName : nil
 
-                // Push parent
-                if bumpHierarchy, let parentRelation = config.parentRelation {
-                    await pushParentHierarchy(
-                        parentID: parentRelation.getParentID(from: entity),
-                        parentTable: parentRelation.parentTableName,
-                        context: context,
-                    )
-                }
-            } catch {
-                polyError("PolySyncCoordinator: Tombstone push failed for \(Entity.self) \(entity.id): \(error)")
+        // 5. Push tombstone to Supabase (await to ensure correct state is pushed)
+        pushEngine.markAsPushed(entityID, table: tableName)
+        do {
+            try await pushEngine.pushTombstone(
+                id: entityID,
+                version: entityVersion,
+                deleted: entityDeleted,
+                tableName: tableName,
+            )
+
+            // Push parent if hierarchy was bumped
+            if let parentID, let parentTable {
+                await pushParentHierarchy(
+                    parentID: parentID,
+                    parentTable: parentTable,
+                    context: context,
+                )
             }
+        } catch {
+            polyError("PolySyncCoordinator: Tombstone push failed for \(Entity.self) \(entityID): \(error)")
         }
 
-        // 5. Post notification
+        // 6. Post notification
         if let notification = config.notification {
             NotificationCenter.default.post(name: notification, object: nil)
         }
@@ -374,28 +396,37 @@ public final class PolySyncCoordinator {
         // 3. Save locally
         try context.save()
 
-        // 4. Mark all as recently pushed
-        for entity in entities {
-            pushEngine.markAsPushed(entity.id, table: config.tableName)
+        // 4. Capture tombstone data BEFORE any async work (SwiftData entities can become stale)
+        let tableName = config.tableName
+        let parentTable = config.parentRelation?.parentTableName
+        let tombstones: [[String: AnyJSON]] = entities.map { entity in
+            var record = [String: AnyJSON]()
+            record["id"] = .string(entity.id)
+            record["version"] = .integer(entity.version)
+            record["deleted"] = .bool(entity.deleted)
+            return record
         }
 
-        // 5. Batch push tombstones
-        Task {
-            await pushEngine.pushBatch(entities)
+        // 5. Mark all as recently pushed
+        for entity in entities {
+            pushEngine.markAsPushed(entity.id, table: tableName)
+        }
 
-            // Push parents
-            if let parentRelation = config.parentRelation {
-                for parentID in parentIDs {
-                    await pushParentHierarchy(
-                        parentID: parentID,
-                        parentTable: parentRelation.parentTableName,
-                        context: context,
-                    )
-                }
+        // 6. Batch push tombstones (await to ensure correct state is pushed)
+        _ = await pushEngine.pushTombstones(tableName: tableName, tombstones: tombstones)
+
+        // Push parents
+        if let parentTable {
+            for parentID in parentIDs {
+                await pushParentHierarchy(
+                    parentID: parentID,
+                    parentTable: parentTable,
+                    context: context,
+                )
             }
         }
 
-        // 6. Post notification
+        // 7. Post notification
         if let notification = config.notification {
             NotificationCenter.default.post(name: notification, object: nil)
         }

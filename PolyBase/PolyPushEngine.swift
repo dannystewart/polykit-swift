@@ -143,11 +143,42 @@ public final class PolyPushEngine {
 
     // MARK: - Tombstone Push
 
-    /// Push a tombstone (deleted entity) to Supabase.
+    /// Push a tombstone with captured values to avoid SwiftData staleness issues.
+    ///
+    /// Use this when deleting entities to ensure the correct deleted/version state
+    /// is pushed even if the entity reference becomes stale after context.save().
+    public func pushTombstone(
+        id: String,
+        version: Int,
+        deleted: Bool,
+        tableName: String,
+    ) async throws {
+        var record = [String: AnyJSON]()
+        record["id"] = .string(id)
+        record["version"] = .integer(version)
+        record["deleted"] = .bool(deleted)
+        record["updated_at"] = .string(ISO8601DateFormatter().string(from: Date()))
+
+        if let userID = PolyBaseAuth.shared.userID {
+            record["user_id"] = .string(userID.uuidString)
+        }
+
+        polyDebug("PolyPushEngine: Pushing tombstone for \(tableName)/\(id) - version=\(version), deleted=\(deleted)")
+
+        let client = try PolyBaseClient.requireClient()
+        try await client
+            .from(tableName)
+            .upsert(record, onConflict: "id")
+            .execute()
+
+        polyDebug("PolyPushEngine: Pushed tombstone for \(tableName)/\(id)")
+    }
+
+    /// Push a tombstone (deleted entity) to Supabase with additional fields.
     ///
     /// This is used when you've captured entity data before deletion
     /// to avoid race conditions with SwiftData.
-    public func pushTombstone(
+    public func pushTombstoneWithFields(
         tableName: String,
         id: String,
         fields: [String: AnyJSON],
