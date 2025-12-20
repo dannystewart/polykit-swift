@@ -476,14 +476,17 @@ final class PlayerCore: @unchecked Sendable {
 
         logger.debug("[AudioAnalysis] Setting up audio analysis")
 
-        // Single async task to ensure analyzer is created BEFORE audio tap starts firing
+        // Create analyzer FIRST, synchronously on main actor, to eliminate race condition
+        // where tap callbacks might fire before analyzer is assigned
         Task { @MainActor in
-            // Step 1: Create analyzer synchronously on main actor
-            let analyzer = AudioAnalyzer(engine: nil, numberOfBands: 8, smoothingFactor: 0.82)
-            self.audioAnalyzer = analyzer
-            logger.debug("[AudioAnalysis] AudioAnalyzer created")
+            self.audioAnalyzer = AudioAnalyzer(engine: nil, numberOfBands: 8, smoothingFactor: 0.82)
+            logger.debug("[AudioAnalysis] AudioAnalyzer created and assigned")
+        }
 
-            // Step 2: Load audio tracks
+        // Then setup the audio tap asynchronously
+        // By the time the tap starts firing, the analyzer will definitely exist
+        Task { @MainActor in
+            // Load audio tracks
             let audioTracks = try? await playerItem.asset.load(.tracks)
             let audioTrack = audioTracks?.first(where: { $0.mediaType == .audio })
 
@@ -492,7 +495,7 @@ final class PlayerCore: @unchecked Sendable {
                 return
             }
 
-            // Step 3: Create audio mix and tap (analyzer is now guaranteed to exist)
+            // Create audio mix and tap
             let audioMix = AVMutableAudioMix()
             let inputParams = AVMutableAudioMixInputParameters(track: firstAudioTrack)
 
