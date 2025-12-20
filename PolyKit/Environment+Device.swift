@@ -16,6 +16,7 @@
         case iPhone
         case iPad
         case Mac
+        case Watch
     }
 
     // MARK: - Device
@@ -30,14 +31,17 @@
                 }
             #elseif os(macOS)
                 return .Mac
+            #elseif os(watchOS)
+                return .Watch
             #else
-                return .mac
+                return .Mac
             #endif
         }
 
         public static var isPhone: Bool { idiom == .iPhone }
         public static var isPad: Bool { idiom == .iPad }
         public static var isMac: Bool { idiom == .Mac }
+        public static var isWatch: Bool { idiom == .Watch }
     }
 
     public extension EnvironmentValues {
@@ -46,6 +50,7 @@
         var isPhone: Bool { deviceIdiom == .iPhone }
         var isPad: Bool { deviceIdiom == .iPad }
         var isMac: Bool { deviceIdiom == .Mac }
+        var isWatch: Bool { deviceIdiom == .Watch }
     }
 
     public extension View {
