@@ -6,14 +6,19 @@
 
 import Foundation
 import PolyKit
+import SwiftData
 
 // MARK: - PolyBaseConfig
 
 /// Global configuration for PolyBase services.
 ///
-/// Configure logging and other shared settings before using PolyBase services:
+/// Configure logging, model context, and other shared settings before using PolyBase services:
 /// ```swift
-/// PolyBaseConfig.configure(logger: logger, logGroup: .database)
+/// PolyBaseConfig.configure(
+///     logger: logger,
+///     logGroup: .database,
+///     modelContext: modelContext
+/// )
 /// ```
 public final class PolyBaseConfig: @unchecked Sendable {
     /// Shared configuration instance.
@@ -25,9 +30,35 @@ public final class PolyBaseConfig: @unchecked Sendable {
     /// Log group for categorizing PolyBase logs. Set to `nil` for ungrouped logs.
     public var logGroup: LogGroup?
 
+    /// Model context for SwiftData operations.
+    /// Must be set before using sync services.
+    public weak var modelContext: ModelContext?
+
     private init() {}
 
-    /// Configure PolyBase logging.
+    /// Configure PolyBase with all settings.
+    ///
+    /// - Parameters:
+    ///   - logger: The PolyLog instance to use. Pass `nil` to disable logging.
+    ///   - logGroup: Optional log group for categorization. Pass `nil` for ungrouped logs.
+    ///   - modelContext: The SwiftData model context for persistence operations.
+    @MainActor
+    public static func configure(
+        logger: PolyLog?,
+        logGroup: LogGroup? = nil,
+        modelContext: ModelContext? = nil,
+    ) {
+        shared.logger = logger
+        shared.logGroup = logGroup
+        shared.modelContext = modelContext
+
+        // Initialize the sync coordinator if model context is provided
+        if let modelContext {
+            PolySyncCoordinator.shared.initialize(with: modelContext)
+        }
+    }
+
+    /// Configure PolyBase logging only.
     ///
     /// - Parameters:
     ///   - logger: The PolyLog instance to use. Pass `nil` to disable logging.
@@ -35,6 +66,15 @@ public final class PolyBaseConfig: @unchecked Sendable {
     public static func configure(logger: PolyLog?, logGroup: LogGroup? = nil) {
         shared.logger = logger
         shared.logGroup = logGroup
+    }
+
+    /// Set the model context separately.
+    ///
+    /// Call this after app initialization when the model context becomes available.
+    @MainActor
+    public static func setModelContext(_ context: ModelContext) {
+        shared.modelContext = context
+        PolySyncCoordinator.shared.initialize(with: context)
     }
 }
 
