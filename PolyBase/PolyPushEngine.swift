@@ -272,6 +272,9 @@ public final class PolyPushEngine {
         record["deleted"] = .bool(entity.deleted)
         record["updated_at"] = .string(ISO8601DateFormatter().string(from: Date()))
 
+        // Debug logging for sync issues
+        polyDebug("PolyPushEngine: Building record for \(config.tableName)/\(entity.id) - version=\(entity.version), deleted=\(entity.deleted)")
+
         // Add user_id if configured
         if config.includeUserID, let userID = PolyBaseAuth.shared.userID {
             record[config.userIDColumn] = .string(userID.uuidString)
