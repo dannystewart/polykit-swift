@@ -277,6 +277,10 @@ final class PlayerCore: @unchecked Sendable {
                     self.currentPlaybackURL = cachedURL
                     self.canSeek = true
                     self.notifyStateChanged()
+
+                    // Re-setup audio analysis AFTER playback resumes
+                    // This ensures the player item is fully ready and tapPrepare will be called
+                    self.setupAudioAnalysis(player: player)
                 } else {
                     logger.error("Seek failed during switch")
                 }
