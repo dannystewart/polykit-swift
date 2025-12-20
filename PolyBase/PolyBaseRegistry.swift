@@ -32,19 +32,29 @@ public struct PolyParentRelation<Child: PolySyncable, Parent: PolySyncable>: Sen
 
 /// Type-erased parent relation for storage.
 public struct AnyParentRelation: Sendable {
-    let parentTableName: String
+    /// The parent type name (used to look up table name from registry)
+    let parentTypeName: String
 
     private let _getParentID: @Sendable (Any) -> String?
 
-    public init<Child: PolySyncable>(
-        _ relation: PolyParentRelation<Child, some PolySyncable>,
-        parentTableName: String,
+    public init<Child: PolySyncable, Parent: PolySyncable>(
+        _ relation: PolyParentRelation<Child, Parent>,
     ) {
-        self.parentTableName = parentTableName
+        parentTypeName = String(describing: Parent.self)
         _getParentID = { entity in
             guard let child = entity as? Child else { return nil }
             return relation.getParentID(from: child)
         }
+    }
+
+    /// Resolve the parent table name from the registry.
+    /// This is resolved lazily because the parent may not be registered when the child is registered.
+    public var parentTableName: String {
+        guard let parentConfig = PolyBaseRegistry.shared.config(forTypeName: parentTypeName) else {
+            polyWarning("AnyParentRelation: Parent type '\(parentTypeName)' not registered")
+            return ""
+        }
+        return parentConfig.tableName
     }
 
     public func getParentID(from entity: Any) -> String? {
@@ -98,12 +108,10 @@ public final class PolyEntityConfig<Entity: PolySyncable>: @unchecked Sendable {
     ) {
         let relation = PolyParentRelation<Entity, Parent>(
             parentIDKeyPath: keyPath,
-            parentType: Parent.self)
-        // We'll resolve the parent table name when the engine needs it
-        _parentRelation = AnyParentRelation(
-            relation,
-            parentTableName: "", // Resolved at runtime from registry
+            parentType: Parent.self,
         )
+        // Table name is resolved lazily from the registry when accessed
+        _parentRelation = AnyParentRelation(relation)
     }
 }
 
@@ -279,6 +287,14 @@ public final class PolyBaseRegistry: @unchecked Sendable {
         defer { lock.unlock() }
         guard let typeKey = tableToType[tableName] else { return nil }
         return configs[typeKey]
+    }
+
+    /// Get the configuration for a type name string.
+    /// Used for lazy resolution of parent relationships.
+    public func config(forTypeName typeName: String) -> AnyEntityConfig? {
+        lock.lock()
+        defer { lock.unlock() }
+        return configs[typeName]
     }
 
     /// Check if an entity type is registered.
