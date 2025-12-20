@@ -15,7 +15,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "30DAC40C2EEE0DCA004F96CE"
+               BlueprintIdentifier = "30DAC4C82EEE1370004F96CE"
                BuildableName = "PolyMedia.framework"
                BlueprintName = "PolyMedia"
                ReferencedContainer = "container:PolyKit.xcodeproj">
@@ -50,7 +50,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "30DAC40C2EEE0DCA004F96CE"
+            BlueprintIdentifier = "30DAC4C82EEE1370004F96CE"
             BuildableName = "PolyMedia.framework"
             BlueprintName = "PolyMedia"
             ReferencedContainer = "container:PolyKit.xcodeproj">
