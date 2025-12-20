@@ -308,6 +308,24 @@ public final class PolyPushEngine {
         return successCount
     }
 
+    // MARK: - Raw Record Push (for offline queue replay)
+
+    /// Push a pre-built record dictionary to Supabase.
+    ///
+    /// Used by the offline queue to replay failed operations.
+    /// The record should already contain all necessary fields including id, version, etc.
+    ///
+    /// - Parameters:
+    ///   - record: The record dictionary (as built by buildRecord)
+    ///   - tableName: The target table
+    public func pushRawRecord(_ record: [String: AnyJSON], to tableName: String) async throws {
+        let client = try PolyBaseClient.requireClient()
+        try await client
+            .from(tableName)
+            .upsert(record, onConflict: "id")
+            .execute()
+    }
+
     // MARK: - Echo Tracking
 
     /// Check if an entity was recently pushed (for echo prevention).
@@ -323,7 +341,10 @@ public final class PolyPushEngine {
     // MARK: - Record Building
 
     /// Build a Supabase record from an entity using registered mappings.
-    private func buildRecord(
+    ///
+    /// Public so that callers (like PolySyncCoordinator) can build the record
+    /// before attempting to push, enabling offline queue capture on failure.
+    public func buildRecord(
         from entity: some PolySyncable,
         config: AnyEntityConfig,
     ) throws -> [String: AnyJSON] {

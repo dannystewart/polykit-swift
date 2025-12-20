@@ -66,6 +66,20 @@ public final class PolySyncCoordinator {
     private let registry: PolyBaseRegistry = .shared
     private let pushEngine: PolyPushEngine = .shared
 
+    /// Offline queue for failed push operations.
+    /// Operations are persisted to disk and retried when connectivity returns.
+    private lazy var offlineQueue: PolyBaseOfflineQueue = .init()
+
+    /// Whether there are pending offline operations.
+    public var hasPendingOfflineOperations: Bool {
+        offlineQueue.hasPendingOperations
+    }
+
+    /// Number of pending offline operations.
+    public var pendingOfflineOperationCount: Int {
+        offlineQueue.pendingCount
+    }
+
     private init() {}
 
     // MARK: - Initialization
@@ -125,16 +139,26 @@ public final class PolySyncCoordinator {
         // 3. Save locally
         try context.save()
 
-        // 4. Capture parent info BEFORE any async work (SwiftData entities can become stale)
+        // 4. Capture parent info and build record BEFORE any async work
+        // (SwiftData entities can become stale after async operations)
         let entityID = entity.id
         let tableName = config.tableName
         let parentID = bumpHierarchy ? config.parentRelation?.getParentID(from: entity) : nil
         let parentTable = bumpHierarchy ? config.parentRelation?.parentTableName : nil
 
+        // Build record now (before push) so we can queue it if push fails
+        let record: [String: AnyJSON]
+        do {
+            record = try pushEngine.buildRecord(from: entity, config: config)
+        } catch {
+            polyError("PolySyncCoordinator: Failed to build record for \(Entity.self) \(entityID): \(error)")
+            return
+        }
+
         // 5. Push to Supabase (await to ensure correct state is pushed)
         pushEngine.markAsPushed(entityID, table: tableName)
         do {
-            try await pushEngine.push(entity)
+            try await pushEngine.pushRawRecord(record, to: tableName)
 
             // Push parent if hierarchy was bumped
             if let parentID, let parentTable {
@@ -145,7 +169,8 @@ public final class PolySyncCoordinator {
                 )
             }
         } catch {
-            polyError("PolySyncCoordinator: Push failed for \(Entity.self) \(entityID): \(error)")
+            polyError("PolySyncCoordinator: Push failed for \(Entity.self) \(entityID), queueing for retry: \(error)")
+            queueOperation(table: tableName, action: .update, record: record, entityId: entityID)
         }
 
         // 6. Post notification
@@ -260,16 +285,25 @@ public final class PolySyncCoordinator {
         // 2. Save locally
         try context.save()
 
-        // 3. Capture values before async work
+        // 3. Capture values and build record before async work
         let entityID = entity.id
         let tableName = config.tableName
         let parentID = bumpHierarchy ? config.parentRelation?.getParentID(from: entity) : nil
         let parentTable = bumpHierarchy ? config.parentRelation?.parentTableName : nil
 
+        // Build record now (before push) so we can queue it if push fails
+        let record: [String: AnyJSON]
+        do {
+            record = try pushEngine.buildRecord(from: entity, config: config)
+        } catch {
+            polyError("PolySyncCoordinator: Failed to build record for new \(Entity.self) \(entityID): \(error)")
+            return
+        }
+
         // 4. Push to Supabase (await to ensure correct state is pushed)
         pushEngine.markAsPushed(entityID, table: tableName)
         do {
-            try await pushEngine.push(entity)
+            try await pushEngine.pushRawRecord(record, to: tableName)
 
             // Push parent if hierarchy was bumped
             if let parentID, let parentTable {
@@ -280,7 +314,8 @@ public final class PolySyncCoordinator {
                 )
             }
         } catch {
-            polyError("PolySyncCoordinator: Push failed for new \(Entity.self) \(entityID): \(error)")
+            polyError("PolySyncCoordinator: Push failed for new \(Entity.self) \(entityID), queueing for retry: \(error)")
+            queueOperation(table: tableName, action: .insert, record: record, entityId: entityID)
         }
 
         // 5. Post notification
@@ -348,7 +383,19 @@ public final class PolySyncCoordinator {
                 )
             }
         } catch {
-            polyError("PolySyncCoordinator: Tombstone push failed for \(Entity.self) \(entityID): \(error)")
+            polyError("PolySyncCoordinator: Tombstone push failed for \(Entity.self) \(entityID), queueing for retry: \(error)")
+
+            // Build tombstone record for queueing
+            var tombstoneRecord: [String: AnyJSON] = [
+                "id": .string(entityID),
+                "version": .integer(entityVersion),
+                "deleted": .bool(entityDeleted),
+                "updated_at": .string(ISO8601DateFormatter().string(from: Date())),
+            ]
+            if let userID = PolyBaseAuth.shared.userID {
+                tombstoneRecord["user_id"] = .string(userID.uuidString)
+            }
+            queueOperation(table: tableName, action: .delete, record: tombstoneRecord, entityId: entityID)
         }
 
         // 6. Post notification
@@ -462,6 +509,67 @@ public final class PolySyncCoordinator {
         try context.save()
     }
 
+    /// Process all queued offline operations.
+    ///
+    /// Call this when the app launches, when network connectivity returns,
+    /// or at any time you want to retry failed operations.
+    ///
+    /// - Returns: The number of operations successfully processed.
+    @discardableResult
+    public func processOfflineQueue() async -> Int {
+        guard offlineQueue.hasPendingOperations else { return 0 }
+
+        polyInfo("PolySyncCoordinator: Processing \(offlineQueue.pendingCount) offline operations")
+
+        return await offlineQueue.processQueue { [weak self] operation in
+            guard let self else { return }
+
+            switch operation.action {
+            case .insert, .update:
+                // Decode the record and push
+                guard let payload = operation.payload else {
+                    throw CoordinatorError.pushFailed(NSError(domain: "PolyBase", code: -1, userInfo: [
+                        NSLocalizedDescriptionKey: "No payload for \(operation.action)",
+                    ]))
+                }
+
+                let record = try JSONDecoder().decode([String: AnyJSON].self, from: payload)
+                try await pushEngine.pushRawRecord(record, to: operation.table)
+
+            case .delete:
+                // Decode tombstone record and push as update
+                guard let payload = operation.payload else {
+                    throw CoordinatorError.pushFailed(NSError(domain: "PolyBase", code: -1, userInfo: [
+                        NSLocalizedDescriptionKey: "No payload for delete",
+                    ]))
+                }
+
+                let record = try JSONDecoder().decode([String: AnyJSON].self, from: payload)
+
+                // Extract version from record
+                let version = record["version"]?.integerValue ?? 1
+                let deleted = record["deleted"]?.boolValue ?? true
+
+                try await pushEngine.updateTombstone(
+                    id: operation.entityId,
+                    version: version,
+                    deleted: deleted,
+                    tableName: operation.table,
+                )
+            }
+
+            polyDebug("PolySyncCoordinator: Processed queued \(operation.action.rawValue) for \(operation.table)/\(operation.entityId)")
+        }
+    }
+
+    /// Clear all pending offline operations.
+    ///
+    /// Use with caution - this discards all queued operations without retrying them.
+    public func clearOfflineQueue() {
+        offlineQueue.clearQueue()
+        polyInfo("PolySyncCoordinator: Offline queue cleared")
+    }
+
     /// Get the current model context or throw.
     private func requireContext() throws -> ModelContext {
         guard let context = modelContext else {
@@ -511,6 +619,31 @@ public final class PolySyncCoordinator {
     {
         // Similar to above - the app handles the actual push
         // since we don't know the concrete type.
+    }
+
+    // MARK: - Offline Queue
+
+    /// Queue a failed push operation for later retry.
+    private func queueOperation(
+        table: String,
+        action: PolyBaseOfflineOperation.Action,
+        record: [String: AnyJSON],
+        entityId: String,
+    ) {
+        // Encode the record as JSON data
+        guard let payload = try? JSONEncoder().encode(record) else {
+            polyError("PolySyncCoordinator: Failed to encode record for offline queue")
+            return
+        }
+
+        offlineQueue.enqueue(
+            table: table,
+            action: action,
+            payload: payload,
+            entityId: entityId,
+        )
+
+        polyInfo("PolySyncCoordinator: Queued \(action.rawValue) for \(table)/\(entityId)")
     }
 }
 
