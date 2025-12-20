@@ -32,15 +32,23 @@ public struct PolyParentRelation<Child: PolySyncable, Parent: PolySyncable>: Sen
 
 /// Type-erased parent relation for storage.
 public struct AnyParentRelation: Sendable {
-    let parentTableName: String
+    /// The parent entity's type name (used to look up table name at runtime)
+    let parentTypeName: String
 
     private let _getParentID: @Sendable (Any) -> String?
 
-    public init<Child: PolySyncable>(
-        _ relation: PolyParentRelation<Child, some PolySyncable>,
-        parentTableName: String,
+    /// Get the parent table name by looking up the parent type in the registry.
+    public var parentTableName: String {
+        guard let parentConfig = PolyBaseRegistry.shared.config(forTypeName: parentTypeName) else {
+            return ""
+        }
+        return parentConfig.tableName
+    }
+
+    public init<Child: PolySyncable, Parent: PolySyncable>(
+        _ relation: PolyParentRelation<Child, Parent>,
     ) {
-        self.parentTableName = parentTableName
+        parentTypeName = String(describing: Parent.self)
         _getParentID = { entity in
             guard let child = entity as? Child else { return nil }
             return relation.getParentID(from: child)
@@ -99,11 +107,8 @@ public final class PolyEntityConfig<Entity: PolySyncable>: @unchecked Sendable {
         let relation = PolyParentRelation<Entity, Parent>(
             parentIDKeyPath: keyPath,
             parentType: Parent.self)
-        // We'll resolve the parent table name when the engine needs it
-        _parentRelation = AnyParentRelation(
-            relation,
-            parentTableName: "", // Resolved at runtime from registry
-        )
+        // Parent table name is resolved at runtime from registry
+        _parentRelation = AnyParentRelation(relation)
     }
 }
 
@@ -271,6 +276,13 @@ public final class PolyBaseRegistry: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return configs[key]
+    }
+
+    /// Get the configuration for a type name string.
+    public func config(forTypeName typeName: String) -> AnyEntityConfig? {
+        lock.lock()
+        defer { lock.unlock() }
+        return configs[typeName]
     }
 
     /// Get the configuration for a table name.
