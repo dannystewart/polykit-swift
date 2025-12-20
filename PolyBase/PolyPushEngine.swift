@@ -247,13 +247,20 @@ public final class PolyPushEngine {
         for field in config.fields {
             guard var value = field.getValue(from: entity) else { continue }
 
-            // Handle encryption
+            // Handle encryption for marked fields
             if field.encrypted, let stringValue = field.getStringValue(from: entity) {
-                if
-                    let userID = PolyBaseAuth.shared.userID,
-                    let encrypted = PolyBaseEncryption.shared?.encrypt(stringValue, forUserID: userID)
-                {
-                    value = .string(encrypted)
+                if let userID = PolyBaseAuth.shared.userID {
+                    if let encryption = PolyBaseEncryption.shared {
+                        if let encrypted = encryption.encrypt(stringValue, forUserID: userID) {
+                            value = .string(encrypted)
+                        } else {
+                            polyWarning("PolyPushEngine: Encryption failed for field '\(field.columnName)' on \(config.tableName)/\(entity.id) - using unencrypted value")
+                        }
+                    } else {
+                        polyWarning("PolyPushEngine: Encryption not configured but field '\(field.columnName)' requires encryption - pushing unencrypted")
+                    }
+                } else {
+                    polyWarning("PolyPushEngine: No user ID available for encryption of '\(field.columnName)' - pushing unencrypted")
                 }
             }
 

@@ -18,6 +18,12 @@ public enum PolyPullResult: Sendable {
     /// Entity was updated locally
     case updated
 
+    /// Entity was updated and needs healing (had unencrypted data in encrypted fields)
+    case updatedNeedsHealing
+
+    /// Entity was created and needs healing (had unencrypted data in encrypted fields)
+    case createdNeedsHealing
+
     /// Remote change was skipped (local version higher or echo)
     case skipped(reason: String)
 
@@ -26,6 +32,26 @@ public enum PolyPullResult: Sendable {
 
     /// Merge failed with error
     case failed(Error)
+
+    /// Whether this result indicates healing is needed.
+    public var needsHealing: Bool {
+        switch self {
+        case .updatedNeedsHealing, .createdNeedsHealing:
+            true
+        default:
+            false
+        }
+    }
+
+    /// Whether this result indicates the entity was modified.
+    public var wasModified: Bool {
+        switch self {
+        case .created, .updated, .createdNeedsHealing, .updatedNeedsHealing:
+            true
+        default:
+            false
+        }
+    }
 }
 
 // MARK: - PolyPullEngine
@@ -166,11 +192,11 @@ public final class PolyPullEngine {
             }
 
             // Apply update (local is a class, so we can mutate directly)
-            applyFields(from: record, to: local, config: config)
+            let needsHealing = applyFields(from: record, to: local, config: config)
             local.version = remoteVersion
             local.deleted = remoteDeleted
 
-            return .updated
+            return needsHealing ? .updatedNeedsHealing : .updated
 
         } else {
             // INSERT: This requires creating a new entity
@@ -261,16 +287,31 @@ public final class PolyPullEngine {
     }
 
     /// Apply field values from a remote record to a local entity.
+    ///
+    /// - Returns: `true` if any encrypted field was found unencrypted (needs healing).
+    @discardableResult
     private func applyFields(
         from record: [String: AnyJSON],
         to entity: Any,
         config: AnyEntityConfig,
-    ) {
+    ) -> Bool {
+        var needsHealing = false
+
         for field in config.fields {
             guard let value = record[field.columnName] else { continue }
 
-            // Handle decryption
-            if field.encrypted, let stringValue = value.stringValue {
+            // Handle decryption for encrypted fields
+            if field.encrypted, let stringValue = value.stringValue, !stringValue.isEmpty {
+                // Check if the field is actually encrypted
+                if let encryption = PolyBaseEncryption.shared {
+                    if !encryption.isEncrypted(stringValue) {
+                        // Field should be encrypted but isn't - needs healing
+                        needsHealing = true
+                        polyDebug("PolyPullEngine: Field '\(field.columnName)' needs healing - not encrypted")
+                    }
+                }
+
+                // Decrypt (or use as-is if not encrypted)
                 if
                     let userID = PolyBaseAuth.shared.userID,
                     let decrypted = PolyBaseEncryption.shared?.decrypt(stringValue, forUserID: userID)
@@ -283,6 +324,8 @@ public final class PolyPullEngine {
             // Apply value directly
             _ = field.setValue(on: entity, value: value)
         }
+
+        return needsHealing
     }
 }
 

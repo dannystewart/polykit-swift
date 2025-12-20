@@ -168,6 +168,34 @@ public final class PolyBaseEncryption: @unchecked Sendable {
         text.hasPrefix("enc:")
     }
 
+    /// Decrypt a string with healing detection.
+    ///
+    /// Returns both the decrypted value and whether the data was actually encrypted.
+    /// If `wasEncrypted` is false, the caller should re-push the entity to heal the data.
+    ///
+    /// - Parameters:
+    ///   - ciphertext: The potentially encrypted string.
+    ///   - userID: The user's ID (used in key derivation).
+    /// - Returns: A tuple of (decrypted value, was it encrypted). Returns nil if decryption fails.
+    public func decryptWithHealing(_ ciphertext: String, forUserID userID: UUID) -> (value: String, wasEncrypted: Bool)? {
+        let wasEncrypted = isEncrypted(ciphertext)
+        guard let decrypted = decrypt(ciphertext, forUserID: userID) else {
+            return nil
+        }
+        return (decrypted, wasEncrypted)
+    }
+
+    /// Decrypt an optional string with healing detection.
+    ///
+    /// - Parameters:
+    ///   - ciphertext: The potentially encrypted optional string.
+    ///   - userID: The user's ID (used in key derivation).
+    /// - Returns: A tuple of (decrypted value, was it encrypted), or nil if input was nil or decryption fails.
+    public func decryptWithHealing(_ ciphertext: String?, forUserID userID: UUID) -> (value: String, wasEncrypted: Bool)? {
+        guard let text = ciphertext else { return nil }
+        return decryptWithHealing(text, forUserID: userID)
+    }
+
     // MARK: - Binary Data Encryption
 
     /// Encrypt binary data for a specific user.
