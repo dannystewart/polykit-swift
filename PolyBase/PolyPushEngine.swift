@@ -143,10 +143,68 @@ public final class PolyPushEngine {
 
     // MARK: - Tombstone Push
 
-    /// Push a tombstone with captured values to avoid SwiftData staleness issues.
+    /// Update an existing record to mark it as deleted (tombstone).
     ///
-    /// Use this when deleting entities to ensure the correct deleted/version state
-    /// is pushed even if the entity reference becomes stale after context.save().
+    /// Uses UPDATE instead of UPSERT because:
+    /// 1. The row already exists (we're soft-deleting)
+    /// 2. We only need to update version, deleted, and updated_at
+    /// 3. UPSERT would require all NOT NULL columns
+    public func updateTombstone(
+        id: String,
+        version: Int,
+        deleted: Bool,
+        tableName: String,
+    ) async throws {
+        var record = [String: AnyJSON]()
+        record["version"] = .integer(version)
+        record["deleted"] = .bool(deleted)
+        record["updated_at"] = .string(ISO8601DateFormatter().string(from: Date()))
+
+        polyDebug("PolyPushEngine: Updating tombstone for \(tableName)/\(id) - version=\(version), deleted=\(deleted)")
+
+        let client = try PolyBaseClient.requireClient()
+        try await client
+            .from(tableName)
+            .update(record)
+            .eq("id", value: id)
+            .execute()
+
+        polyDebug("PolyPushEngine: Updated tombstone for \(tableName)/\(id)")
+    }
+
+    /// Batch update existing records to mark them as deleted (tombstones).
+    ///
+    /// Uses individual UPDATE calls since Supabase doesn't support batch updates.
+    @discardableResult
+    public func updateTombstones(
+        tableName: String,
+        tombstones: [(id: String, version: Int, deleted: Bool)],
+    ) async -> Int {
+        guard !tombstones.isEmpty else { return 0 }
+
+        var successCount = 0
+        for tombstone in tombstones {
+            do {
+                try await updateTombstone(
+                    id: tombstone.id,
+                    version: tombstone.version,
+                    deleted: tombstone.deleted,
+                    tableName: tableName,
+                )
+                successCount += 1
+            } catch {
+                polyError("PolyPushEngine: Failed to update tombstone \(tableName)/\(tombstone.id): \(error)")
+            }
+        }
+
+        polyInfo("PolyPushEngine: Updated \(successCount)/\(tombstones.count) tombstones in \(tableName)")
+        return successCount
+    }
+
+    /// Push a tombstone with captured values using UPSERT (for new records or full replacement).
+    ///
+    /// Note: This requires all NOT NULL columns to be included.
+    /// For soft-deleting existing records, use updateTombstone instead.
     public func pushTombstone(
         id: String,
         version: Int,

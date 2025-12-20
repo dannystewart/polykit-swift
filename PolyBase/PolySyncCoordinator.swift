@@ -309,19 +309,7 @@ public final class PolySyncCoordinator {
         entity.deleted = true
         entity.version &+= 1
 
-        // 2. Bump parent hierarchy if configured
-        if bumpHierarchy, let parentRelation = config.parentRelation {
-            try bumpParentHierarchy(
-                parentID: parentRelation.getParentID(from: entity),
-                parentTable: parentRelation.parentTableName,
-                context: context,
-            )
-        }
-
-        // 3. Save locally
-        try context.save()
-
-        // 4. Capture values BEFORE any async work (SwiftData entities can become stale)
+        // 2. Capture values IMMEDIATELY after mutation (before save can cause staleness)
         let entityID = entity.id
         let entityVersion = entity.version
         let entityDeleted = entity.deleted
@@ -329,10 +317,22 @@ public final class PolySyncCoordinator {
         let parentID = bumpHierarchy ? config.parentRelation?.getParentID(from: entity) : nil
         let parentTable = bumpHierarchy ? config.parentRelation?.parentTableName : nil
 
-        // 5. Push tombstone to Supabase (await to ensure correct state is pushed)
+        // 3. Bump parent hierarchy if configured
+        if bumpHierarchy, let parentRelation = config.parentRelation {
+            try bumpParentHierarchy(
+                parentID: parentID,
+                parentTable: parentRelation.parentTableName,
+                context: context,
+            )
+        }
+
+        // 4. Save locally
+        try context.save()
+
+        // 5. Push tombstone to Supabase (use UPDATE, not upsert - row already exists)
         pushEngine.markAsPushed(entityID, table: tableName)
         do {
-            try await pushEngine.pushTombstone(
+            try await pushEngine.updateTombstone(
                 id: entityID,
                 version: entityVersion,
                 deleted: entityDeleted,
@@ -376,7 +376,14 @@ public final class PolySyncCoordinator {
             entity.version &+= 1
         }
 
-        // 2. Collect and bump parent hierarchy
+        // 2. Capture tombstone data IMMEDIATELY after mutation (before save can cause staleness)
+        let tableName = config.tableName
+        let parentTable = config.parentRelation?.parentTableName
+        let tombstones: [(id: String, version: Int, deleted: Bool)] = entities.map { entity in
+            (id: entity.id, version: entity.version, deleted: entity.deleted)
+        }
+
+        // 3. Collect and bump parent hierarchy
         var parentIDs = Set<String>()
         if bumpHierarchy, let parentRelation = config.parentRelation {
             for entity in entities {
@@ -393,27 +400,16 @@ public final class PolySyncCoordinator {
             }
         }
 
-        // 3. Save locally
+        // 4. Save locally
         try context.save()
 
-        // 4. Capture tombstone data BEFORE any async work (SwiftData entities can become stale)
-        let tableName = config.tableName
-        let parentTable = config.parentRelation?.parentTableName
-        let tombstones: [[String: AnyJSON]] = entities.map { entity in
-            var record = [String: AnyJSON]()
-            record["id"] = .string(entity.id)
-            record["version"] = .integer(entity.version)
-            record["deleted"] = .bool(entity.deleted)
-            return record
-        }
-
         // 5. Mark all as recently pushed
-        for entity in entities {
-            pushEngine.markAsPushed(entity.id, table: tableName)
+        for tombstone in tombstones {
+            pushEngine.markAsPushed(tombstone.id, table: tableName)
         }
 
-        // 6. Batch push tombstones (await to ensure correct state is pushed)
-        _ = await pushEngine.pushTombstones(tableName: tableName, tombstones: tombstones)
+        // 6. Batch update tombstones (use UPDATE, not upsert)
+        _ = await pushEngine.updateTombstones(tableName: tableName, tombstones: tombstones)
 
         // Push parents
         if let parentTable {
