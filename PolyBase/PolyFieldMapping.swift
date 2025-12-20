@@ -412,6 +412,73 @@ public extension PolyFieldMapping {
             setStringValue: nil,
         )
     }
+
+    // MARK: RawRepresentable Fields (Enums with String raw values)
+
+    /// Map a RawRepresentable property (e.g., enum) to a column.
+    /// The raw value is stored as a string.
+    static func mapRaw<R: RawRepresentable & Sendable>(
+        _ keyPath: WritableKeyPath<Entity, R> & Sendable,
+        to column: String,
+    ) -> PolyFieldMapping where R.RawValue == String {
+        PolyFieldMapping(
+            columnName: column,
+            propertyName: String(describing: keyPath),
+            encrypted: false,
+            fieldType: .string,
+            isOptional: false,
+            getValue: { entity in
+                .string(entity[keyPath: keyPath].rawValue)
+            },
+            setValue: { entity, json in
+                guard
+                    let string = json.stringValue,
+                    let value = R(rawValue: string) else { return false }
+                var mutableEntity = entity
+                mutableEntity[keyPath: keyPath] = value
+                return true
+            },
+            getStringValue: nil,
+            setStringValue: nil,
+        )
+    }
+
+    /// Map an optional RawRepresentable property (e.g., enum) to a column.
+    /// The raw value is stored as a string, or null if nil.
+    static func mapRaw<R: RawRepresentable & Sendable>(
+        _ keyPath: WritableKeyPath<Entity, R?> & Sendable,
+        to column: String,
+    ) -> PolyFieldMapping where R.RawValue == String {
+        PolyFieldMapping(
+            columnName: column,
+            propertyName: String(describing: keyPath),
+            encrypted: false,
+            fieldType: .optionalString,
+            isOptional: true,
+            getValue: { entity in
+                if let value = entity[keyPath: keyPath] {
+                    return .string(value.rawValue)
+                }
+                return .null
+            },
+            setValue: { entity, json in
+                var mutableEntity = entity
+                if json == .null {
+                    mutableEntity[keyPath: keyPath] = nil
+                } else if
+                    let string = json.stringValue,
+                    let value = R(rawValue: string)
+                {
+                    mutableEntity[keyPath: keyPath] = value
+                } else {
+                    return false
+                }
+                return true
+            },
+            getStringValue: nil,
+            setStringValue: nil,
+        )
+    }
 }
 
 // MARK: - AnyFieldMapping
