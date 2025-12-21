@@ -692,7 +692,7 @@ public final class PolyLog: @unchecked Sendable {
         let timestampString = formatTimestamp(timestamp)
 
         // Pipe separator
-        let separator = " |"
+        let separator = "|"
 
         // Group emoji or spacing for alignment
         let groupPart = if let group, let emoji = group.emoji {
