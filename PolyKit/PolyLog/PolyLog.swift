@@ -172,6 +172,19 @@ public struct LogGroup: Hashable, Sendable {
 ///
 /// Capture is disabled by default to avoid memory overhead in CLI tools or apps that don't need it.
 public final class PolyLog: @unchecked Sendable {
+    /// Formatting constants for aligned log output.
+    private enum LogFormat {
+        static let timestampWidth = 15 // "10:30:45.123 AM"
+        static let levelWidth = 7 // "WARNING"
+        static let groupWidth = 20 // "[identifier|emoji]"
+        static let separator = " │ " // Column separator
+
+        /// Indent for multi-line messages (aligns with message column).
+        static var messageIndent: String {
+            String(repeating: " ", count: timestampWidth + separator.count + levelWidth + separator.count + groupWidth + separator.count)
+        }
+    }
+
     /// Shared timestamp formatter for consistent formatting.
     private static let timestampFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -627,7 +640,9 @@ public final class PolyLog: @unchecked Sendable {
         #endif
     }
 
-    /// Formats a message for console output in DEBUG builds.
+    /// Formats a message for console output with ANSI colors.
+    ///
+    /// Uses the same aligned column structure as plain text, but with color codes.
     ///
     /// - Parameters:
     ///   - message: The message to format.
@@ -644,30 +659,61 @@ public final class PolyLog: @unchecked Sendable {
         let timestampString = formatTimestamp(timestamp)
 
         if PolyTerm.supportsANSI() {
-            let timestampFormatted = "\(ANSIColor.reset.rawValue)\(ANSIColor.gray.rawValue)\(timestampString)\(ANSIColor.reset.rawValue) "
-            let levelFormatted = "\(ANSIColor.bold.rawValue)\(level.color.rawValue)\(level.displayText)\(ANSIColor.reset.rawValue)"
+            // Timestamp in gray
+            let timestampFormatted = "\(ANSIColor.gray.rawValue)\(timestampString)\(ANSIColor.reset.rawValue)"
 
-            // Add group tag if present - use emoji if available, otherwise identifier in brackets
-            let groupFormatted = if let group {
-                if let emoji = group.emoji {
-                    // Use emoji directly (no brackets, no color needed - emoji is already colorful)
-                    "\(emoji) | "
-                } else {
-                    // Fall back to identifier in brackets with color
-                    "\(ANSIColor.cyan.rawValue)[\(group.identifier)]\(ANSIColor.reset.rawValue) | "
-                }
+            // Level in color, uppercase, padded
+            let levelString = level.rawValue.uppercased().padding(toLength: LogFormat.levelWidth, withPad: " ", startingAt: 0)
+            let levelFormatted = "\(ANSIColor.bold.rawValue)\(level.color.rawValue)\(levelString)\(ANSIColor.reset.rawValue)"
+
+            // Group with emoji or identifier, padded
+            let groupString: String
+            if let group {
+                let emoji = group.emoji ?? "  "
+                groupString = "[\(group.identifier)|\(emoji)]"
             } else {
-                ""
+                groupString = ""
             }
+            let groupPadded = groupString.padding(toLength: LogFormat.groupWidth, withPad: " ", startingAt: 0)
+            let groupFormatted = "\(ANSIColor.cyan.rawValue)\(groupPadded)\(ANSIColor.reset.rawValue)"
 
-            let messageFormatted = "\(level.color.rawValue)\(message)\(ANSIColor.reset.rawValue)"
-            return "\(timestampFormatted)\(levelFormatted)\(groupFormatted)\(messageFormatted)"
+            // Message in level color
+            let messageLines = message.split(separator: "\n", omittingEmptySubsequences: false)
+
+            if messageLines.count == 1 {
+                // Simple case: single line
+                let messageFormatted = "\(level.color.rawValue)\(message)\(ANSIColor.reset.rawValue)"
+                return "\(timestampFormatted)\(LogFormat.separator)\(levelFormatted)\(LogFormat.separator)\(groupFormatted)\(LogFormat.separator)\(messageFormatted)"
+            } else {
+                // Multi-line with proper indentation
+                let messageFormatted = "\(level.color.rawValue)\(messageLines[0])\(ANSIColor.reset.rawValue)"
+                var result = "\(timestampFormatted)\(LogFormat.separator)\(levelFormatted)\(LogFormat.separator)\(groupFormatted)\(LogFormat.separator)\(messageFormatted)"
+
+                for line in messageLines.dropFirst() {
+                    let lineFormatted = "\(level.color.rawValue)\(line)\(ANSIColor.reset.rawValue)"
+                    result += "\n\(ANSIColor.gray.rawValue)\(LogFormat.messageIndent)\(ANSIColor.reset.rawValue)\(LogFormat.separator)\(lineFormatted)"
+                }
+                return result
+            }
         } else {
             return formatPlainMessage(message, level: level, group: group, timestamp: timestamp)
         }
     }
 
     /// Formats a message as plain text (no ANSI codes) for capture and export.
+    ///
+    /// Uses aligned columns for professional, easy-to-scan output:
+    /// - Timestamp: 15 chars fixed width
+    /// - Level: 7 chars fixed width
+    /// - Group: 20 chars fixed width (includes emoji if present)
+    /// - Message: Variable width
+    ///
+    /// Example:
+    /// ```
+    /// 10:30:45.123 AM │ INFO    │ [networking|🌐]     │ Request completed
+    /// 10:30:45.456 AM │ WARNING │ [database|💾]       │ Connection pool exhausted
+    /// 10:30:46.789 AM │ ERROR   │                     │ Query failed
+    /// ```
     private func formatPlainMessage(
         _ message: String,
         level: LogLevel,
@@ -676,18 +722,33 @@ public final class PolyLog: @unchecked Sendable {
     ) -> String {
         let timestampString = formatTimestamp(timestamp)
 
-        // Use emoji if present, otherwise identifier in brackets
-        let groupTag = if let group {
-            if let emoji = group.emoji {
-                "\(emoji) "
-            } else {
-                "[\(group.identifier)] "
-            }
-        } else {
-            ""
-        }
+        // Level: uppercase, padded to fixed width
+        let levelString = level.rawValue.uppercased().padding(toLength: LogFormat.levelWidth, withPad: " ", startingAt: 0)
 
-        return "\(timestampString) \(level.displayText)\(groupTag)\(message)"
+        // Group: formatted as [identifier|emoji], padded to fixed width
+        let groupString: String
+        if let group {
+            let emoji = group.emoji ?? "  "
+            groupString = "[\(group.identifier)|\(emoji)]"
+        } else {
+            groupString = ""
+        }
+        let groupPadded = groupString.padding(toLength: LogFormat.groupWidth, withPad: " ", startingAt: 0)
+
+        // Handle multi-line messages with proper indentation
+        let messageLines = message.split(separator: "\n", omittingEmptySubsequences: false)
+
+        if messageLines.count == 1 {
+            // Simple case: single line
+            return "\(timestampString)\(LogFormat.separator)\(levelString)\(LogFormat.separator)\(groupPadded)\(LogFormat.separator)\(message)"
+        } else {
+            // Multi-line: first line normal, subsequent lines indented to align with message column
+            var result = "\(timestampString)\(LogFormat.separator)\(levelString)\(LogFormat.separator)\(groupPadded)\(LogFormat.separator)\(messageLines[0])"
+            for line in messageLines.dropFirst() {
+                result += "\n\(LogFormat.messageIndent)\(LogFormat.separator)\(line)"
+            }
+            return result
+        }
     }
 
     /// Formats a date for use in log messages.
