@@ -169,8 +169,14 @@ public final class PolySyncCoordinator {
                 )
             }
         } catch {
-            polyError("PolySyncCoordinator: Push failed for \(Entity.self) \(entityID), queueing for retry: \(error)")
-            queueOperation(table: tableName, action: .update, record: record, entityId: entityID)
+            handlePushError(
+                error,
+                entityType: String(describing: Entity.self),
+                entityId: entityID,
+                tableName: tableName,
+                record: record,
+                action: .update,
+            )
         }
 
         // 6. Post notification
@@ -314,8 +320,14 @@ public final class PolySyncCoordinator {
                 )
             }
         } catch {
-            polyError("PolySyncCoordinator: Push failed for new \(Entity.self) \(entityID), queueing for retry: \(error)")
-            queueOperation(table: tableName, action: .insert, record: record, entityId: entityID)
+            handlePushError(
+                error,
+                entityType: String(describing: Entity.self),
+                entityId: entityID,
+                tableName: tableName,
+                record: record,
+                action: .insert,
+            )
         }
 
         // 5. Post notification
@@ -383,9 +395,7 @@ public final class PolySyncCoordinator {
                 )
             }
         } catch {
-            polyError("PolySyncCoordinator: Tombstone push failed for \(Entity.self) \(entityID), queueing for retry: \(error)")
-
-            // Build tombstone record for queueing
+            // Build tombstone record for potential queueing
             var tombstoneRecord: [String: AnyJSON] = [
                 "id": .string(entityID),
                 "version": .integer(entityVersion),
@@ -395,7 +405,15 @@ public final class PolySyncCoordinator {
             if let userID = PolyBaseAuth.shared.userID {
                 tombstoneRecord["user_id"] = .string(userID.uuidString)
             }
-            queueOperation(table: tableName, action: .delete, record: tombstoneRecord, entityId: entityID)
+
+            handlePushError(
+                error,
+                entityType: String(describing: Entity.self),
+                entityId: entityID,
+                tableName: tableName,
+                record: tombstoneRecord,
+                action: .delete,
+            )
         }
 
         // 6. Post notification
@@ -527,8 +545,14 @@ public final class PolySyncCoordinator {
         do {
             try await pushEngine.pushRawRecord(record, to: tableName)
         } catch {
-            polyError("PolySyncCoordinator: Undelete push failed for \(Entity.self) \(entityID), queueing for retry: \(error)")
-            queueOperation(table: tableName, action: .update, record: record, entityId: entityID)
+            handlePushError(
+                error,
+                entityType: String(describing: Entity.self),
+                entityId: entityID,
+                tableName: tableName,
+                record: record,
+                action: .update,
+            )
         }
 
         // Post notification
@@ -707,6 +731,70 @@ public final class PolySyncCoordinator {
 
         polyInfo("PolySyncCoordinator: Queued \(action.rawValue) for \(table)/\(entityId)")
     }
+
+    // MARK: - Error Classification
+
+    /// Check if an error is a version regression (local version < remote version).
+    ///
+    /// Version regression errors are permanent failures — retrying won't help.
+    /// The local entity is stale and needs to pull the remote state.
+    private func isVersionRegressionError(_ error: Error) -> Bool {
+        let errorString = String(describing: error)
+        return errorString.contains("version regression")
+    }
+
+    /// Check if an error is a same-version mutation (benign duplicate).
+    ///
+    /// This happens when we try to push an entity that's already at the same version
+    /// remotely — usually caused by concurrent push tasks. Treat as a no-op.
+    private func isSameVersionMutationError(_ error: Error) -> Bool {
+        let errorString = String(describing: error)
+        return errorString.contains("same-version mutation is not allowed")
+    }
+
+    /// Handle a push error, distinguishing between retryable and permanent failures.
+    ///
+    /// - Version regression: Don't queue, post notification to trigger reconcile
+    /// - Same-version: Ignore (benign duplicate)
+    /// - Other errors: Queue for retry (transient failure)
+    private func handlePushError(
+        _ error: Error,
+        entityType: String,
+        entityId: String,
+        tableName: String,
+        record: [String: AnyJSON],
+        action: PolyBaseOfflineOperation.Action,
+    ) {
+        if isVersionRegressionError(error) {
+            // Permanent failure: local is stale, needs reconciliation
+            polyWarning(
+                "PolySyncCoordinator: Version regression for \(entityType) \(entityId) - " +
+                    "local is stale, will sync at next reconciliation",
+            )
+            // Post notification so app can trigger reconciliation if desired
+            NotificationCenter.default.post(
+                name: .polyBaseVersionRegressionDetected,
+                object: nil,
+                userInfo: [
+                    "entityType": entityType,
+                    "entityId": entityId,
+                    "tableName": tableName,
+                ],
+            )
+            // Do NOT queue — retrying will never succeed
+            return
+        }
+
+        if isSameVersionMutationError(error) {
+            // Benign duplicate — the push already happened, ignore
+            polyDebug("PolySyncCoordinator: Same-version mutation for \(entityType) \(entityId) - ignoring")
+            return
+        }
+
+        // Transient failure — queue for retry
+        polyError("PolySyncCoordinator: Push failed for \(entityType) \(entityId), queueing for retry: \(error)")
+        queueOperation(table: tableName, action: action, record: record, entityId: entityId)
+    }
 }
 
 // MARK: - Notification Names
@@ -721,4 +809,16 @@ public extension Notification.Name {
 
     /// Posted when sync encounters an error.
     static let polyBaseSyncDidFail = Notification.Name("polyBaseSyncDidFail")
+
+    /// Posted when a version regression is detected during push.
+    ///
+    /// This means the local entity is stale (behind remote). The push was rejected
+    /// and NOT queued for retry. Apps should trigger reconciliation to sync the
+    /// latest remote state.
+    ///
+    /// UserInfo contains:
+    /// - "entityType": String — the entity type name
+    /// - "entityId": String — the entity ID
+    /// - "tableName": String — the Supabase table name
+    static let polyBaseVersionRegressionDetected = Notification.Name("polyBaseVersionRegressionDetected")
 }
