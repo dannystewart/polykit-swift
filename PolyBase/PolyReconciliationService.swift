@@ -322,25 +322,33 @@ public final class PolyReconciliationService {
     /// Determine what action to take for an entity.
     ///
     /// Key rules:
-    /// 1. Tombstone stickiness: if remote is deleted with version >= local, adopt it
-    /// 2. Higher version wins (when not a sticky tombstone)
-    /// 3. Same version, same state → skip
+    /// 1. **Tombstone always wins**: If remote is deleted, adopt it (regardless of version)
+    /// 2. If local is deleted and remote isn't, push the deletion
+    /// 3. Higher version wins (for non-deleted entities)
+    /// 4. Same version, same state → skip
+    ///
+    /// The tombstone-always-wins rule prevents accidental resurrection. Deletion is an
+    /// explicit user action that should never be overridden by sync. To undelete,
+    /// use the +1000 version rule at the database level.
     private func determineAction(
         localVersion: Int,
         localDeleted: Bool,
         remoteVersion: Int,
         remoteDeleted: Bool,
     ) -> ReconcileAction {
-        // Rule 1: Tombstone stickiness
-        // If remote is deleted with version >= local, and local isn't deleted, adopt the tombstone
-        if remoteDeleted, remoteVersion >= localVersion, !localDeleted {
+        // Rule 1: Tombstone always wins
+        // If remote is deleted and local isn't, adopt the tombstone regardless of version.
+        // Deletion is an explicit user action — never resurrect via sync.
+        if remoteDeleted, !localDeleted {
             return .adoptTombstone
         }
 
-        // Rule 2: If local is deleted and remote isn't, and local version > remote, push the deletion
-        if localDeleted, !remoteDeleted, localVersion > remoteVersion {
+        // Rule 2: If local is deleted and remote isn't, push the deletion
+        if localDeleted, !remoteDeleted {
             return .push
         }
+
+        // At this point, both have the same deleted state
 
         // Rule 3: Higher version wins
         if remoteVersion > localVersion {
@@ -348,25 +356,11 @@ public final class PolyReconciliationService {
         }
 
         if localVersion > remoteVersion {
-            // Only push if remote isn't a tombstone (already handled above, but be safe)
-            if !remoteDeleted {
-                return .push
-            }
-            // Local is newer but remote is a tombstone with lower version
-            // This is the "intentional undelete" case - allow the push
             return .push
         }
 
-        // Rule 4: Same version
+        // Rule 4: Same version, same state → skip
         if remoteVersion == localVersion {
-            // If deleted states differ, prefer the deleted state (tombstone wins ties)
-            if remoteDeleted != localDeleted {
-                if remoteDeleted {
-                    return .adoptTombstone
-                }
-                // Local is deleted, remote isn't - push the deletion
-                return .push
-            }
             // Same version, same state
             return .skip
         }
