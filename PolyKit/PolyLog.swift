@@ -200,11 +200,22 @@ public final class PolyLog: @unchecked Sendable {
     /// Nil by default (no memory overhead). Call `enableCapture()` to activate.
     private var logBuffer: LogBuffer?
 
+    /// Optional log persistence service for writing logs to disk.
+    /// Nil by default (no disk I/O). Call `enablePersistence()` to activate.
+    private var persistence: LogPersistence?
+
     /// Returns whether log capture is currently enabled.
     public var isCaptureEnabled: Bool {
         groupLock.lock()
         defer { groupLock.unlock() }
         return logBuffer != nil
+    }
+
+    /// Returns whether log persistence is currently enabled.
+    public var isPersistenceEnabled: Bool {
+        groupLock.lock()
+        defer { groupLock.unlock() }
+        return persistence != nil
     }
 
     /// Returns the number of captured entries.
@@ -247,6 +258,115 @@ public final class PolyLog: @unchecked Sendable {
         defer { groupLock.unlock() }
 
         logBuffer = nil
+    }
+
+    // MARK: - Persistence Control
+
+    /// Enables log persistence to disk with session-based file management.
+    ///
+    /// Call this once at app startup if you want logs to persist across app launches.
+    /// Logs are written to Application Support/Logs/ with automatic session rotation.
+    ///
+    /// - Parameters:
+    ///   - directoryName: Directory name relative to Application Support. Defaults to "Logs".
+    ///   - maxSessions: Maximum number of session files to retain. Defaults to 20.
+    public func enablePersistence(directoryName: String = "Logs", maxSessions: Int = 20) {
+        groupLock.lock()
+        defer { groupLock.unlock() }
+
+        if persistence == nil {
+            let service = LogPersistence(directoryName: directoryName, maxSessions: maxSessions)
+            service.startNewSession()
+            persistence = service
+        }
+    }
+
+    /// Disables log persistence and ends the current session.
+    public func disablePersistence() {
+        groupLock.lock()
+        defer { groupLock.unlock() }
+
+        persistence?.endSession()
+        persistence = nil
+    }
+
+    /// Flushes all buffered log entries to disk.
+    ///
+    /// Normally logs are flushed automatically, but you can call this to ensure
+    /// critical logs are written immediately (e.g., before app termination).
+    public func flushPersistence() {
+        groupLock.lock()
+        let service = persistence
+        groupLock.unlock()
+
+        service?.flush()
+    }
+
+    /// Returns the logs directory URL if persistence is enabled.
+    ///
+    /// - Returns: URL of the logs directory, or nil if persistence is not enabled.
+    public func getLogsDirectoryURL() -> URL? {
+        groupLock.lock()
+        let service = persistence
+        groupLock.unlock()
+
+        return service?.getLogsDirectoryURL()
+    }
+
+    /// Returns all available session files if persistence is enabled.
+    ///
+    /// Files are sorted by creation date (newest first).
+    ///
+    /// - Returns: Array of session file URLs.
+    public func getSessionFiles() -> [URL] {
+        groupLock.lock()
+        let service = persistence
+        groupLock.unlock()
+
+        return service?.getSessionFiles() ?? []
+    }
+
+    /// Returns the current session file URL if persistence is enabled.
+    ///
+    /// - Returns: The current session file URL, or nil if persistence is not enabled.
+    public func getCurrentSessionFile() -> URL? {
+        groupLock.lock()
+        let service = persistence
+        groupLock.unlock()
+
+        return service?.getCurrentSessionFile()
+    }
+
+    /// Reads the contents of a session file.
+    ///
+    /// - Parameter fileURL: The session file to read.
+    /// - Returns: The file contents as a string, or nil if reading fails.
+    public func readSessionFile(_ fileURL: URL) -> String? {
+        groupLock.lock()
+        let service = persistence
+        groupLock.unlock()
+
+        return service?.readSessionFile(fileURL)
+    }
+
+    /// Creates a zip archive of all log files.
+    ///
+    /// - Returns: URL of the created zip file in the temporary directory.
+    /// - Throws: Error if zip creation fails or persistence is not enabled.
+    public func createLogsArchive() throws -> URL {
+        groupLock.lock()
+        let service = persistence
+        groupLock.unlock()
+
+        guard let service else {
+            throw NSError(
+                domain: "PolyLog",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Log persistence is not enabled"],
+            )
+        }
+
+        return try service.createLogsArchive()
     }
 
     /// Returns all captured log entries in chronological order.
@@ -462,6 +582,7 @@ public final class PolyLog: @unchecked Sendable {
         // Capture to buffer if enabled (always capture, even if console output is filtered)
         groupLock.lock()
         let buffer = logBuffer
+        let persistenceService = persistence
         groupLock.unlock()
 
         if let buffer {
@@ -474,6 +595,12 @@ public final class PolyLog: @unchecked Sendable {
                 formattedText: plainText,
             )
             buffer.append(entry)
+        }
+
+        // Write to persistence if enabled
+        if let persistenceService {
+            let plainText = formatPlainMessage(message, level: level, group: group, timestamp: now)
+            persistenceService.write(plainText)
         }
 
         // Print to console if we're in a real terminal (supports ANSI colors)
