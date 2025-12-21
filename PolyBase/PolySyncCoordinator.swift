@@ -600,6 +600,9 @@ public final class PolySyncCoordinator {
     /// Call this when the app launches, when network connectivity returns,
     /// or at any time you want to retry failed operations.
     ///
+    /// Operations that fail with permanent errors (version regression, immutable field)
+    /// are dropped rather than re-queued, since retrying them will never succeed.
+    ///
     /// - Returns: The number of operations successfully processed.
     @discardableResult
     public func processOfflineQueue() async -> Int {
@@ -610,41 +613,56 @@ public final class PolySyncCoordinator {
         return await offlineQueue.processQueue { [weak self] operation in
             guard let self else { return }
 
-            switch operation.action {
-            case .insert, .update:
-                // Decode the record and push
-                guard let payload = operation.payload else {
-                    throw CoordinatorError.pushFailed(NSError(domain: "PolyBase", code: -1, userInfo: [
-                        NSLocalizedDescriptionKey: "No payload for \(operation.action)",
-                    ]))
+            do {
+                switch operation.action {
+                case .insert, .update:
+                    // Decode the record and push
+                    guard let payload = operation.payload else {
+                        throw CoordinatorError.pushFailed(NSError(domain: "PolyBase", code: -1, userInfo: [
+                            NSLocalizedDescriptionKey: "No payload for \(operation.action)",
+                        ]))
+                    }
+
+                    let record = try JSONDecoder().decode([String: AnyJSON].self, from: payload)
+                    try await pushEngine.pushRawRecord(record, to: operation.table)
+
+                case .delete:
+                    // Decode tombstone record and push as update
+                    guard let payload = operation.payload else {
+                        throw CoordinatorError.pushFailed(NSError(domain: "PolyBase", code: -1, userInfo: [
+                            NSLocalizedDescriptionKey: "No payload for delete",
+                        ]))
+                    }
+
+                    let record = try JSONDecoder().decode([String: AnyJSON].self, from: payload)
+
+                    // Extract version from record
+                    let version = record["version"]?.integerValue ?? 1
+                    let deleted = record["deleted"]?.boolValue ?? true
+
+                    try await pushEngine.updateTombstone(
+                        id: operation.entityId,
+                        version: version,
+                        deleted: deleted,
+                        tableName: operation.table,
+                    )
                 }
 
-                let record = try JSONDecoder().decode([String: AnyJSON].self, from: payload)
-                try await pushEngine.pushRawRecord(record, to: operation.table)
-
-            case .delete:
-                // Decode tombstone record and push as update
-                guard let payload = operation.payload else {
-                    throw CoordinatorError.pushFailed(NSError(domain: "PolyBase", code: -1, userInfo: [
-                        NSLocalizedDescriptionKey: "No payload for delete",
-                    ]))
+                polyDebug("PolySyncCoordinator: Processed queued \(operation.action.rawValue) for \(operation.table)/\(operation.entityId)")
+            } catch {
+                // Check if this is a permanent error that should NOT be retried
+                if isPermanentError(error) {
+                    polyWarning(
+                        "PolySyncCoordinator: Dropping queued operation for \(operation.table)/\(operation.entityId) - " +
+                            "permanent error: \(error.localizedDescription)",
+                    )
+                    // Don't rethrow — this removes it from the queue
+                    return
                 }
 
-                let record = try JSONDecoder().decode([String: AnyJSON].self, from: payload)
-
-                // Extract version from record
-                let version = record["version"]?.integerValue ?? 1
-                let deleted = record["deleted"]?.boolValue ?? true
-
-                try await pushEngine.updateTombstone(
-                    id: operation.entityId,
-                    version: version,
-                    deleted: deleted,
-                    tableName: operation.table,
-                )
+                // Transient error — rethrow to re-queue
+                throw error
             }
-
-            polyDebug("PolySyncCoordinator: Processed queued \(operation.action.rawValue) for \(operation.table)/\(operation.entityId)")
         }
     }
 
@@ -654,6 +672,19 @@ public final class PolySyncCoordinator {
     public func clearOfflineQueue() {
         offlineQueue.clearQueue()
         polyInfo("PolySyncCoordinator: Offline queue cleared")
+    }
+
+    /// Check if an error is permanent (should not be retried).
+    ///
+    /// Permanent errors include:
+    /// - Version regression (local version < remote)
+    /// - Immutable field violations (e.g., created_at)
+    /// - Same-version mutations (already at that version)
+    private nonisolated func isPermanentError(_ error: Error) -> Bool {
+        let errorString = String(describing: error)
+        return errorString.contains("version regression") ||
+            errorString.contains("is immutable") ||
+            errorString.contains("same-version mutation")
     }
 
     /// Get the current model context or throw.
