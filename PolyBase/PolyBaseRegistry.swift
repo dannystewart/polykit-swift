@@ -37,16 +37,6 @@ public struct AnyParentRelation: Sendable {
 
     private let _getParentID: @Sendable (Any) -> String?
 
-    public init<Child: PolySyncable, Parent: PolySyncable>(
-        _ relation: PolyParentRelation<Child, Parent>,
-    ) {
-        parentTypeName = String(describing: Parent.self)
-        _getParentID = { entity in
-            guard let child = entity as? Child else { return nil }
-            return relation.getParentID(from: child)
-        }
-    }
-
     /// Resolve the parent table name from the registry.
     /// This is resolved lazily because the parent may not be registered when the child is registered.
     public var parentTableName: String {
@@ -55,6 +45,16 @@ public struct AnyParentRelation: Sendable {
             return ""
         }
         return parentConfig.tableName
+    }
+
+    public init<Child: PolySyncable, Parent: PolySyncable>(
+        _ relation: PolyParentRelation<Child, Parent>,
+    ) {
+        parentTypeName = String(describing: Parent.self)
+        _getParentID = { entity in
+            guard let child = entity as? Child else { return nil }
+            return relation.getParentID(from: child)
+        }
     }
 
     public func getParentID(from entity: Any) -> String? {
@@ -87,6 +87,26 @@ public final class PolyEntityConfig<Entity: PolySyncable>: @unchecked Sendable {
     /// Custom conflict resolution rules (optional)
     public var conflictRules: PolyConflictRules = .default
 
+    /// Factory closure to create new entities from remote records.
+    ///
+    /// Required for reconciliation to create entities that exist remotely but not locally.
+    /// The factory should:
+    /// 1. Create the entity from the record
+    /// 2. Insert it into the context
+    /// 3. Return the created entity
+    ///
+    /// ```swift
+    /// config.factory = { record, context in
+    ///     let item = Item(
+    ///         id: record["id"]!.stringValue!,
+    ///         title: record["title"]?.stringValue ?? ""
+    ///     )
+    ///     context.insert(item)
+    ///     return item
+    /// }
+    /// ```
+    public var factory: ((_ record: [String: AnyJSON], _ context: ModelContext) throws -> Entity)?
+
     /// Parent relation for hierarchy bumping (optional)
     private var _parentRelation: AnyParentRelation?
 
@@ -108,8 +128,7 @@ public final class PolyEntityConfig<Entity: PolySyncable>: @unchecked Sendable {
     ) {
         let relation = PolyParentRelation<Entity, Parent>(
             parentIDKeyPath: keyPath,
-            parentType: Parent.self,
-        )
+            parentType: Parent.self)
         // Table name is resolved lazily from the registry when accessed
         _parentRelation = AnyParentRelation(relation)
     }
@@ -160,9 +179,13 @@ public final class AnyEntityConfig: @unchecked Sendable {
 
     private let _fields: [AnyFieldMapping]
     private let _entityType: Any.Type
+    private let _factory: ((_ record: [String: AnyJSON], _ context: ModelContext) throws -> Any)?
 
     /// Get all field mappings.
     public var fields: [AnyFieldMapping] { _fields }
+
+    /// Whether this entity has a factory for creating new instances from remote records.
+    public var hasFactory: Bool { _factory != nil }
 
     public init<Entity: PolySyncable>(_ config: PolyEntityConfig<Entity>) {
         tableName = config.tableName
@@ -174,6 +197,15 @@ public final class AnyEntityConfig: @unchecked Sendable {
         conflictRules = config.conflictRules
         _fields = config.fields.map { AnyFieldMapping($0) }
         _entityType = Entity.self
+
+        // Type-erase the factory
+        if let typedFactory = config.factory {
+            _factory = { record, context in
+                try typedFactory(record, context)
+            }
+        } else {
+            _factory = nil
+        }
     }
 
     /// Check if an entity is of this config's type.
@@ -184,6 +216,34 @@ public final class AnyEntityConfig: @unchecked Sendable {
     /// Get a field mapping by column name.
     public func field(forColumn column: String) -> AnyFieldMapping? {
         _fields.first { $0.columnName == column }
+    }
+
+    /// Create a new entity from a remote record using the registered factory.
+    ///
+    /// - Parameters:
+    ///   - record: The remote record from Supabase
+    ///   - context: The model context to insert into
+    /// - Returns: The created entity
+    /// - Throws: If no factory is registered or creation fails
+    public func createEntity(from record: [String: AnyJSON], context: ModelContext) throws -> Any {
+        guard let factory = _factory else {
+            throw PolyRegistryError.noFactory(entityTypeName)
+        }
+        return try factory(record, context)
+    }
+}
+
+// MARK: - PolyRegistryError
+
+/// Errors from registry operations.
+public enum PolyRegistryError: LocalizedError {
+    case noFactory(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case let .noFactory(typeName):
+            "No factory registered for entity type '\(typeName)'. Add a factory closure during registration."
+        }
     }
 }
 

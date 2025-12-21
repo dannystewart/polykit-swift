@@ -74,6 +74,27 @@ private enum ReconcileAction {
 /// If remote is deleted with version >= local version, the deletion is adopted
 /// locally. This prevents resurrection of deleted items.
 ///
+/// ## Requirements
+///
+/// Entity registrations must include a `factory` closure for creating new entities
+/// from remote records. Without a factory, reconciliation cannot create entities
+/// that exist remotely but not locally.
+///
+/// ```swift
+/// PolyBaseRegistry.shared.register(Item.self) { config in
+///     config.tableName = "items"
+///     config.fields = [...]
+///     config.factory = { record, context in
+///         let item = Item(
+///             id: record["id"]!.stringValue!,
+///             title: record["title"]?.stringValue ?? ""
+///         )
+///         context.insert(item)
+///         return item
+///     }
+/// }
+/// ```
+///
 /// ## Usage
 ///
 /// ```swift
@@ -438,16 +459,8 @@ public final class PolyReconciliationService {
                                 succeeded += 1
                             }
                         } else {
-                            // Create new - requires entity-specific creation
-                            // Post notification for app to handle
-                            NotificationCenter.default.post(
-                                name: .polyBaseNeedsEntityCreation,
-                                object: nil,
-                                userInfo: [
-                                    "tableName": config.tableName,
-                                    "record": record,
-                                ],
-                            )
+                            // Create new using registered factory
+                            _ = try config.createEntity(from: record, context: context)
                             succeeded += 1
                         }
                     } catch {
@@ -555,16 +568,4 @@ private enum ReconcileServiceError: LocalizedError {
             "No ModelContext available"
         }
     }
-}
-
-// MARK: - Notification Names
-
-public extension Notification.Name {
-    /// Posted when reconciliation needs to create a new entity.
-    /// Apps should listen for this and create the entity from the provided record.
-    ///
-    /// UserInfo contains:
-    /// - "tableName": String
-    /// - "record": [String: AnyJSON]
-    static let polyBaseNeedsEntityCreation = Notification.Name("polyBaseNeedsEntityCreation")
 }
