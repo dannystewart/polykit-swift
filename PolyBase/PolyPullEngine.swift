@@ -98,7 +98,7 @@ public final class PolyPullEngine {
         tableName: String,
         userIDColumn: String,
         userID: UUID?,
-        filter: ((PostgrestFilterBuilder) -> PostgrestFilterBuilder)?,
+        filter: (@Sendable (PostgrestFilterBuilder) -> PostgrestFilterBuilder)?,
     ) async throws -> [[String: AnyJSON]] {
         let client = try PolyBaseClient.requireClient()
 
@@ -279,7 +279,7 @@ public final class PolyPullEngine {
     /// - Returns: Array of remote records
     public func pullAll<Entity: PolySyncable>(
         _ entityType: Entity.Type,
-        filter: ((PostgrestFilterBuilder) -> PostgrestFilterBuilder)? = nil,
+        filter: (@Sendable (PostgrestFilterBuilder) -> PostgrestFilterBuilder)? = nil,
     ) async throws -> [[String: AnyJSON]] {
         guard let config = registry.config(for: entityType) else {
             throw PolyPullError.entityNotRegistered(String(describing: entityType))
