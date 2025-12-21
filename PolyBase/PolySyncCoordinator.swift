@@ -477,6 +477,68 @@ public final class PolySyncCoordinator {
         polyInfo("PolySyncCoordinator: Batch deleted \(entities.count) \(Entity.self) entities")
     }
 
+    // MARK: - Undelete
+
+    /// Explicitly undelete an entity using the +1000 version rule.
+    ///
+    /// This is the **only** way to resurrect a deleted entity. Normal sync operations
+    /// enforce "tombstone always wins" — a deleted entity stays deleted regardless of
+    /// version. The +1000 version jump signals intentional undelete and is honored
+    /// by both the sync engine and database guards.
+    ///
+    /// Use this for explicit "restore" or "undo delete" features in your app.
+    ///
+    /// - Parameter entity: The deleted entity to restore
+    /// - Throws: If the entity isn't registered or save/push fails
+    public func undelete<Entity: PolySyncable>(_ entity: Entity) async throws {
+        let context = try requireContext()
+
+        guard let config = registry.config(for: Entity.self) else {
+            throw CoordinatorError.entityNotRegistered(String(describing: Entity.self))
+        }
+
+        guard entity.deleted else {
+            polyWarning("PolySyncCoordinator: Entity \(entity.id) is not deleted, nothing to undelete")
+            return
+        }
+
+        // The +1000 version jump signals intentional undelete
+        entity.deleted = false
+        entity.version += 1000
+
+        // Capture values before async work
+        let entityID = entity.id
+        let tableName = config.tableName
+
+        // Build record before push
+        let record: [String: AnyJSON]
+        do {
+            record = try pushEngine.buildRecord(from: entity, config: config)
+        } catch {
+            polyError("PolySyncCoordinator: Failed to build record for undelete \(Entity.self) \(entityID): \(error)")
+            return
+        }
+
+        // Save locally
+        try context.save()
+
+        // Push to Supabase
+        pushEngine.markAsPushed(entityID, table: tableName)
+        do {
+            try await pushEngine.pushRawRecord(record, to: tableName)
+        } catch {
+            polyError("PolySyncCoordinator: Undelete push failed for \(Entity.self) \(entityID), queueing for retry: \(error)")
+            queueOperation(table: tableName, action: .update, record: record, entityId: entityID)
+        }
+
+        // Post notification
+        if let notification = config.notification {
+            NotificationCenter.default.post(name: notification, object: nil)
+        }
+
+        polyInfo("PolySyncCoordinator: Undeleted \(Entity.self) \(entityID) with +1000 version jump")
+    }
+
     // MARK: - Save Without Sync
 
     /// Save changes locally without syncing to Supabase.
