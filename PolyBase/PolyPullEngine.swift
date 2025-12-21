@@ -91,6 +91,68 @@ public final class PolyPullEngine {
         self.modelContext = modelContext
     }
 
+    // MARK: - Nonisolated Network Fetches
+
+    /// Fetch all records from a table (nonisolated for off-MainActor network I/O).
+    private nonisolated static func fetchRecords(
+        tableName: String,
+        userIDColumn: String,
+        userID: UUID?,
+        filter: ((PostgrestFilterBuilder) -> PostgrestFilterBuilder)?,
+    ) async throws -> [[String: AnyJSON]] {
+        let client = try PolyBaseClient.requireClient()
+
+        var query = client.from(tableName).select()
+
+        if let userID {
+            query = query.eq(userIDColumn, value: userID.uuidString)
+        }
+
+        if let filter {
+            query = filter(query)
+        }
+
+        let response: [AnyJSON] = try await query.execute().value
+
+        return response.compactMap { json in
+            if case let .object(dict) = json {
+                return dict
+            }
+            return nil
+        }
+    }
+
+    /// Fetch version info for all records in a table (nonisolated for off-MainActor network I/O).
+    private nonisolated static func fetchVersions(
+        tableName: String,
+        userIDColumn: String,
+        userID: UUID?,
+    ) async throws -> [String: (version: Int, deleted: Bool)] {
+        let client = try PolyBaseClient.requireClient()
+
+        var query = client.from(tableName).select("id,version,deleted")
+
+        if let userID {
+            query = query.eq(userIDColumn, value: userID.uuidString)
+        }
+
+        let response: [AnyJSON] = try await query.execute().value
+
+        var versions = [String: (version: Int, deleted: Bool)]()
+        for json in response {
+            if
+                case let .object(dict) = json,
+                let id = dict["id"]?.stringValue,
+                let version = dict["version"]?.integerValue
+            {
+                let deleted = dict["deleted"]?.boolValue ?? false
+                versions[id] = (version, deleted)
+            }
+        }
+
+        return versions
+    }
+
     // MARK: - Merge Remote Record
 
     /// Merge a remote record into the local database.
@@ -223,29 +285,16 @@ public final class PolyPullEngine {
             throw PolyPullError.entityNotRegistered(String(describing: entityType))
         }
 
-        let client = try PolyBaseClient.requireClient()
+        // Capture userID on MainActor before network call
+        let userID = config.includeUserID ? PolyBaseAuth.shared.userID : nil
 
-        var query = client.from(config.tableName).select()
-
-        // Apply user filter for RLS
-        if config.includeUserID, let userID = PolyBaseAuth.shared.userID {
-            query = query.eq(config.userIDColumn, value: userID.uuidString)
-        }
-
-        // Apply custom filter
-        if let filter {
-            query = filter(query)
-        }
-
-        let response: [AnyJSON] = try await query.execute().value
-
-        // Convert to record dictionaries
-        let records: [[String: AnyJSON]] = response.compactMap { json in
-            if case let .object(dict) = json {
-                return dict
-            }
-            return nil
-        }
+        // Do network I/O off MainActor
+        let records = try await Self.fetchRecords(
+            tableName: config.tableName,
+            userIDColumn: config.userIDColumn,
+            userID: userID,
+            filter: filter,
+        )
 
         polyInfo("PolyPullEngine: Pulled \(records.count) \(Entity.self) records")
         return records
@@ -261,29 +310,15 @@ public final class PolyPullEngine {
             throw PolyPullError.entityNotRegistered(String(describing: entityType))
         }
 
-        let client = try PolyBaseClient.requireClient()
+        // Capture userID on MainActor before network call
+        let userID = config.includeUserID ? PolyBaseAuth.shared.userID : nil
 
-        var query = client.from(config.tableName).select("id,version,deleted")
-
-        if config.includeUserID, let userID = PolyBaseAuth.shared.userID {
-            query = query.eq(config.userIDColumn, value: userID.uuidString)
-        }
-
-        let response: [AnyJSON] = try await query.execute().value
-
-        var versions = [String: (version: Int, deleted: Bool)]()
-        for json in response {
-            if
-                case let .object(dict) = json,
-                let id = dict["id"]?.stringValue,
-                let version = dict["version"]?.integerValue
-            {
-                let deleted = dict["deleted"]?.boolValue ?? false
-                versions[id] = (version, deleted)
-            }
-        }
-
-        return versions
+        // Do network I/O off MainActor
+        return try await Self.fetchVersions(
+            tableName: config.tableName,
+            userIDColumn: config.userIDColumn,
+            userID: userID,
+        )
     }
 
     /// Apply field values from a remote record to a local entity.

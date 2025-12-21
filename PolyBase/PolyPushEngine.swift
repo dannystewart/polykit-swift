@@ -149,7 +149,9 @@ public final class PolyPushEngine {
     /// 1. The row already exists (we're soft-deleting)
     /// 2. We only need to update version, deleted, and updated_at
     /// 3. UPSERT would require all NOT NULL columns
-    public func updateTombstone(
+    ///
+    /// This is nonisolated to allow network I/O off the main actor.
+    public nonisolated func updateTombstone(
         id: String,
         version: Int,
         deleted: Bool,
@@ -175,8 +177,9 @@ public final class PolyPushEngine {
     /// Batch update existing records to mark them as deleted (tombstones).
     ///
     /// Uses individual UPDATE calls since Supabase doesn't support batch updates.
+    /// This is nonisolated to allow network I/O off the main actor.
     @discardableResult
-    public func updateTombstones(
+    public nonisolated func updateTombstones(
         tableName: String,
         tombstones: [(id: String, version: Int, deleted: Bool)],
     ) async -> Int {
@@ -192,6 +195,11 @@ public final class PolyPushEngine {
                     tableName: tableName,
                 )
                 successCount += 1
+
+                // Yield periodically to prevent blocking
+                if successCount % 10 == 0 {
+                    await Task.yield()
+                }
             } catch {
                 polyError("PolyPushEngine: Failed to update tombstone \(tableName)/\(tombstone.id): \(error)")
             }
@@ -199,6 +207,23 @@ public final class PolyPushEngine {
 
         polyInfo("PolyPushEngine: Updated \(successCount)/\(tombstones.count) tombstones in \(tableName)")
         return successCount
+    }
+
+    /// Push multiple pre-built records to Supabase in a single batch.
+    ///
+    /// This is nonisolated to allow network I/O off the main actor.
+    /// Records should be built on MainActor before calling this.
+    public nonisolated func pushRawRecords(
+        _ records: [[String: AnyJSON]],
+        to tableName: String,
+    ) async throws {
+        guard !records.isEmpty else { return }
+
+        let client = try PolyBaseClient.requireClient()
+        try await client
+            .from(tableName)
+            .upsert(records, onConflict: "id")
+            .execute()
     }
 
     /// Push a tombstone with captured values using UPSERT (for new records or full replacement).
@@ -318,7 +343,11 @@ public final class PolyPushEngine {
     /// - Parameters:
     ///   - record: The record dictionary (as built by buildRecord)
     ///   - tableName: The target table
-    public func pushRawRecord(_ record: [String: AnyJSON], to tableName: String) async throws {
+    /// Push a pre-built record to Supabase.
+    ///
+    /// This is nonisolated to allow network I/O off the main actor.
+    /// The record should be built on MainActor before calling this.
+    public nonisolated func pushRawRecord(_ record: [String: AnyJSON], to tableName: String) async throws {
         let client = try PolyBaseClient.requireClient()
         try await client
             .from(tableName)
