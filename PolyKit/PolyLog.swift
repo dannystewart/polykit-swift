@@ -651,10 +651,10 @@ public final class PolyLog: @unchecked Sendable {
             let groupFormatted = if let group {
                 if let emoji = group.emoji {
                     // Use emoji directly (no brackets, no color needed - emoji is already colorful)
-                    "\(emoji) "
+                    "\(emoji) | "
                 } else {
                     // Fall back to identifier in brackets with color
-                    "\(ANSIColor.cyan.rawValue)[\(group.identifier)]\(ANSIColor.reset.rawValue) "
+                    "\(ANSIColor.cyan.rawValue)[\(group.identifier)]\(ANSIColor.reset.rawValue) | "
                 }
             } else {
                 ""
