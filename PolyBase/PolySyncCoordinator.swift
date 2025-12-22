@@ -155,28 +155,34 @@ public final class PolySyncCoordinator {
             return
         }
 
-        // 5. Push to Supabase (await to ensure correct state is pushed)
+        // 5. Push to Supabase (non-blocking with offline queue backup)
+        // We spawn a Task to avoid blocking the main thread on network I/O.
+        // The offline queue handles retry if the push fails.
         pushEngine.markAsPushed(entityID, table: tableName)
-        do {
-            try await pushEngine.pushRawRecord(record, to: tableName)
+        let entityType = String(describing: Entity.self)
+        Task { [weak self, pushEngine] in
+            guard let self else { return }
+            do {
+                try await pushEngine.pushRawRecord(record, to: tableName)
 
-            // Push parent if hierarchy was bumped
-            if let parentID, let parentTable {
-                await pushParentHierarchy(
-                    parentID: parentID,
-                    parentTable: parentTable,
-                    context: context,
+                // Push parent if hierarchy was bumped
+                if let parentID, let parentTable {
+                    await pushParentHierarchy(
+                        parentID: parentID,
+                        parentTable: parentTable,
+                        context: context,
+                    )
+                }
+            } catch {
+                handlePushError(
+                    error,
+                    entityType: entityType,
+                    entityId: entityID,
+                    tableName: tableName,
+                    record: record,
+                    action: .update,
                 )
             }
-        } catch {
-            handlePushError(
-                error,
-                entityType: String(describing: Entity.self),
-                entityId: entityID,
-                tableName: tableName,
-                record: record,
-                action: .update,
-            )
         }
 
         // 6. Post notification
@@ -241,17 +247,21 @@ public final class PolySyncCoordinator {
             pushEngine.markAsPushed(entity.id, table: tableName)
         }
 
-        // 7. Batch push to Supabase (await to ensure correct state is pushed)
-        await pushEngine.pushBatch(entities)
+        // 7. Batch push to Supabase (non-blocking)
+        let capturedParentIDs = parentIDs
+        Task { [weak self, pushEngine] in
+            guard let self else { return }
+            await pushEngine.pushBatch(entities)
 
-        // Push parents
-        if let parentTable {
-            for parentID in parentIDs {
-                await pushParentHierarchy(
-                    parentID: parentID,
-                    parentTable: parentTable,
-                    context: context,
-                )
+            // Push parents
+            if let parentTable {
+                for parentID in capturedParentIDs {
+                    await pushParentHierarchy(
+                        parentID: parentID,
+                        parentTable: parentTable,
+                        context: context,
+                    )
+                }
             }
         }
 
@@ -306,28 +316,32 @@ public final class PolySyncCoordinator {
             return
         }
 
-        // 4. Push to Supabase (await to ensure correct state is pushed)
+        // 4. Push to Supabase (non-blocking with offline queue backup)
         pushEngine.markAsPushed(entityID, table: tableName)
-        do {
-            try await pushEngine.pushRawRecord(record, to: tableName)
+        let entityType = String(describing: Entity.self)
+        Task { [weak self, pushEngine] in
+            guard let self else { return }
+            do {
+                try await pushEngine.pushRawRecord(record, to: tableName)
 
-            // Push parent if hierarchy was bumped
-            if let parentID, let parentTable {
-                await pushParentHierarchy(
-                    parentID: parentID,
-                    parentTable: parentTable,
-                    context: context,
+                // Push parent if hierarchy was bumped
+                if let parentID, let parentTable {
+                    await pushParentHierarchy(
+                        parentID: parentID,
+                        parentTable: parentTable,
+                        context: context,
+                    )
+                }
+            } catch {
+                handlePushError(
+                    error,
+                    entityType: entityType,
+                    entityId: entityID,
+                    tableName: tableName,
+                    record: record,
+                    action: .insert,
                 )
             }
-        } catch {
-            handlePushError(
-                error,
-                entityType: String(describing: Entity.self),
-                entityId: entityID,
-                tableName: tableName,
-                record: record,
-                action: .insert,
-            )
         }
 
         // 5. Post notification
@@ -376,44 +390,48 @@ public final class PolySyncCoordinator {
         // 4. Save locally
         try context.save()
 
-        // 5. Push tombstone to Supabase (use UPDATE, not upsert - row already exists)
+        // 5. Push tombstone to Supabase (non-blocking, use UPDATE not upsert)
         pushEngine.markAsPushed(entityID, table: tableName)
-        do {
-            try await pushEngine.updateTombstone(
-                id: entityID,
-                version: entityVersion,
-                deleted: entityDeleted,
-                tableName: tableName,
-            )
+        let entityType = String(describing: Entity.self)
+        Task { [weak self, pushEngine] in
+            guard let self else { return }
+            do {
+                try await pushEngine.updateTombstone(
+                    id: entityID,
+                    version: entityVersion,
+                    deleted: entityDeleted,
+                    tableName: tableName,
+                )
 
-            // Push parent if hierarchy was bumped
-            if let parentID, let parentTable {
-                await pushParentHierarchy(
-                    parentID: parentID,
-                    parentTable: parentTable,
-                    context: context,
+                // Push parent if hierarchy was bumped
+                if let parentID, let parentTable {
+                    await pushParentHierarchy(
+                        parentID: parentID,
+                        parentTable: parentTable,
+                        context: context,
+                    )
+                }
+            } catch {
+                // Build tombstone record for potential queueing
+                var tombstoneRecord: [String: AnyJSON] = [
+                    "id": .string(entityID),
+                    "version": .integer(entityVersion),
+                    "deleted": .bool(entityDeleted),
+                    "updated_at": .string(ISO8601DateFormatter().string(from: Date())),
+                ]
+                if let userID = PolyBaseAuth.shared.userID {
+                    tombstoneRecord["user_id"] = .string(userID.uuidString)
+                }
+
+                handlePushError(
+                    error,
+                    entityType: entityType,
+                    entityId: entityID,
+                    tableName: tableName,
+                    record: tombstoneRecord,
+                    action: .delete,
                 )
             }
-        } catch {
-            // Build tombstone record for potential queueing
-            var tombstoneRecord: [String: AnyJSON] = [
-                "id": .string(entityID),
-                "version": .integer(entityVersion),
-                "deleted": .bool(entityDeleted),
-                "updated_at": .string(ISO8601DateFormatter().string(from: Date())),
-            ]
-            if let userID = PolyBaseAuth.shared.userID {
-                tombstoneRecord["user_id"] = .string(userID.uuidString)
-            }
-
-            handlePushError(
-                error,
-                entityType: String(describing: Entity.self),
-                entityId: entityID,
-                tableName: tableName,
-                record: tombstoneRecord,
-                action: .delete,
-            )
         }
 
         // 6. Post notification
@@ -473,17 +491,21 @@ public final class PolySyncCoordinator {
             pushEngine.markAsPushed(tombstone.id, table: tableName)
         }
 
-        // 6. Batch update tombstones (use UPDATE, not upsert)
-        _ = await pushEngine.updateTombstones(tableName: tableName, tombstones: tombstones)
+        // 6. Batch update tombstones (non-blocking, use UPDATE not upsert)
+        let capturedParentIDs = parentIDs
+        Task { [weak self, pushEngine] in
+            guard let self else { return }
+            _ = await pushEngine.updateTombstones(tableName: tableName, tombstones: tombstones)
 
-        // Push parents
-        if let parentTable {
-            for parentID in parentIDs {
-                await pushParentHierarchy(
-                    parentID: parentID,
-                    parentTable: parentTable,
-                    context: context,
-                )
+            // Push parents
+            if let parentTable {
+                for parentID in capturedParentIDs {
+                    await pushParentHierarchy(
+                        parentID: parentID,
+                        parentTable: parentTable,
+                        context: context,
+                    )
+                }
             }
         }
 
@@ -540,19 +562,23 @@ public final class PolySyncCoordinator {
         // Save locally
         try context.save()
 
-        // Push to Supabase
+        // Push to Supabase (non-blocking)
         pushEngine.markAsPushed(entityID, table: tableName)
-        do {
-            try await pushEngine.pushRawRecord(record, to: tableName)
-        } catch {
-            handlePushError(
-                error,
-                entityType: String(describing: Entity.self),
-                entityId: entityID,
-                tableName: tableName,
-                record: record,
-                action: .update,
-            )
+        let entityType = String(describing: Entity.self)
+        Task { [weak self, pushEngine] in
+            guard let self else { return }
+            do {
+                try await pushEngine.pushRawRecord(record, to: tableName)
+            } catch {
+                handlePushError(
+                    error,
+                    entityType: entityType,
+                    entityId: entityID,
+                    tableName: tableName,
+                    record: record,
+                    action: .update,
+                )
+            }
         }
 
         // Post notification
