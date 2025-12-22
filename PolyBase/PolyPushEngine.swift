@@ -387,6 +387,14 @@ public final class PolyPushEngine {
         echoTracker.markAsPushed(id, table: table)
     }
 
+    /// Clear all echo tracking state.
+    ///
+    /// Call this during force repair or reset operations to ensure
+    /// pulled data isn't incorrectly filtered as "recently pushed."
+    public nonisolated static func clearEchoTracker() {
+        echoTracker.clear()
+    }
+
     // MARK: - Record Building
 
     /// Build a Supabase record from an entity using registered mappings.
