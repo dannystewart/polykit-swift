@@ -706,11 +706,13 @@ public final class PolySyncCoordinator {
     /// - Version regression (local version < remote)
     /// - Immutable field violations (e.g., created_at)
     /// - Same-version mutations (already at that version)
+    /// - Invalid undelete attempts (requires version >= old + 1000)
     private nonisolated func isPermanentError(_ error: Error) -> Bool {
         let errorString = String(describing: error)
         return errorString.contains("version regression") ||
             errorString.contains("is immutable") ||
-            errorString.contains("same-version mutation")
+            errorString.contains("same-version mutation") ||
+            errorString.contains("undelete requires version")
     }
 
     /// Get the current model context or throw.
@@ -809,9 +811,19 @@ public final class PolySyncCoordinator {
         return errorString.contains("same-version mutation is not allowed")
     }
 
+    /// Check if an error is an invalid undelete attempt (permanent failure).
+    ///
+    /// The database requires undeletes to bump version by at least 1000.
+    /// This prevents accidental resurrection. The local entity needs reconciliation.
+    private func isInvalidUndeleteError(_ error: Error) -> Bool {
+        let errorString = String(describing: error)
+        return errorString.contains("undelete requires version")
+    }
+
     /// Handle a push error, distinguishing between retryable and permanent failures.
     ///
     /// - Version regression: Don't queue, post notification to trigger reconcile
+    /// - Invalid undelete: Don't queue, post notification to trigger reconcile
     /// - Same-version: Ignore (benign duplicate)
     /// - Other errors: Queue for retry (transient failure)
     private func handlePushError(
@@ -831,6 +843,26 @@ public final class PolySyncCoordinator {
             // Post notification so app can trigger reconciliation if desired
             NotificationCenter.default.post(
                 name: .polyBaseVersionRegressionDetected,
+                object: nil,
+                userInfo: [
+                    "entityType": entityType,
+                    "entityId": entityId,
+                    "tableName": tableName,
+                ],
+            )
+            // Do NOT queue — retrying will never succeed
+            return
+        }
+
+        if isInvalidUndeleteError(error) {
+            // Permanent failure: trying to undelete without proper version bump
+            polyWarning(
+                "PolySyncCoordinator: Invalid undelete attempt for \(entityType) \(entityId) - " +
+                    "remote is deleted, local needs to adopt tombstone",
+            )
+            // Post notification so app can trigger reconciliation
+            NotificationCenter.default.post(
+                name: .polyBaseVersionRegressionDetected, // Reuse same notification
                 object: nil,
                 userInfo: [
                     "entityType": entityType,
