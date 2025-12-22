@@ -269,8 +269,8 @@ public final class PolyLog: @unchecked Sendable {
     ///
     /// - Parameters:
     ///   - directoryName: Directory name relative to Application Support. Defaults to "Logs".
-    ///   - maxSessions: Maximum number of session files to retain. Defaults to 20.
-    public func enablePersistence(directoryName: String = "Logs", maxSessions: Int = 20) {
+    ///   - maxSessions: Maximum number of session files to retain. Defaults to 10.
+    public func enablePersistence(directoryName: String = "Logs", maxSessions: Int = 10) {
         groupLock.lock()
         defer { groupLock.unlock() }
 
