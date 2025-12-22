@@ -30,7 +30,13 @@ public final class PolyPushEngine {
     public static let shared: PolyPushEngine = .init()
 
     private let registry: PolyBaseRegistry = .shared
-    private let echoTracker: PolyBaseEchoTracker = .init()
+    /// Echo tracker used for realtime echo prevention.
+    ///
+    /// This is deliberately `nonisolated` so echo checks can be performed from
+    /// background sync executors without hopping to `MainActor`.
+    ///
+    /// `PolyBaseEchoTracker` is internally thread-safe (lock-protected).
+    private nonisolated static let echoTracker: PolyBaseEchoTracker = .init()
 
     private init() {}
 
@@ -66,7 +72,7 @@ public final class PolyPushEngine {
         }
 
         // Mark BEFORE push to prevent race conditions
-        echoTracker.markAsPushed(entity.id, table: config.tableName)
+        Self.markAsPushed(entity.id, table: config.tableName)
 
         try await push(entity)
     }
@@ -135,7 +141,7 @@ public final class PolyPushEngine {
 
         // Mark all BEFORE push
         for entity in entities {
-            echoTracker.markAsPushed(entity.id, table: config.tableName)
+            Self.markAsPushed(entity.id, table: config.tableName)
         }
 
         return await pushBatch(entities, batchSize: batchSize)
@@ -359,11 +365,25 @@ public final class PolyPushEngine {
 
     /// Check if an entity was recently pushed (for echo prevention).
     public func wasRecentlyPushed(_ id: String, table: String) -> Bool {
-        echoTracker.wasPushedRecently(id, table: table)
+        Self.wasRecentlyPushed(id, table: table)
     }
 
     /// Mark an entity as recently pushed.
     public func markAsPushed(_ id: String, table: String) {
+        Self.markAsPushed(id, table: table)
+    }
+
+    /// Check if an entity was recently pushed (for echo prevention).
+    ///
+    /// This is `nonisolated` to avoid accidental `MainActor` hops inside merge loops.
+    public nonisolated static func wasRecentlyPushed(_ id: String, table: String) -> Bool {
+        echoTracker.wasPushedRecently(id, table: table)
+    }
+
+    /// Mark an entity as recently pushed.
+    ///
+    /// This is `nonisolated` so callers can mark echoes without requiring `MainActor`.
+    public nonisolated static func markAsPushed(_ id: String, table: String) {
         echoTracker.markAsPushed(id, table: table)
     }
 
