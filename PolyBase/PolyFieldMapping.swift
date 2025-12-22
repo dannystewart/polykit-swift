@@ -311,6 +311,11 @@ public extension PolyFieldMapping {
     // MARK: Date Fields
 
     /// Map a Date property to a column (stored as ISO8601 string).
+    ///
+    /// Uses `PolyISO8601` for robust parsing that handles multiple Supabase date formats:
+    /// - With fractional seconds: `2024-12-22T10:00:00.123456Z`
+    /// - Without fractional seconds: `2024-12-22T10:00:00Z`
+    /// - With space instead of T: `2024-12-22 10:00:00Z`
     static func map(
         _ keyPath: WritableKeyPath<Entity, Date> & Sendable,
         to column: String,
@@ -323,12 +328,12 @@ public extension PolyFieldMapping {
             isOptional: false,
             rejectIfEmpty: false,
             getValue: { entity in
-                .string(ISO8601DateFormatter().string(from: entity[keyPath: keyPath]))
+                .string(PolyISO8601.format(entity[keyPath: keyPath]))
             },
             setValue: { entity, json in
                 guard
                     let string = json.stringValue,
-                    let date = ISO8601DateFormatter().date(from: string) else { return false }
+                    let date = PolyISO8601.parse(string) else { return false }
                 var mutableEntity = entity
                 mutableEntity[keyPath: keyPath] = date
                 return true
@@ -339,6 +344,11 @@ public extension PolyFieldMapping {
     }
 
     /// Map an optional Date property to a column (stored as ISO8601 string).
+    ///
+    /// Uses `PolyISO8601` for robust parsing that handles multiple Supabase date formats:
+    /// - With fractional seconds: `2024-12-22T10:00:00.123456Z`
+    /// - Without fractional seconds: `2024-12-22T10:00:00Z`
+    /// - With space instead of T: `2024-12-22 10:00:00Z`
     static func map(
         _ keyPath: WritableKeyPath<Entity, Date?> & Sendable,
         to column: String,
@@ -352,7 +362,7 @@ public extension PolyFieldMapping {
             rejectIfEmpty: false,
             getValue: { entity in
                 if let date = entity[keyPath: keyPath] {
-                    return .string(ISO8601DateFormatter().string(from: date))
+                    return .string(PolyISO8601.format(date))
                 }
                 return .null
             },
@@ -362,7 +372,7 @@ public extension PolyFieldMapping {
                     mutableEntity[keyPath: keyPath] = nil
                 } else if
                     let string = json.stringValue,
-                    let date = ISO8601DateFormatter().date(from: string)
+                    let date = PolyISO8601.parse(string)
                 {
                     mutableEntity[keyPath: keyPath] = date
                 } else {
