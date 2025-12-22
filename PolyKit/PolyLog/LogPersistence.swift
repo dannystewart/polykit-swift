@@ -50,6 +50,18 @@ public final class LogPersistence: @unchecked Sendable {
     /// Maximum buffer size before automatic flush (in lines).
     private let bufferFlushThreshold = 50
 
+    /// Periodic flush interval for near-real-time log streaming.
+    ///
+    /// This keeps session files updating while the app is active without requiring call sites to
+    /// manually flush on lifecycle events. The flush is a no-op when the buffer is empty.
+    private let flushInterval: TimeInterval = 0.25
+
+    /// Timer that flushes pending writes to disk on `flushInterval`.
+    private var flushTimer: DispatchSourceTimer?
+
+    /// Queue used for periodic flush to avoid doing any I/O on the main thread.
+    private let flushQueue = DispatchQueue(label: "com.dannystewart.PolyKit.LogPersistence.flush", qos: .utility)
+
     /// Whether persistence is currently enabled.
     private var isEnabled = false
 
@@ -66,6 +78,8 @@ public final class LogPersistence: @unchecked Sendable {
     }
 
     deinit {
+        flushTimer?.cancel()
+        flushTimer = nil
         try? fileHandle?.close()
     }
 
@@ -87,6 +101,7 @@ public final class LogPersistence: @unchecked Sendable {
 
             currentSessionFile = sessionFile
             isEnabled = true
+            startFlushTimerUnsafe()
 
             // Prune old sessions in the background
             Task.detached { [weak self] in
@@ -104,6 +119,7 @@ public final class LogPersistence: @unchecked Sendable {
         defer { lock.unlock() }
 
         flushBufferUnsafe()
+        stopFlushTimerUnsafe()
 
         try? fileHandle?.close()
         fileHandle = nil
@@ -139,6 +155,28 @@ public final class LogPersistence: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         flushBufferUnsafe()
+    }
+
+    // MARK: - Periodic Flush
+
+    /// Starts the periodic flush timer (must be called with `lock` held).
+    private func startFlushTimerUnsafe() {
+        guard flushTimer == nil else { return }
+        guard isEnabled else { return }
+
+        let timer = DispatchSource.makeTimerSource(queue: flushQueue)
+        timer.schedule(deadline: .now() + flushInterval, repeating: flushInterval, leeway: .milliseconds(50))
+        timer.setEventHandler { [weak self] in
+            self?.flush()
+        }
+        timer.resume()
+        flushTimer = timer
+    }
+
+    /// Stops the periodic flush timer (must be called with `lock` held).
+    private func stopFlushTimerUnsafe() {
+        flushTimer?.cancel()
+        flushTimer = nil
     }
 
     // MARK: - Public Utilities
