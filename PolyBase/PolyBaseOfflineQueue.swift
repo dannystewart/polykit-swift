@@ -223,7 +223,14 @@ public final class PolyBaseOfflineQueue: @unchecked Sendable {
             }
         }
 
-        replaceOperations(with: failedOperations)
+        // IMPORTANT:
+        // Do not overwrite the entire queue with only `failedOperations`.
+        //
+        // While we're processing, new operations can be enqueued (e.g. user edits while a replay is running).
+        // If we blindly replace the queue, we'd drop those new operations. Instead, we:
+        // - Remove only the snapshot operations we actually processed (matched by key + queuedAt)
+        // - Re-add failures *only if* they weren't superseded by a newer enqueue for the same entity
+        self.finalizeQueueAfterProcessing(snapshot: operationsToProcess, failed: failedOperations)
 
         if failedOperations.isEmpty {
             polyInfo("PolyBase: All \(successCount) operations processed successfully")
@@ -250,12 +257,56 @@ public final class PolyBaseOfflineQueue: @unchecked Sendable {
         return operations
     }
 
-    /// Replace all operations (thread-safe, synchronous).
-    private func replaceOperations(with newOperations: [PolyBaseOfflineOperation]) {
+    private struct OperationKey: Hashable, Sendable {
+        let table: String
+        let entityId: String
+    }
+
+    /// Update the queue after processing a snapshot, without dropping concurrent enqueues.
+    ///
+    /// This removes processed operations from the queue **only if** they still match the snapshot’s
+    /// `queuedAt` (i.e. haven't been replaced by a newer operation), then re-adds failures unless
+    /// they were superseded by a newer enqueue.
+    private func finalizeQueueAfterProcessing(
+        snapshot: [PolyBaseOfflineOperation],
+        failed: [PolyBaseOfflineOperation],
+    ) {
         lock.lock()
-        operations = newOperations
+        defer { lock.unlock() }
+
+        let snapshotQueuedAtByKey: [OperationKey: Date] = Dictionary(
+            uniqueKeysWithValues: snapshot.map { op in
+                (OperationKey(table: op.table, entityId: op.entityId), op.queuedAt)
+            })
+
+        // Preserve any operations that were enqueued while processing was in-flight.
+        var retained = [PolyBaseOfflineOperation]()
+        retained.reserveCapacity(operations.count)
+
+        for op in operations {
+            let key = OperationKey(table: op.table, entityId: op.entityId)
+            if let snapshotQueuedAt = snapshotQueuedAtByKey[key], snapshotQueuedAt == op.queuedAt {
+                // This exact operation was part of the snapshot and is now processed (success or failure).
+                // Drop it and re-add failures later if still relevant.
+                continue
+            }
+            retained.append(op)
+        }
+
+        var retainedKeys = Set(retained.map { OperationKey(table: $0.table, entityId: $0.entityId) })
+
+        for op in failed {
+            let key = OperationKey(table: op.table, entityId: op.entityId)
+
+            // If a newer operation for this entity was enqueued during processing, keep the newer one.
+            guard !retainedKeys.contains(key) else { continue }
+
+            retained.append(op)
+            retainedKeys.insert(key)
+        }
+
+        operations = retained
         saveQueue()
-        lock.unlock()
     }
 
     // MARK: - Persistence
