@@ -121,7 +121,7 @@ public final class PolyHealingService {
             return PolyHealingResult(tableName: tableName, scanned: 0, needsHealing: 0, healed: 0)
         }
 
-        polyInfo("PolyHealingService: Scanning \(tableName) for unencrypted data...")
+        polyDebug("PolyHealingService: Scanning \(tableName) for unencrypted data...")
 
         // Fetch all records from Supabase
         let client: SupabaseClient
@@ -174,7 +174,7 @@ public final class PolyHealingService {
         let needsHealing = idsNeedingHealing.count
 
         if needsHealing == 0 {
-            polyInfo("PolyHealingService: \(tableName) - all \(scanned) records properly encrypted")
+            polyDebug("PolyHealingService: \(tableName) - all \(scanned) records properly encrypted")
             return PolyHealingResult(tableName: tableName, scanned: scanned, needsHealing: 0, healed: 0)
         }
 

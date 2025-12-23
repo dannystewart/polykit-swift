@@ -157,7 +157,7 @@ public final class PolyRealtimeSubscriber {
             return
         }
 
-        polyInfo("PolyRealtimeSubscriber: Starting subscriptions for \(tables.count) tables")
+        polyDebug("PolyRealtimeSubscriber: Starting subscriptions for \(tables.count) tables")
 
         let newChannel = client.realtimeV2.channel(channelName)
 
@@ -183,7 +183,7 @@ public final class PolyRealtimeSubscriber {
         channel = newChannel
         isListening = true
 
-        polyInfo("PolyRealtimeSubscriber: Now listening to \(tables.count) tables")
+        polyDebug("PolyRealtimeSubscriber: Now listening to \(tables.count) tables")
     }
 
     /// Start listening to specific tables only.
@@ -200,7 +200,7 @@ public final class PolyRealtimeSubscriber {
             return
         }
 
-        polyInfo("PolyRealtimeSubscriber: Starting subscriptions for \(tables.count) tables")
+        polyDebug("PolyRealtimeSubscriber: Starting subscriptions for \(tables.count) tables")
 
         let newChannel = client.realtimeV2.channel(channelName)
 
@@ -224,7 +224,7 @@ public final class PolyRealtimeSubscriber {
         channel = newChannel
         isListening = true
 
-        polyInfo("PolyRealtimeSubscriber: Now listening to \(tables.count) tables")
+        polyDebug("PolyRealtimeSubscriber: Now listening to \(tables.count) tables")
     }
 
     /// Stop listening to real-time changes.
@@ -240,7 +240,7 @@ public final class PolyRealtimeSubscriber {
         channel = nil
         isListening = false
 
-        polyInfo("PolyRealtimeSubscriber: Stopped listening")
+        polyDebug("PolyRealtimeSubscriber: Stopped listening")
     }
 
     // MARK: - Echo Tracking

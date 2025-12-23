@@ -29,7 +29,6 @@ import Supabase
 public final class PolyPushEngine {
     public static let shared: PolyPushEngine = .init()
 
-    private let registry: PolyBaseRegistry = .shared
     /// Echo tracker used for realtime echo prevention.
     ///
     /// This is deliberately `nonisolated` so echo checks can be performed from
@@ -38,7 +37,31 @@ public final class PolyPushEngine {
     /// `PolyBaseEchoTracker` is internally thread-safe (lock-protected).
     private nonisolated static let echoTracker: PolyBaseEchoTracker = .init()
 
+    private let registry: PolyBaseRegistry = .shared
+
     private init() {}
+
+    /// Check if an entity was recently pushed (for echo prevention).
+    ///
+    /// This is `nonisolated` to avoid accidental `MainActor` hops inside merge loops.
+    public nonisolated static func wasRecentlyPushed(_ id: String, table: String) -> Bool {
+        echoTracker.wasPushedRecently(id, table: table)
+    }
+
+    /// Mark an entity as recently pushed.
+    ///
+    /// This is `nonisolated` so callers can mark echoes without requiring `MainActor`.
+    public nonisolated static func markAsPushed(_ id: String, table: String) {
+        echoTracker.markAsPushed(id, table: table)
+    }
+
+    /// Clear all echo tracking state.
+    ///
+    /// Call this during force repair or reset operations to ensure
+    /// pulled data isn't incorrectly filtered as "recently pushed."
+    public nonisolated static func clearEchoTracker() {
+        echoTracker.clear()
+    }
 
     // MARK: - Single Entity Push
 
@@ -124,7 +147,7 @@ public final class PolyPushEngine {
             }
         }
 
-        polyInfo("PolyPushEngine: Pushed \(successCount)/\(entities.count) \(Entity.self) entities")
+        polyDebug("PolyPushEngine: Pushed \(successCount)/\(entities.count) \(Entity.self) entities")
         return successCount
     }
 
@@ -211,7 +234,7 @@ public final class PolyPushEngine {
             }
         }
 
-        polyInfo("PolyPushEngine: Updated \(successCount)/\(tombstones.count) tombstones in \(tableName)")
+        polyDebug("PolyPushEngine: Updated \(successCount)/\(tombstones.count) tombstones in \(tableName)")
         return successCount
     }
 
@@ -335,7 +358,7 @@ public final class PolyPushEngine {
             }
         }
 
-        polyInfo("PolyPushEngine: Pushed \(successCount)/\(tombstones.count) tombstones to \(tableName)")
+        polyDebug("PolyPushEngine: Pushed \(successCount)/\(tombstones.count) tombstones to \(tableName)")
         return successCount
     }
 
@@ -371,28 +394,6 @@ public final class PolyPushEngine {
     /// Mark an entity as recently pushed.
     public func markAsPushed(_ id: String, table: String) {
         Self.markAsPushed(id, table: table)
-    }
-
-    /// Check if an entity was recently pushed (for echo prevention).
-    ///
-    /// This is `nonisolated` to avoid accidental `MainActor` hops inside merge loops.
-    public nonisolated static func wasRecentlyPushed(_ id: String, table: String) -> Bool {
-        echoTracker.wasPushedRecently(id, table: table)
-    }
-
-    /// Mark an entity as recently pushed.
-    ///
-    /// This is `nonisolated` so callers can mark echoes without requiring `MainActor`.
-    public nonisolated static func markAsPushed(_ id: String, table: String) {
-        echoTracker.markAsPushed(id, table: table)
-    }
-
-    /// Clear all echo tracking state.
-    ///
-    /// Call this during force repair or reset operations to ensure
-    /// pulled data isn't incorrectly filtered as "recently pushed."
-    public nonisolated static func clearEchoTracker() {
-        echoTracker.clear()
     }
 
     // MARK: - Record Building

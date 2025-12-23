@@ -57,7 +57,7 @@ public final class PolyBaseEncryption: @unchecked Sendable {
     public static func configure(secret: String) -> PolyBaseEncryption {
         let instance = PolyBaseEncryption(secret: secret)
         shared = instance
-        polyInfo("PolyBase: Encryption configured")
+        polyDebug("PolyBase: Encryption configured")
         return instance
     }
 

@@ -296,7 +296,7 @@ public final class PolyPullEngine {
             filter: filter,
         )
 
-        polyInfo("PolyPullEngine: Pulled \(records.count) \(Entity.self) records")
+        polyDebug("PolyPullEngine: Pulled \(records.count) \(Entity.self) records")
         return records
     }
 

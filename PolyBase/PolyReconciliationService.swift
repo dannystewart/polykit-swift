@@ -114,7 +114,7 @@ public final class PolyReconciliationService {
             return
         }
         modelContext = context
-        polyInfo("PolyReconciliationService initialized")
+        polyDebug("PolyReconciliationService initialized")
     }
 
     // MARK: - Reconcile
@@ -212,7 +212,7 @@ public final class PolyReconciliationService {
                     localVersion: entity.version,
                     localDeleted: entity.deleted,
                     remoteVersion: remote.version,
-                    remoteDeleted: remote.deleted
+                    remoteDeleted: remote.deleted,
                 )
 
                 switch action {
@@ -258,7 +258,7 @@ public final class PolyReconciliationService {
         if tombstonesAdopted > 0 {
             do {
                 try context.save()
-                polyInfo("PolyReconciliationService: Adopted \(tombstonesAdopted) tombstones")
+                polyDebug("PolyReconciliationService: Adopted \(tombstonesAdopted) tombstones")
             } catch {
                 polyError("PolyReconciliationService: Failed to save tombstone adoptions: \(error)")
                 errors.append(ReconcileError(

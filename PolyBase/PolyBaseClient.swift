@@ -66,7 +66,7 @@ public final class PolyBaseClient: @unchecked Sendable {
     public static func configure(projectURL: URL, anonKey: String) -> PolyBaseClient {
         let instance = PolyBaseClient(projectURL: projectURL, anonKey: anonKey)
         shared = instance
-        polyInfo("PolyBase: Configured with project \(projectURL.host ?? "unknown")")
+        polyDebug("PolyBase: Configured with project \(projectURL.host ?? "unknown")")
         return instance
     }
 

@@ -90,7 +90,7 @@ public final class PolyBaseStorage: Sendable {
                 options: FileOptions(contentType: mimeType, upsert: upsert),
             )
 
-        polyInfo("PolyBase: Uploaded \(data.count) bytes to \(path)")
+        polyDebug("PolyBase: Uploaded \(data.count) bytes to \(path)")
         return path
     }
 
@@ -134,7 +134,7 @@ public final class PolyBaseStorage: Sendable {
             .from(bucketName)
             .download(path: path)
 
-        polyInfo("PolyBase: Downloaded \(data.count) bytes from \(path)")
+        polyDebug("PolyBase: Downloaded \(data.count) bytes from \(path)")
         return data
     }
 
@@ -150,7 +150,7 @@ public final class PolyBaseStorage: Sendable {
             .from(bucketName)
             .remove(paths: [path])
 
-        polyInfo("PolyBase: Deleted \(path)")
+        polyDebug("PolyBase: Deleted \(path)")
     }
 
     /// Delete multiple files from Supabase Storage.
@@ -165,7 +165,7 @@ public final class PolyBaseStorage: Sendable {
             .from(bucketName)
             .remove(paths: paths)
 
-        polyInfo("PolyBase: Deleted \(paths.count) files")
+        polyDebug("PolyBase: Deleted \(paths.count) files")
     }
 
     /// Delete all files in a folder.
@@ -187,7 +187,7 @@ public final class PolyBaseStorage: Sendable {
             .from(bucketName)
             .remove(paths: paths)
 
-        polyInfo("PolyBase: Deleted \(paths.count) files from folder \(folderPath)")
+        polyDebug("PolyBase: Deleted \(paths.count) files from folder \(folderPath)")
     }
 
     // MARK: - List

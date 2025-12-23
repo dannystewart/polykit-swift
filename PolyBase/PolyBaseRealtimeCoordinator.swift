@@ -147,7 +147,7 @@ public final class PolyBaseRealtimeCoordinator {
         try await newChannel.subscribeWithError()
         isSubscribed = true
 
-        polyInfo("PolyBaseRealtimeCoordinator: Subscribed to \(tables.count) table(s)")
+        polyDebug("PolyBaseRealtimeCoordinator: Subscribed to \(tables.count) table(s)")
 
         // Set up notification observer
         NotificationCenter.default.addObserver(
@@ -194,7 +194,7 @@ public final class PolyBaseRealtimeCoordinator {
             object: nil,
         )
 
-        polyInfo("PolyBaseRealtimeCoordinator: Unsubscribed")
+        polyDebug("PolyBaseRealtimeCoordinator: Unsubscribed")
     }
 
     // MARK: - Echo Prevention

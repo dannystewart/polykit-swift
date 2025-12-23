@@ -320,7 +320,7 @@ public final class PolyBaseRegistry: @unchecked Sendable {
         tableToType[config.tableName] = key
         lock.unlock()
 
-        polyInfo("PolyBaseRegistry: Registered \(Entity.self) -> \(config.tableName) with \(config.fields.count) fields")
+        polyDebug("PolyBaseRegistry: Registered \(Entity.self) -> \(config.tableName) with \(config.fields.count) fields")
     }
 
     // MARK: - Lookup
