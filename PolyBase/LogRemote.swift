@@ -72,18 +72,22 @@ public final class LogRemote: @unchecked Sendable {
     // MARK: - Device Identity
 
     /// Stable device identifier, persisted to UserDefaults.
+    /// Stable device identifier, persisted to UserDefaults.
+    /// Uses ULID for new devices (timestamp indicates first registration).
     private lazy var deviceID: String = {
         let key = "com.dannystewart.PolyKit.LogRemote.deviceID"
         if let existing = UserDefaults.standard.string(forKey: key) {
             return existing
         }
-        let newID = UUID().uuidString
+        // Generate ULID for new devices (timestamp = first registration time)
+        let newID = ULIDGenerator.shared.next()
         UserDefaults.standard.set(newID, forKey: key)
         return newID
     }()
 
     /// Unique session identifier (changes on each app launch).
-    private let sessionID = UUID().uuidString
+    /// ULID timestamp indicates when the session started.
+    private let sessionID = ULIDGenerator.shared.next()
 
     /// App bundle identifier.
     private var appBundleID: String {
