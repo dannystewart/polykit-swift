@@ -20,17 +20,15 @@ import Supabase
 ///
 /// ## Usage
 ///
-/// ```swift
-/// // Option 1: Configure and start with shared config
-/// LogRemoteConfig.configure(
-///     supabaseURL: URL(string: "https://xxx.supabase.co")!,
-///     supabaseKey: "your-anon-key"
-/// )
-/// LogRemote.shared.start()
+/// Add `SUPABASE_URL` and `SUPABASE_KEY` to your app's Info.plist (via Secrets.xcconfig),
+/// then simply call:
 ///
-/// // Option 2: Start with explicit config
-/// LogRemote.shared.start(config: myConfig)
+/// ```swift
+/// LogRemote.shared.start()
 /// ```
+///
+/// The credentials are read automatically from Info.plist. Alternatively, you can
+/// configure explicitly via `LogRemoteConfig`.
 ///
 /// Once started, all log entries from `logger` (the global PolyLog instance)
 /// are automatically buffered and streamed to Supabase.
@@ -102,16 +100,44 @@ public final class LogRemote: @unchecked Sendable {
 
     private init() {}
 
-    /// Start remote logging with the shared configuration.
+    /// Start remote logging.
     ///
-    /// Requires `LogRemoteConfig.configure()` or `LogRemoteConfig.load()` to be called first.
-    /// If no configuration is available, this method does nothing.
+    /// Credentials are loaded in this order:
+    /// 1. `LogRemoteConfig.shared` if configured via `configure()` or `load()`
+    /// 2. `SUPABASE_URL` and `SUPABASE_KEY` from the host app's Info.plist
+    ///
+    /// If no configuration is available, this method logs a warning and does nothing.
     public func start() {
-        guard let config = LogRemoteConfig.shared else {
-            polyWarning("LogRemote: No configuration available. Call LogRemoteConfig.configure() first.")
+        // Try shared config first
+        if let config = LogRemoteConfig.shared {
+            start(config: config)
+            return
+        }
+
+        // Fall back to Info.plist
+        guard let config = loadConfigFromInfoPlist() else {
+            polyWarning("LogRemote: No configuration available. Add SUPABASE_URL and SUPABASE_KEY to Info.plist, or call LogRemoteConfig.configure().")
             return
         }
         start(config: config)
+    }
+
+    /// Load configuration from the host app's Info.plist.
+    private func loadConfigFromInfoPlist() -> LogRemoteConfig? {
+        guard let infoDictionary = Bundle.main.infoDictionary,
+              let urlString = infoDictionary["SUPABASE_URL"] as? String,
+              let supabaseURL = URL(string: urlString),
+              let supabaseKey = infoDictionary["SUPABASE_KEY"] as? String
+        else {
+            return nil
+        }
+
+        let tableName = infoDictionary["SUPABASE_LOG_TABLE"] as? String ?? "polylogs"
+        return LogRemoteConfig(
+            supabaseURL: supabaseURL,
+            supabaseKey: supabaseKey,
+            tableName: tableName,
+        )
     }
 
     /// Start remote logging with explicit configuration.
