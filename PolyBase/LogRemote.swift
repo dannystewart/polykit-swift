@@ -358,7 +358,7 @@ public final class LogRemote: @unchecked Sendable {
 
         // Log error but don't crash - remote logging is best-effort
         if let error = lastError {
-            polyError("LogRemote: Push failed: \(error.localizedDescription)")
+            polyWarning("LogRemote: Push failed: \(error.localizedDescription)")
         }
     }
 
