@@ -1,0 +1,312 @@
+//
+//  LogRemote.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
+import Foundation
+import Supabase
+
+#if canImport(PolyKit)
+    import PolyKit
+#endif
+
+// MARK: - LogRemote
+
+/// Service for streaming log entries to Supabase in real-time.
+///
+/// Works alongside `LogPersistence` to provide remote log aggregation.
+/// Logs are buffered in memory and pushed periodically to minimize network overhead.
+///
+/// ## Usage
+///
+/// ```swift
+/// // Option 1: Configure and start with shared config
+/// LogRemoteConfig.configure(
+///     supabaseURL: URL(string: "https://xxx.supabase.co")!,
+///     supabaseKey: "your-anon-key"
+/// )
+/// LogRemote.shared.start()
+///
+/// // Option 2: Start with explicit config
+/// LogRemote.shared.start(config: myConfig)
+/// ```
+///
+/// Once started, all log entries from `logger` (the global PolyLog instance)
+/// are automatically buffered and streamed to Supabase.
+public final class LogRemote: @unchecked Sendable {
+    // MARK: - Singleton
+
+    /// Shared instance for remote logging.
+    public static let shared: LogRemote = .init()
+
+    /// Whether remote logging is currently active.
+    public private(set) var isRunning = false
+
+    // MARK: - Configuration
+
+    /// Supabase client for remote operations.
+    private var client: SupabaseClient?
+
+    /// Configuration in use.
+    private var config: LogRemoteConfig?
+
+    /// Lock for thread-safe access.
+    private let lock: NSLock = .init()
+
+    /// Buffer for pending log entries.
+    private var buffer: [LogEntry] = []
+
+    /// Maximum buffer size before forced flush.
+    private let bufferFlushThreshold = 50
+
+    /// Periodic flush interval (matches LogPersistence).
+    private let flushInterval: TimeInterval = 0.25
+
+    /// Timer for periodic flush.
+    private var flushTimer: DispatchSourceTimer?
+
+    /// Queue for flush operations (background, utility priority).
+    private let flushQueue: DispatchQueue = .init(
+        label: "com.dannystewart.PolyKit.LogRemote.flush",
+        qos: .utility,
+    )
+
+    // MARK: - Device Identity
+
+    /// Stable device identifier, persisted to UserDefaults.
+    private lazy var deviceID: String = {
+        let key = "com.dannystewart.PolyKit.LogRemote.deviceID"
+        if let existing = UserDefaults.standard.string(forKey: key) {
+            return existing
+        }
+        let newID = UUID().uuidString
+        UserDefaults.standard.set(newID, forKey: key)
+        return newID
+    }()
+
+    /// Unique session identifier (changes on each app launch).
+    private let sessionID = UUID().uuidString
+
+    /// App bundle identifier.
+    private var appBundleID: String {
+        Bundle.main.bundleIdentifier ?? "unknown"
+    }
+
+    deinit {
+        flushTimer?.cancel()
+        flushTimer = nil
+    }
+
+    // MARK: - Initialization
+
+    private init() {}
+
+    /// Start remote logging with the shared configuration.
+    ///
+    /// Requires `LogRemoteConfig.configure()` or `LogRemoteConfig.load()` to be called first.
+    /// If no configuration is available, this method does nothing.
+    public func start() {
+        guard let config = LogRemoteConfig.shared else {
+            polyWarning("LogRemote: No configuration available. Call LogRemoteConfig.configure() first.")
+            return
+        }
+        start(config: config)
+    }
+
+    /// Start remote logging with explicit configuration.
+    ///
+    /// - Parameter config: The Supabase configuration to use.
+    public func start(config: LogRemoteConfig) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard !isRunning else {
+            polyDebug("LogRemote: Already running")
+            return
+        }
+
+        self.config = config
+        client = SupabaseClient(
+            supabaseURL: config.supabaseURL,
+            supabaseKey: config.supabaseKey,
+        )
+
+        // Hook into the configured logger
+        guard let appLogger = PolyBaseConfig.shared.logger else {
+            polyWarning("LogRemote: No logger configured in PolyBaseConfig. Call PolyBaseConfig.configure(logger:) first.")
+            return
+        }
+        appLogger.onLogEntry = { [weak self] entry in
+            self?.bufferEntry(entry)
+        }
+
+        startFlushTimerUnsafe()
+        isRunning = true
+
+        polyInfo("LogRemote: Started streaming to \(config.supabaseURL.host ?? "unknown")")
+        polyDebug("LogRemote: deviceID=\(deviceID), sessionID=\(sessionID), app=\(appBundleID)")
+    }
+
+    /// Stop remote logging and flush remaining entries.
+    public func stop() {
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard isRunning else { return }
+
+        // Remove hook from logger
+        PolyBaseConfig.shared.logger?.onLogEntry = nil
+
+        // Flush remaining entries
+        flushBufferUnsafe()
+
+        stopFlushTimerUnsafe()
+
+        client = nil
+        config = nil
+        isRunning = false
+
+        polyInfo("LogRemote: Stopped")
+    }
+
+    /// Flush all buffered entries immediately.
+    public func flush() {
+        lock.lock()
+        let entries = buffer
+        buffer.removeAll(keepingCapacity: true)
+        let currentClient = client
+        let currentConfig = config
+        lock.unlock()
+
+        guard !entries.isEmpty, let client = currentClient, let config = currentConfig else {
+            return
+        }
+
+        // Push asynchronously
+        Task.detached { [weak self, deviceID, sessionID, appBundleID] in
+            await self?.pushEntries(
+                entries,
+                client: client,
+                tableName: config.tableName,
+                deviceID: deviceID,
+                sessionID: sessionID,
+                appBundleID: appBundleID,
+            )
+        }
+    }
+
+    // MARK: - Buffering
+
+    /// Buffer a log entry for later push.
+    private func bufferEntry(_ entry: LogEntry) {
+        lock.lock()
+        buffer.append(entry)
+        let shouldFlush = buffer.count >= bufferFlushThreshold
+        lock.unlock()
+
+        if shouldFlush {
+            flush()
+        }
+    }
+
+    /// Flush buffer without lock (caller must hold lock).
+    private func flushBufferUnsafe() {
+        guard !buffer.isEmpty, let client, let config else { return }
+
+        let entries = buffer
+        buffer.removeAll(keepingCapacity: true)
+
+        let deviceID = deviceID
+        let sessionID = sessionID
+        let appBundleID = appBundleID
+
+        // Push asynchronously
+        Task.detached { [weak self] in
+            await self?.pushEntries(
+                entries,
+                client: client,
+                tableName: config.tableName,
+                deviceID: deviceID,
+                sessionID: sessionID,
+                appBundleID: appBundleID,
+            )
+        }
+    }
+
+    // MARK: - Push
+
+    /// Push log entries to Supabase.
+    private func pushEntries(
+        _ entries: [LogEntry],
+        client: SupabaseClient,
+        tableName: String,
+        deviceID: String,
+        sessionID: String,
+        appBundleID: String)
+        async
+    {
+        guard !entries.isEmpty else { return }
+
+        // Build records
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        let records: [[String: AnyJSON]] = entries.map { entry in
+            var record: [String: AnyJSON] = [
+                "timestamp": .string(isoFormatter.string(from: entry.timestamp)),
+                "level": .string(entry.level.rawValue),
+                "message": .string(entry.message),
+                "device_id": .string(deviceID),
+                "session_id": .string(sessionID),
+                "app_bundle_id": .string(appBundleID),
+            ]
+
+            if let group = entry.group {
+                record["group_identifier"] = .string(group.identifier)
+                if let emoji = group.emoji {
+                    record["group_emoji"] = .string(emoji)
+                }
+            }
+
+            return record
+        }
+
+        do {
+            try await client
+                .from(tableName)
+                .insert(records)
+                .execute()
+
+            polyDebug("LogRemote: Pushed \(entries.count) entries")
+        } catch {
+            // Log error but don't crash - remote logging is best-effort
+            polyError("LogRemote: Push failed: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Timer
+
+    /// Start the periodic flush timer (must hold lock).
+    private func startFlushTimerUnsafe() {
+        guard flushTimer == nil, isRunning || buffer.isEmpty == false else { return }
+
+        let timer = DispatchSource.makeTimerSource(queue: flushQueue)
+        timer.schedule(
+            deadline: .now() + flushInterval,
+            repeating: flushInterval,
+            leeway: .milliseconds(50),
+        )
+        timer.setEventHandler { [weak self] in
+            self?.flush()
+        }
+        timer.resume()
+        flushTimer = timer
+    }
+
+    /// Stop the periodic flush timer (must hold lock).
+    private func stopFlushTimerUnsafe() {
+        flushTimer?.cancel()
+        flushTimer = nil
+    }
+}

@@ -188,6 +188,16 @@ public final class PolyLog: @unchecked Sendable {
     /// Apps can register their groups here for easy management via UI, persistence, etc.
     public var registeredGroups: [LogGroup] = []
 
+    /// Optional callback invoked for each log entry.
+    ///
+    /// Used by external services (like LogRemote in PolyBase) to receive log entries
+    /// for remote streaming. The callback is invoked synchronously, so implementations
+    /// should buffer entries and process them asynchronously.
+    ///
+    /// - Note: This callback is invoked AFTER group filtering, so disabled groups
+    ///   won't trigger the callback for filterable log levels.
+    public var onLogEntry: (@Sendable (LogEntry) -> Void)?
+
     #if canImport(os)
         private let osLogger: Logger
     #endif
@@ -579,27 +589,41 @@ public final class PolyLog: @unchecked Sendable {
         let now = Date()
         let formattedMessage = formatConsoleMessage(message, level: level, group: group, timestamp: now)
 
-        // Capture to buffer if enabled (always capture, even if console output is filtered)
+        // Get optional outputs
         groupLock.lock()
         let buffer = logBuffer
         let persistenceService = persistence
+        let entryCallback = onLogEntry
         groupLock.unlock()
 
-        if let buffer {
+        // Create LogEntry if any consumer needs it (buffer or remote callback)
+        let entry: LogEntry?
+        if buffer != nil || entryCallback != nil {
             let plainText = formatPlainMessage(message, level: level, group: group, timestamp: now)
-            let entry = LogEntry(
+            entry = LogEntry(
                 timestamp: now,
                 level: level,
                 message: message,
                 group: group,
                 formattedText: plainText,
             )
+        } else {
+            entry = nil
+        }
+
+        // Capture to buffer if enabled
+        if let buffer, let entry {
             buffer.append(entry)
+        }
+
+        // Send to remote callback if enabled
+        if let entryCallback, let entry {
+            entryCallback(entry)
         }
 
         // Write to persistence if enabled
         if let persistenceService {
-            let plainText = formatPlainMessage(message, level: level, group: group, timestamp: now)
+            let plainText = entry?.formattedText ?? formatPlainMessage(message, level: level, group: group, timestamp: now)
             persistenceService.write(plainText)
         }
 
