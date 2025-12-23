@@ -47,18 +47,6 @@ public struct ReconcileError: Error, Sendable {
     }
 }
 
-// MARK: - ReconcileAction
-
-/// Action to take for a single entity during reconciliation.
-private enum ReconcileAction {
-    case pull // Remote is newer, fetch full record and merge
-    case push // Local is newer, push to remote
-    case adoptTombstone // Remote is deleted with >= version, mark local deleted
-    case skip // No action needed
-    case createLocal // Remote exists, local doesn't, create locally
-    case createRemote // Local exists, remote doesn't, push to remote
-}
-
 // MARK: - PolyReconciliationService
 
 /// Service for reconciling local and remote data.
@@ -220,11 +208,11 @@ public final class PolyReconciliationService {
             localIDs.insert(entity.id)
 
             if let remote = remoteVersions[entity.id] {
-                let action = determineAction(
+                let action = determineReconcileAction(
                     localVersion: entity.version,
                     localDeleted: entity.deleted,
                     remoteVersion: remote.version,
-                    remoteDeleted: remote.deleted,
+                    remoteDeleted: remote.deleted
                 )
 
                 switch action {
@@ -315,57 +303,6 @@ public final class PolyReconciliationService {
         }
 
         return result
-    }
-
-    // MARK: - Action Determination
-
-    /// Determine what action to take for an entity.
-    ///
-    /// Key rules:
-    /// 1. **Tombstone always wins**: If remote is deleted, adopt it (regardless of version)
-    /// 2. If local is deleted and remote isn't, push the deletion
-    /// 3. Higher version wins (for non-deleted entities)
-    /// 4. Same version, same state → skip
-    ///
-    /// The tombstone-always-wins rule prevents accidental resurrection. Deletion is an
-    /// explicit user action that should never be overridden by sync. To undelete,
-    /// use the +1000 version rule at the database level.
-    private func determineAction(
-        localVersion: Int,
-        localDeleted: Bool,
-        remoteVersion: Int,
-        remoteDeleted: Bool,
-    ) -> ReconcileAction {
-        // Rule 1: Tombstone always wins
-        // If remote is deleted and local isn't, adopt the tombstone regardless of version.
-        // Deletion is an explicit user action — never resurrect via sync.
-        if remoteDeleted, !localDeleted {
-            return .adoptTombstone
-        }
-
-        // Rule 2: If local is deleted and remote isn't, push the deletion
-        if localDeleted, !remoteDeleted {
-            return .push
-        }
-
-        // At this point, both have the same deleted state
-
-        // Rule 3: Higher version wins
-        if remoteVersion > localVersion {
-            return .pull
-        }
-
-        if localVersion > remoteVersion {
-            return .push
-        }
-
-        // Rule 4: Same version, same state → skip
-        if remoteVersion == localVersion {
-            // Same version, same state
-            return .skip
-        }
-
-        return .skip
     }
 
     // MARK: - Pull Execution
