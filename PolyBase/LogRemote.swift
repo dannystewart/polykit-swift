@@ -9,6 +9,18 @@ import Foundation
 import PolyKit
 import Supabase
 
+#if canImport(UIKit) && !os(macOS)
+import UIKit
+#endif
+
+#if canImport(WatchKit)
+import WatchKit
+#endif
+
+#if canImport(IOKit)
+import IOKit
+#endif
+
 // MARK: - LogRemote
 
 /// Service for streaming log entries to Supabase in real-time.
@@ -71,19 +83,86 @@ public final class LogRemote: @unchecked Sendable {
 
     // MARK: - Device Identity
 
-    /// Stable device identifier, persisted to UserDefaults.
-    /// Stable device identifier, persisted to UserDefaults.
-    /// Uses ULID for new devices (timestamp indicates first registration).
+    /// Stable device identifier based on hardware UUID.
+    ///
+    /// Uses IOPlatformUUID on macOS/iOS to ensure all apps on the same device
+    /// share the same device ID. Falls back to a persistent ULID if hardware ID is unavailable.
     private lazy var deviceID: String = {
+        // Try to get hardware-based device ID
+        if let hardwareID = Self.getHardwareDeviceID() {
+            return hardwareID
+        }
+
+        // Fall back to persistent ULID in UserDefaults (legacy behavior)
         let key = "com.dannystewart.PolyKit.LogRemote.deviceID"
         if let existing = UserDefaults.standard.string(forKey: key) {
             return existing
         }
-        // Generate ULID for new devices (timestamp = first registration time)
+
+        // Generate new ULID as last resort
         let newID = ULIDGenerator.shared.next()
         UserDefaults.standard.set(newID, forKey: key)
+        polyWarning("LogRemote: Unable to get hardware device ID, generated fallback: \(newID)")
         return newID
     }()
+
+    /// Get a stable hardware-based device identifier.
+    ///
+    /// - macOS: Uses IOPlatformUUID (stable per-device, consistent across all apps)
+    /// - iOS/tvOS/watchOS/visionOS: Uses identifierForVendor (stable per-device, per-vendor)
+    ///
+    /// Returns nil if unable to retrieve hardware ID.
+    private static func getHardwareDeviceID() -> String? {
+        #if os(macOS)
+        return getIOPlatformUUID()
+        #elseif os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
+        return getVendorIdentifier()
+        #else
+        return nil
+        #endif
+    }
+
+    /// Retrieve IOPlatformUUID from IOKit (macOS only).
+    ///
+    /// This is the same UUID used by system profilers and is stable per-device.
+    private static func getIOPlatformUUID() -> String? {
+        #if canImport(IOKit)
+        let platformExpert = IOServiceGetMatchingService(
+            kIOMainPortDefault,
+            IOServiceMatching("IOPlatformExpertDevice")
+        )
+
+        guard platformExpert != 0 else { return nil }
+        defer { IOObjectRelease(platformExpert) }
+
+        guard let uuidCF = IORegistryEntryCreateCFProperty(
+            platformExpert,
+            "IOPlatformUUID" as CFString,
+            kCFAllocatorDefault,
+            0
+        )?.takeRetainedValue() else {
+            return nil
+        }
+
+        return uuidCF as? String
+        #else
+        return nil
+        #endif
+    }
+
+    /// Retrieve vendor identifier from UIDevice (iOS/tvOS/watchOS/visionOS).
+    ///
+    /// Stable per-device as long as at least one app from the same vendor remains installed.
+    /// This is the officially sanctioned way to get a device identifier on iOS.
+    private static func getVendorIdentifier() -> String? {
+        #if canImport(UIKit) && !os(macOS)
+        return UIDevice.current.identifierForVendor?.uuidString
+        #elseif canImport(WatchKit)
+        return WKInterfaceDevice.current().identifierForVendor?.uuidString
+        #else
+        return nil
+        #endif
+    }
 
     /// Unique session identifier (changes on each app launch).
     /// ULID timestamp indicates when the session started.
