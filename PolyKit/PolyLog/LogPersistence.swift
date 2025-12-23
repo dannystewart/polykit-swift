@@ -18,7 +18,7 @@ import Foundation
 /// ```swift
 /// let persistence = LogPersistence(
 ///     directory: "Logs",
-///     maxSessions: 20
+///     maxSessions: 10
 /// )
 /// persistence.startNewSession()
 /// persistence.write("Log message")
@@ -60,7 +60,7 @@ public final class LogPersistence: @unchecked Sendable {
     private var flushTimer: DispatchSourceTimer?
 
     /// Queue used for periodic flush to avoid doing any I/O on the main thread.
-    private let flushQueue = DispatchQueue(label: "com.dannystewart.PolyKit.LogPersistence.flush", qos: .utility)
+    private let flushQueue: DispatchQueue = .init(label: "com.dannystewart.PolyKit.LogPersistence.flush", qos: .utility)
 
     /// Whether persistence is currently enabled.
     private var isEnabled = false
@@ -71,8 +71,8 @@ public final class LogPersistence: @unchecked Sendable {
     ///
     /// - Parameters:
     ///   - directoryName: Directory name relative to Application Support. Defaults to "Logs".
-    ///   - maxSessions: Maximum number of session files to retain. Defaults to 20.
-    public init(directoryName: String = "Logs", maxSessions: Int = 20) {
+    ///   - maxSessions: Maximum number of session files to retain. Defaults to 10.
+    public init(directoryName: String = "Logs", maxSessions: Int = 10) {
         self.directoryName = directoryName
         self.maxSessions = maxSessions
     }
@@ -157,28 +157,6 @@ public final class LogPersistence: @unchecked Sendable {
         flushBufferUnsafe()
     }
 
-    // MARK: - Periodic Flush
-
-    /// Starts the periodic flush timer (must be called with `lock` held).
-    private func startFlushTimerUnsafe() {
-        guard flushTimer == nil else { return }
-        guard isEnabled else { return }
-
-        let timer = DispatchSource.makeTimerSource(queue: flushQueue)
-        timer.schedule(deadline: .now() + flushInterval, repeating: flushInterval, leeway: .milliseconds(50))
-        timer.setEventHandler { [weak self] in
-            self?.flush()
-        }
-        timer.resume()
-        flushTimer = timer
-    }
-
-    /// Stops the periodic flush timer (must be called with `lock` held).
-    private func stopFlushTimerUnsafe() {
-        flushTimer?.cancel()
-        flushTimer = nil
-    }
-
     // MARK: - Public Utilities
 
     /// Returns the URL of the logs directory.
@@ -254,6 +232,28 @@ public final class LogPersistence: @unchecked Sendable {
         #endif
 
         return zipURL
+    }
+
+    // MARK: - Periodic Flush
+
+    /// Starts the periodic flush timer (must be called with `lock` held).
+    private func startFlushTimerUnsafe() {
+        guard flushTimer == nil else { return }
+        guard isEnabled else { return }
+
+        let timer = DispatchSource.makeTimerSource(queue: flushQueue)
+        timer.schedule(deadline: .now() + flushInterval, repeating: flushInterval, leeway: .milliseconds(50))
+        timer.setEventHandler { [weak self] in
+            self?.flush()
+        }
+        timer.resume()
+        flushTimer = timer
+    }
+
+    /// Stops the periodic flush timer (must be called with `lock` held).
+    private func stopFlushTimerUnsafe() {
+        flushTimer?.cancel()
+        flushTimer = nil
     }
 
     /// Internal flush implementation (must be called with lock held).
