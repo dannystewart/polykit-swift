@@ -149,10 +149,22 @@ public final class LogRemote: @unchecked Sendable {
     ///
     /// - Parameter config: The Supabase configuration to use.
     public func start(config: LogRemoteConfig) {
+        // Check if logger is configured before acquiring lock
+        guard let appLogger = PolyBaseConfig.shared.logger else {
+            polyWarning("LogRemote: No logger configured in PolyBaseConfig. Call PolyBaseConfig.configure(logger:) first.")
+            return
+        }
+
+        // Capture values for logging outside the lock (to avoid deadlock)
+        let hostName: String
+        let deviceIDValue: String
+        let sessionIDValue: String
+        let appBundleIDValue: String
+
         lock.lock()
-        defer { lock.unlock() }
 
         guard !isRunning else {
+            lock.unlock()
             polyDebug("LogRemote: Already running")
             return
         }
@@ -170,10 +182,6 @@ public final class LogRemote: @unchecked Sendable {
         )
 
         // Hook into the configured logger
-        guard let appLogger = PolyBaseConfig.shared.logger else {
-            polyWarning("LogRemote: No logger configured in PolyBaseConfig. Call PolyBaseConfig.configure(logger:) first.")
-            return
-        }
         appLogger.onLogEntry = { [weak self] entry in
             self?.bufferEntry(entry)
         }
@@ -181,8 +189,17 @@ public final class LogRemote: @unchecked Sendable {
         startFlushTimerUnsafe()
         isRunning = true
 
-        polyInfo("LogRemote: Started streaming to \(config.supabaseURL.host ?? "unknown")")
-        polyDebug("LogRemote: deviceID=\(deviceID), sessionID=\(sessionID), app=\(appBundleID)")
+        // Capture values before unlocking
+        hostName = config.supabaseURL.host ?? "unknown"
+        deviceIDValue = deviceID
+        sessionIDValue = sessionID
+        appBundleIDValue = appBundleID
+
+        lock.unlock()
+
+        // Log AFTER releasing the lock to avoid deadlock
+        polyInfo("LogRemote: Started streaming to \(hostName)")
+        polyDebug("LogRemote: deviceID=\(deviceIDValue), sessionID=\(sessionIDValue), app=\(appBundleIDValue)")
     }
 
     /// Stop remote logging and flush remaining entries.
