@@ -152,8 +152,9 @@ public final class PolyBaseAuth: NSObject {
         try await withCheckedThrowingContinuation { continuation in
             self.authContinuation = continuation
 
-            // Dispatch to main to avoid QoS priority inversion
-            DispatchQueue.main.async {
+            // We're already on MainActor, but need to hop to next run loop
+            // Use .userInitiated to match caller's QoS and avoid priority inversion
+            DispatchQueue.main.async(qos: .userInitiated) {
                 let provider = ASAuthorizationAppleIDProvider()
                 let request = provider.createRequest()
                 request.requestedScopes = [.email, .fullName]
