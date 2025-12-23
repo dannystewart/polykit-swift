@@ -332,13 +332,32 @@ public final class LogRemote: @unchecked Sendable {
             return record
         }
 
-        do {
-            try await client
-                .from(tableName)
-                .insert(records)
-                .execute()
-        } catch {
-            // Log error but don't crash - remote logging is best-effort
+        // Retry once on transient network errors (e.g., -1005 connection lost)
+        var lastError: Error?
+        for attempt in 1 ... 2 {
+            do {
+                try await client
+                    .from(tableName)
+                    .insert(records)
+                    .execute()
+                return // Success
+            } catch {
+                lastError = error
+                let nsError = error as NSError
+                let isTransient = nsError.domain == NSURLErrorDomain &&
+                    [-1005, -1001, -1009].contains(nsError.code)
+
+                if isTransient, attempt == 1 {
+                    // Brief delay before retry
+                    try? await Task.sleep(for: .milliseconds(100))
+                    continue
+                }
+                break
+            }
+        }
+
+        // Log error but don't crash - remote logging is best-effort
+        if let error = lastError {
             polyError("LogRemote: Push failed: \(error.localizedDescription)")
         }
     }
