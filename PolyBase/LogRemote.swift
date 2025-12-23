@@ -20,14 +20,15 @@ import Supabase
 ///
 /// ## Usage
 ///
-/// Add `SUPABASE_URL` and `SUPABASE_KEY` to your app's Info.plist (via Secrets.xcconfig),
+/// Add `POLYLOGS_URL` and `POLYLOGS_KEY` to your app's Info.plist (via Secrets.xcconfig),
 /// then simply call:
 ///
 /// ```swift
 /// LogRemote.shared.start()
 /// ```
 ///
-/// The credentials are read automatically from Info.plist. Alternatively, you can
+/// The credentials are read automatically from Info.plist. These use separate key names
+/// from your app's own Supabase config to avoid conflicts. Alternatively, you can
 /// configure explicitly via `LogRemoteConfig`.
 ///
 /// Once started, all log entries from `logger` (the global PolyLog instance)
@@ -116,23 +117,26 @@ public final class LogRemote: @unchecked Sendable {
 
         // Fall back to Info.plist
         guard let config = loadConfigFromInfoPlist() else {
-            polyWarning("LogRemote: No configuration available. Add SUPABASE_URL and SUPABASE_KEY to Info.plist, or call LogRemoteConfig.configure().")
+            polyWarning("LogRemote: No configuration available. Add POLYLOGS_URL and POLYLOGS_KEY to Info.plist, or call LogRemoteConfig.configure().")
             return
         }
         start(config: config)
     }
 
     /// Load configuration from the host app's Info.plist.
+    ///
+    /// Looks for `POLYLOGS_URL` and `POLYLOGS_KEY` to avoid conflicts with
+    /// an app's own Supabase configuration.
     private func loadConfigFromInfoPlist() -> LogRemoteConfig? {
         guard let infoDictionary = Bundle.main.infoDictionary,
-              let urlString = infoDictionary["SUPABASE_URL"] as? String,
+              let urlString = infoDictionary["POLYLOGS_URL"] as? String,
               let supabaseURL = URL(string: urlString),
-              let supabaseKey = infoDictionary["SUPABASE_KEY"] as? String
+              let supabaseKey = infoDictionary["POLYLOGS_KEY"] as? String
         else {
             return nil
         }
 
-        let tableName = infoDictionary["SUPABASE_LOG_TABLE"] as? String ?? "polylogs"
+        let tableName = infoDictionary["POLYLOGS_TABLE"] as? String ?? "polylogs"
         return LogRemoteConfig(
             supabaseURL: supabaseURL,
             supabaseKey: supabaseKey,
