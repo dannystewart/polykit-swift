@@ -4,6 +4,7 @@
 //  https://github.com/dannystewart/polykit-swift
 //
 
+import Auth
 import Foundation
 import Supabase
 
@@ -160,6 +161,12 @@ public final class LogRemote: @unchecked Sendable {
         client = SupabaseClient(
             supabaseURL: config.supabaseURL,
             supabaseKey: config.supabaseKey,
+            options: .init(
+                auth: .init(
+                    // Opt-in to new session behavior to silence deprecation warning
+                    emitLocalSessionAsInitialSession: true,
+                ),
+            ),
         )
 
         // Hook into the configured logger
