@@ -165,8 +165,8 @@ public final class LogRemote: @unchecked Sendable {
             self?.bufferEntry(entry)
         }
 
-        startFlushTimerUnsafe()
         isRunning = true
+        startFlushTimerUnsafe()
 
         // Capture values before unlocking
         hostName = config.supabaseURL.host ?? "unknown"
