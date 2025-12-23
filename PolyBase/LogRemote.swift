@@ -6,11 +6,8 @@
 
 import Auth
 import Foundation
+import PolyKit
 import Supabase
-
-#if canImport(PolyKit)
-    import PolyKit
-#endif
 
 // MARK: - LogRemote
 
@@ -308,7 +305,11 @@ public final class LogRemote: @unchecked Sendable {
         isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
         let records: [[String: AnyJSON]] = entries.map { entry in
+            // Generate ULID from the log entry's timestamp (not push time)
+            let ulid = ULID.generate(for: entry.timestamp)
+
             var record: [String: AnyJSON] = [
+                "id": .string(ulid),
                 "timestamp": .string(isoFormatter.string(from: entry.timestamp)),
                 "level": .string(entry.level.rawValue),
                 "message": .string(entry.message),
@@ -332,8 +333,6 @@ public final class LogRemote: @unchecked Sendable {
                 .from(tableName)
                 .insert(records)
                 .execute()
-
-            polyDebug("LogRemote: Pushed \(entries.count) entries")
         } catch {
             // Log error but don't crash - remote logging is best-effort
             polyError("LogRemote: Push failed: \(error.localizedDescription)")

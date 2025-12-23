@@ -6,10 +6,10 @@
 -- This table receives log entries from all apps using LogRemote.
 -- Logs are ephemeral (4-24 hour retention recommended via pg_cron).
 -- =============================================================================
--- Create the logs table
+-- Create the logs table (uses ULID for time-ordered, sortable IDs)
 CREATE TABLE
     IF NOT EXISTS polylogs (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+        id TEXT PRIMARY KEY DEFAULT public.ulid_now (),
         -- Log content
         timestamp TIMESTAMPTZ NOT NULL,
         level TEXT NOT NULL,
