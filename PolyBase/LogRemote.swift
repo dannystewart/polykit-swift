@@ -106,7 +106,7 @@ public final class LogRemote: @unchecked Sendable {
     ///
     /// Credentials are loaded in this order:
     /// 1. `LogRemoteConfig.shared` if configured via `configure()` or `load()`
-    /// 2. `SUPABASE_URL` and `SUPABASE_KEY` from the host app's Info.plist
+    /// 2. `POLYLOGS_URL` and `POLYLOGS_KEY` from the host app's Info.plist
     ///
     /// If no configuration is available, this method logs a warning and does nothing.
     public func start() {
@@ -122,27 +122,6 @@ public final class LogRemote: @unchecked Sendable {
             return
         }
         start(config: config)
-    }
-
-    /// Load configuration from the host app's Info.plist.
-    ///
-    /// Looks for `POLYLOGS_URL` and `POLYLOGS_KEY` to avoid conflicts with
-    /// an app's own Supabase configuration.
-    private func loadConfigFromInfoPlist() -> LogRemoteConfig? {
-        guard let infoDictionary = Bundle.main.infoDictionary,
-              let urlString = infoDictionary["POLYLOGS_URL"] as? String,
-              let supabaseURL = URL(string: urlString),
-              let supabaseKey = infoDictionary["POLYLOGS_KEY"] as? String
-        else {
-            return nil
-        }
-
-        let tableName = infoDictionary["POLYLOGS_TABLE"] as? String ?? "polylogs"
-        return LogRemoteConfig(
-            supabaseURL: supabaseURL,
-            supabaseKey: supabaseKey,
-            tableName: tableName,
-        )
     }
 
     /// Start remote logging with explicit configuration.
@@ -248,6 +227,28 @@ public final class LogRemote: @unchecked Sendable {
                 appBundleID: appBundleID,
             )
         }
+    }
+
+    /// Load configuration from the host app's Info.plist.
+    ///
+    /// Looks for `POLYLOGS_URL` and `POLYLOGS_KEY` to avoid conflicts with
+    /// an app's own Supabase configuration.
+    private func loadConfigFromInfoPlist() -> LogRemoteConfig? {
+        guard
+            let infoDictionary = Bundle.main.infoDictionary,
+            let urlString = infoDictionary["POLYLOGS_URL"] as? String,
+            let supabaseURL = URL(string: urlString),
+            let supabaseKey = infoDictionary["POLYLOGS_KEY"] as? String else
+        {
+            return nil
+        }
+
+        let tableName = infoDictionary["POLYLOGS_TABLE"] as? String ?? "polylogs"
+        return LogRemoteConfig(
+            supabaseURL: supabaseURL,
+            supabaseKey: supabaseKey,
+            tableName: tableName,
+        )
     }
 
     // MARK: - Buffering
