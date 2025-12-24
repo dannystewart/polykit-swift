@@ -22,6 +22,8 @@
 
         private var progressLabel: NSTextField?
 
+        private nonisolated(unsafe) var refreshKeyEventMonitor: Any?
+
         // MARK: Initialization
 
         /// Creates a new Data Explorer window.
@@ -42,11 +44,20 @@
             setupContextCallbacks()
             setupToolbar()
             setupContent()
+            setupKeyCommands()
         }
 
         @available(*, unavailable)
         required init?(coder _: NSCoder) {
             fatalError("init(coder:) has not been implemented")
+        }
+
+        deinit {
+            if let monitor = refreshKeyEventMonitor {
+                Task { @MainActor in
+                    NSEvent.removeMonitor(monitor)
+                }
+            }
         }
 
         // MARK: Window Creation
@@ -142,6 +153,23 @@
             toolbar.autosavesConfiguration = false
             window?.toolbar = toolbar
             window?.toolbarStyle = .unified
+        }
+
+        private func setupKeyCommands() {
+            // Ensure ⌘R refresh works when this Data Explorer window is in the foreground.
+            // We intentionally scope this to `window` being the key window to avoid
+            // interfering with host app shortcuts outside the Data Explorer.
+            refreshKeyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self else { return event }
+                guard let window, NSApp.keyWindow === window else { return event }
+
+                let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+                guard flags == .command else { return event }
+                guard event.charactersIgnoringModifiers?.lowercased() == "r" else { return event }
+
+                refresh()
+                return nil
+            }
         }
 
         private func setupContent() {
