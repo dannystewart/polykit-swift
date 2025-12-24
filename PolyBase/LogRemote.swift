@@ -109,13 +109,15 @@ public final class LogRemote: @unchecked Sendable {
     /// Get a stable hardware-based device identifier.
     ///
     /// - macOS: Uses IOPlatformUUID (stable per-device, consistent across all apps)
-    /// - iOS/tvOS/watchOS/visionOS: Uses identifierForVendor (stable per-device, per-vendor)
+    /// - iOS/tvOS/visionOS/watchOS: Uses identifierForVendor (stable per-device, per-vendor)
     ///
     /// Returns nil if unable to retrieve hardware ID.
     private static func getHardwareDeviceID() -> String? {
         #if os(macOS)
         return getIOPlatformUUID()
-        #elseif os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
+        #elseif os(watchOS)
+        return getWatchVendorIdentifier()
+        #elseif os(iOS) || os(tvOS) || os(visionOS)
         return getVendorIdentifier()
         #else
         return nil
@@ -155,9 +157,18 @@ public final class LogRemote: @unchecked Sendable {
     /// Stable per-device as long as at least one app from the same vendor remains installed.
     /// This is the officially sanctioned way to get a device identifier on iOS.
     private static func getVendorIdentifier() -> String? {
-        #if canImport(UIKit) && !os(macOS)
+        #if canImport(UIKit) && (os(iOS) || os(tvOS) || os(visionOS))
         return UIDevice.current.identifierForVendor?.uuidString
-        #elseif canImport(WatchKit)
+        #else
+        return nil
+        #endif
+    }
+
+    /// Retrieve vendor identifier from WKInterfaceDevice (watchOS).
+    ///
+    /// Stable per-device as long as at least one app from the same vendor remains installed.
+    private static func getWatchVendorIdentifier() -> String? {
+        #if canImport(WatchKit) && os(watchOS)
         return WKInterfaceDevice.current().identifierForVendor?.uuidString
         #else
         return nil
