@@ -48,7 +48,6 @@
             preferredDisplayMode = .oneBesideSecondary
 
             setViewController(self.recordsViewController, for: .primary)
-            setViewController(self.recordsViewController, for: .compact)
             setViewController(self.detailViewController, for: .secondary)
 
             self.setupContextCallbacks()
