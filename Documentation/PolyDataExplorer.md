@@ -62,7 +62,6 @@ let userEntity = PolyDataEntity<User>(
 
 ```swift
 let configuration = PolyDataExplorerConfiguration(
-    modelContext: AppModelContainer.shared.mainContext,
     entities: [
         AnyPolyDataEntity(userEntity),
         AnyPolyDataEntity(postEntity)
@@ -75,16 +74,21 @@ let configuration = PolyDataExplorerConfiguration(
 **macOS:**
 
 ```swift
-let windowController = macOSPolyDataExplorerWindowController(configuration: configuration)
-windowController.showWindow(nil)
+let windowController = macOSPolyDataExplorerWindowController(
+    configuration: configuration,
+    modelContext: AppModelContainer.shared.mainContext
+)
+windowController.showWindow()
 ```
 
 **iOS:**
 
 ```swift
-let viewController = iOSPolyDataExplorerViewController(configuration: configuration)
-let nav = UINavigationController(rootViewController: viewController)
-present(nav, animated: true)
+let viewController = iOSPolyDataExplorerViewController(
+    configuration: configuration,
+    modelContext: AppModelContainer.shared.mainContext
+)
+present(viewController, animated: true)
 ```
 
 ## Configuration Types
@@ -560,11 +564,12 @@ enum MyAppDataExplorer {
     #endif
 
     #if os(iOS)
-    static func makeViewController() -> UINavigationController {
+    static func makeViewController(modelContext: ModelContext) -> UIViewController {
         let vc = iOSPolyDataExplorerViewController(
-            configuration: configuration()
+            configuration: configuration(),
+            modelContext: modelContext
         )
-        return UINavigationController(rootViewController: vc)
+        return vc
     }
     #endif
 

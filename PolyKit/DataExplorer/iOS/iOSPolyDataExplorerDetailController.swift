@@ -17,9 +17,11 @@
 
         // MARK: Properties
 
-        private let record: AnyObject
-        private let entity: AnyPolyDataEntity
+        private var record: AnyObject?
+        private var entity: AnyPolyDataEntity?
         private let dataSource: PolyDataExplorerDataSource
+
+        private let emptyStateLabel: UILabel = .init()
 
         // MARK: Initialization
 
@@ -34,6 +36,13 @@
             super.init(style: .insetGrouped)
         }
 
+        public init(dataSource: PolyDataExplorerDataSource) {
+            self.record = nil
+            self.entity = nil
+            self.dataSource = dataSource
+            super.init(style: .insetGrouped)
+        }
+
         @available(*, unavailable)
         required init?(coder _: NSCoder) {
             fatalError("init(coder:) has not been implemented")
@@ -43,8 +52,9 @@
 
         override public func viewDidLoad() {
             super.viewDidLoad()
-            title = "\(entity.displayName) Details"
             setupUI()
+            setupEmptyState()
+            updateEmptyState()
         }
 
         // MARK: Setup
@@ -56,13 +66,45 @@
             tableView.register(PolyToggleCell.self, forCellReuseIdentifier: PolyToggleCell.reuseIdentifier)
         }
 
+        private func setupEmptyState() {
+            emptyStateLabel.translatesAutoresizingMaskIntoConstraints = false
+            emptyStateLabel.text = "Select a record to view details"
+            emptyStateLabel.textAlignment = .center
+            emptyStateLabel.textColor = .secondaryLabel
+            emptyStateLabel.numberOfLines = 0
+            tableView.backgroundView = emptyStateLabel
+        }
+
+        private func updateEmptyState() {
+            let hasRecord = (record != nil && entity != nil)
+            emptyStateLabel.isHidden = hasRecord
+            tableView.separatorStyle = hasRecord ? .singleLine : .none
+
+            if let entity {
+                title = "\(entity.displayName) Details"
+            } else {
+                title = "Inspector"
+            }
+        }
+
+        // MARK: Public API
+
+        public func setRecord(_ record: AnyObject?, entity: AnyPolyDataEntity?) {
+            self.record = record
+            self.entity = entity
+            updateEmptyState()
+            tableView.reloadData()
+        }
+
         // MARK: UITableViewDataSource
 
         override public func numberOfSections(in _: UITableView) -> Int {
-            Section.allCases.count
+            guard record != nil, entity != nil else { return 0 }
+            return Section.allCases.count
         }
 
         override public func tableView(_: UITableView, numberOfRowsInSection section: Int) -> Int {
+            guard let entity, record != nil else { return 0 }
             guard let sectionType = Section(rawValue: section) else { return 0 }
             return switch sectionType {
             case .fields: entity.detailFields.count
@@ -72,6 +114,7 @@
         }
 
         override public func tableView(_: UITableView, titleForHeaderInSection section: Int) -> String? {
+            guard let entity, record != nil else { return nil }
             guard let sectionType = Section(rawValue: section) else { return nil }
             return switch sectionType {
             case .fields: entity.detailFields.isEmpty ? nil : "Fields"
@@ -81,15 +124,18 @@
         }
 
         override public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+            guard let entity, let record else {
+                return UITableViewCell()
+            }
             guard let sectionType = Section(rawValue: indexPath.section) else {
                 return UITableViewCell()
             }
 
             switch sectionType {
             case .fields:
-                return fieldCell(at: indexPath, tableView: tableView)
+                return fieldCell(at: indexPath, tableView: tableView, entity: entity, record: record)
             case .relationships:
-                return relationshipCell(at: indexPath, tableView: tableView)
+                return relationshipCell(at: indexPath, tableView: tableView, entity: entity, record: record)
             case .actions:
                 return deleteCell(tableView: tableView)
             }
@@ -100,6 +146,7 @@
         override public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
             tableView.deselectRow(at: indexPath, animated: true)
 
+            guard let entity, let record else { return }
             guard let sectionType = Section(rawValue: indexPath.section) else { return }
 
             switch sectionType {
@@ -117,6 +164,7 @@
         }
 
         override public func tableView(_: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+            guard let entity, record != nil else { return 44 }
             guard let sectionType = Section(rawValue: indexPath.section) else { return 44 }
 
             if sectionType == .fields, indexPath.row < entity.detailFields.count {
@@ -131,7 +179,12 @@
 
         // MARK: Cell Builders
 
-        private func fieldCell(at indexPath: IndexPath, tableView: UITableView) -> UITableViewCell {
+        private func fieldCell(
+            at indexPath: IndexPath,
+            tableView: UITableView,
+            entity: AnyPolyDataEntity,
+            record: AnyObject
+        ) -> UITableViewCell {
             guard indexPath.row < entity.detailFields.count else { return UITableViewCell() }
             let field = entity.detailFields[indexPath.row]
 
@@ -188,7 +241,12 @@
             return cell
         }
 
-        private func relationshipCell(at indexPath: IndexPath, tableView: UITableView) -> UITableViewCell {
+        private func relationshipCell(
+            at indexPath: IndexPath,
+            tableView: UITableView,
+            entity: AnyPolyDataEntity,
+            record: AnyObject
+        ) -> UITableViewCell {
             guard indexPath.row < entity.detailRelationships.count else { return UITableViewCell() }
             let relationship = entity.detailRelationships[indexPath.row]
 
@@ -216,6 +274,7 @@
         // MARK: Delete
 
         private func confirmDelete() {
+            guard let entity else { return }
             let alert = UIAlertController(
                 title: "Delete \(entity.displayName)?",
                 message: "This action cannot be undone.",
@@ -231,10 +290,16 @@
         }
 
         private func performDelete() {
+            guard let record else { return }
             Task {
                 await dataSource.deleteRecord(record)
                 dataSource.context.reloadData?()
-                navigationController?.popViewController(animated: true)
+
+                if splitViewController?.isCollapsed == true {
+                    splitViewController?.show(.primary)
+                } else {
+                    setRecord(nil, entity: nil)
+                }
             }
         }
     }
