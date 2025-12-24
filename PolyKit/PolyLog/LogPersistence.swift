@@ -48,13 +48,13 @@ public final class LogPersistence: @unchecked Sendable {
     private var writeBuffer: [String] = []
 
     /// Maximum buffer size before automatic flush (in lines).
-    private let bufferFlushThreshold = 50
+    private let bufferFlushThreshold = 10
 
     /// Periodic flush interval for near-real-time log streaming.
     ///
     /// This keeps session files updating while the app is active without requiring call sites to
     /// manually flush on lifecycle events. The flush is a no-op when the buffer is empty.
-    private let flushInterval: TimeInterval = 0.25
+    private let flushInterval: TimeInterval = 0.15
 
     /// Timer that flushes pending writes to disk on `flushInterval`.
     private var flushTimer: DispatchSourceTimer?

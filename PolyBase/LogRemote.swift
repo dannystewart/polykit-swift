@@ -67,10 +67,10 @@ public final class LogRemote: @unchecked Sendable {
     private var buffer: [LogEntry] = []
 
     /// Maximum buffer size before forced flush.
-    private let bufferFlushThreshold = 50
+    private let bufferFlushThreshold = 10
 
     /// Periodic flush interval (matches LogPersistence).
-    private let flushInterval: TimeInterval = 0.25
+    private let flushInterval: TimeInterval = 0.15
 
     /// Timer for periodic flush.
     private var flushTimer: DispatchSourceTimer?
