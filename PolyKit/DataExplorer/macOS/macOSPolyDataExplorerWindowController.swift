@@ -19,7 +19,6 @@
         private var splitViewController: macOSPolyDataExplorerSplitViewController?
 
         private var entitySegmentedControl: NSSegmentedControl?
-        private var statsLabel: NSTextField?
 
         private var progressLabel: NSTextField?
 
@@ -65,6 +64,10 @@
             window.isReleasedWhenClosed = false
             window.minSize = NSSize(width: 800, height: 400)
 
+            // Match Prism's previous Data Explorer appearance: unified toolbar with no visible title.
+            window.titlebarAppearsTransparent = false
+            window.titleVisibility = .hidden
+
             // Set autosave name - this may restore a previously saved frame
             window.setFrameAutosaveName("PolyDataExplorer")
 
@@ -90,7 +93,6 @@
         /// Refreshes the data display.
         public func refresh() {
             splitViewController?.refresh()
-            updateStats()
         }
 
         // MARK: Setup
@@ -100,7 +102,6 @@
 
             context.reloadData = { [weak self] in
                 self?.splitViewController?.refresh()
-                self?.updateStats()
             }
 
             context.showAlert = { [weak self] title, message in
@@ -140,6 +141,7 @@
             // delegate-provided default identifiers (including flexible space placement).
             toolbar.autosavesConfiguration = false
             window?.toolbar = toolbar
+            window?.toolbarStyle = .unified
         }
 
         private func setupContent() {
@@ -155,26 +157,17 @@
             }
 
             splitViewController?.refresh()
-            updateStats()
         }
 
         // MARK: Private Methods
 
         private func switchToEntity(at index: Int) {
-            dataSource.selectEntity(at: index)
             entitySegmentedControl?.selectedSegment = index
-            splitViewController?.refresh()
-            updateStats()
+            splitViewController?.switchToEntity(at: index)
         }
 
         @objc private func entitySegmentChanged(_ sender: NSSegmentedControl) {
             switchToEntity(at: sender.selectedSegment)
-        }
-
-        private func updateStats() {
-            guard configuration.showStats else { return }
-            let stats = dataSource.fetchStats()
-            statsLabel?.stringValue = stats.formattedString
         }
 
         private func showAlert(title: String, message: String) {
@@ -269,12 +262,12 @@
             switch itemIdentifier.rawValue {
             case "entitySelector":
                 return createEntitySelectorItem()
-            case "stats":
-                return createStatsItem()
             case "refresh":
                 return createRefreshItem()
             case "tools":
                 return createToolsItem()
+            case "toggleInspector":
+                return createToggleInspectorItem()
             default:
                 return nil
             }
@@ -283,22 +276,15 @@
         public func toolbarDefaultItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
             var identifiers: [NSToolbarItem.Identifier] = [
                 NSToolbarItem.Identifier("entitySelector"),
+                .flexibleSpace,
+                NSToolbarItem.Identifier("refresh"),
             ]
 
-            if configuration.showStats {
-                identifiers.append(NSToolbarItem.Identifier("stats"))
-            }
-
-            identifiers.append(.flexibleSpace)
-
-            // Refresh button
-            identifiers.append(NSToolbarItem.Identifier("refresh"))
-
-            // Tools menu (if there are toolbar sections)
             if !configuration.toolbarSections.isEmpty {
                 identifiers.append(NSToolbarItem.Identifier("tools"))
             }
 
+            identifiers.append(NSToolbarItem.Identifier("toggleInspector"))
             return identifiers
         }
 
@@ -307,11 +293,8 @@
                 NSToolbarItem.Identifier("entitySelector"),
                 .flexibleSpace,
                 NSToolbarItem.Identifier("refresh"),
+                NSToolbarItem.Identifier("toggleInspector"),
             ]
-
-            if configuration.showStats {
-                identifiers.insert(NSToolbarItem.Identifier("stats"), at: 1)
-            }
 
             if !configuration.toolbarSections.isEmpty {
                 identifiers.append(NSToolbarItem.Identifier("tools"))
@@ -324,7 +307,7 @@
             let item = NSToolbarItem(itemIdentifier: NSToolbarItem.Identifier("entitySelector"))
 
             let segmented = NSSegmentedControl()
-            segmented.segmentStyle = .texturedSquare
+            segmented.segmentStyle = .texturedRounded
             segmented.trackingMode = .selectOne
             segmented.segmentCount = configuration.entities.count
 
@@ -333,27 +316,17 @@
                 if let image = NSImage(systemSymbolName: entity.iconName, accessibilityDescription: entity.displayName) {
                     segmented.setImage(image, forSegment: index)
                 }
+                segmented.setImageScaling(.scaleProportionallyDown, forSegment: index)
+                segmented.setWidth(0, forSegment: index) // Auto-size per segment
             }
 
             segmented.selectedSegment = configuration.defaultEntityIndex
             segmented.target = self
             segmented.action = #selector(entitySegmentChanged(_:))
+            segmented.sizeToFit()
 
             entitySegmentedControl = segmented
             item.view = segmented
-
-            return item
-        }
-
-        private func createStatsItem() -> NSToolbarItem {
-            let item = NSToolbarItem(itemIdentifier: NSToolbarItem.Identifier("stats"))
-
-            let label = NSTextField(labelWithString: "")
-            label.font = .systemFont(ofSize: 11)
-            label.textColor = .secondaryLabelColor
-            statsLabel = label
-
-            item.view = label
 
             return item
         }
@@ -363,32 +336,21 @@
             item.label = "Refresh"
             item.paletteLabel = "Refresh"
             item.toolTip = "Refresh data"
-
-            let button = NSButton()
-            button.bezelStyle = .texturedRounded
-            button.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: "Refresh")
-            button.target = self
-            button.action = #selector(refreshButtonClicked)
-
-            item.view = button
+            item.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: "Refresh")
+            item.target = self
+            item.action = #selector(refreshButtonClicked)
 
             return item
         }
 
         @objc private func refreshButtonClicked() {
             splitViewController?.refresh()
-            updateStats()
         }
 
         private func createToolsItem() -> NSToolbarItem {
-            let item = NSToolbarItem(itemIdentifier: NSToolbarItem.Identifier("tools"))
+            let item = NSMenuToolbarItem(itemIdentifier: NSToolbarItem.Identifier("tools"))
             item.label = "Tools"
-            item.paletteLabel = "Tools"
-            item.toolTip = "Data management tools"
-
-            let button = NSButton()
-            button.bezelStyle = .texturedRounded
-            button.image = NSImage(systemSymbolName: "wrench.and.screwdriver", accessibilityDescription: "Tools")
+            item.image = NSImage(systemSymbolName: "wrench.and.screwdriver", accessibilityDescription: "Tools")
 
             // Build menu
             let menu = NSMenu()
@@ -409,18 +371,25 @@
                 }
             }
 
-            button.menu = menu
-            button.action = #selector(showToolsMenu(_:))
-            button.target = self
-
-            item.view = button
+            item.menu = menu
+            item.showsIndicator = true
 
             return item
         }
 
-        @objc private func showToolsMenu(_ sender: NSButton) {
-            guard let menu = sender.menu else { return }
-            menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height + 4), in: sender)
+        private func createToggleInspectorItem() -> NSToolbarItem {
+            let item = NSToolbarItem(itemIdentifier: NSToolbarItem.Identifier("toggleInspector"))
+            item.label = "Inspector"
+            item.paletteLabel = "Toggle Inspector"
+            item.toolTip = "Show or hide the inspector panel"
+            item.image = NSImage(systemSymbolName: "sidebar.right", accessibilityDescription: "Toggle Inspector")
+            item.target = self
+            item.action = #selector(toggleInspectorClicked)
+            return item
+        }
+
+        @objc private func toggleInspectorClicked() {
+            splitViewController?.toggleDetailPanel()
         }
 
         @objc private func toolbarActionTriggered(_ sender: NSMenuItem) {
