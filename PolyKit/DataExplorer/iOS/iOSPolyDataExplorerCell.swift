@@ -23,7 +23,7 @@
 
         override public init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
             super.init(style: style, reuseIdentifier: reuseIdentifier)
-            setupUI()
+            self.setupUI()
         }
 
         @available(*, unavailable)
@@ -33,11 +33,11 @@
 
         override public func prepareForReuse() {
             super.prepareForReuse()
-            titleLabel.textColor = .label
-            titleLabel.text = nil
-            subtitleLabel.text = nil
-            detailLabel.text = nil
-            badgeStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+            self.titleLabel.textColor = .label
+            self.titleLabel.text = nil
+            self.subtitleLabel.text = nil
+            self.detailLabel.text = nil
+            self.badgeStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         }
 
         // MARK: Configuration
@@ -57,24 +57,24 @@
             let columnCount = entity.columnCount
 
             if columnCount > 0 {
-                titleLabel.text = entity.cellValue(record, 0)
+                self.titleLabel.text = entity.cellValue(record, 0)
                 if let color = entity.cellColor(record, 0, report) {
-                    titleLabel.textColor = color
+                    self.titleLabel.textColor = color
                 }
             }
 
             if columnCount > 1 {
-                subtitleLabel.text = entity.cellValue(record, 1)
+                self.subtitleLabel.text = entity.cellValue(record, 1)
             }
 
             if columnCount > 2 {
-                detailLabel.text = entity.cellValue(record, 2)
+                self.detailLabel.text = entity.cellValue(record, 2)
             }
 
             // Collect badges from all columns that define them
             for columnIndex in 0 ..< columnCount {
                 if let badge = entity.cellBadge(record, columnIndex, report) {
-                    addBadge(badge.text, color: badge.color)
+                    self.addBadge(badge.text, color: badge.color)
                 }
             }
 
@@ -83,7 +83,7 @@
                 let recordID = entity.recordID(record)
                 if report.hasIssue(entityID: entity.id, recordID: recordID) {
                     if let issueType = report.issueType(entityID: entity.id, recordID: recordID) {
-                        addBadge("⚠️ \(issueType)", color: .systemRed)
+                        self.addBadge("⚠️ \(issueType)", color: .systemRed)
                     }
                 }
             }
@@ -114,49 +114,49 @@
                 badge.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -padding),
             ])
 
-            badgeStack.addArrangedSubview(container)
+            self.badgeStack.addArrangedSubview(container)
         }
 
         // MARK: Setup
 
         private func setupUI() {
-            titleLabel.font = .systemFont(ofSize: 15, weight: .medium)
-            titleLabel.translatesAutoresizingMaskIntoConstraints = false
+            self.titleLabel.font = .systemFont(ofSize: 15, weight: .medium)
+            self.titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
-            subtitleLabel.font = .systemFont(ofSize: 12)
-            subtitleLabel.textColor = .secondaryLabel
-            subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+            self.subtitleLabel.font = .systemFont(ofSize: 12)
+            self.subtitleLabel.textColor = .secondaryLabel
+            self.subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
 
-            detailLabel.font = .systemFont(ofSize: 11)
-            detailLabel.textColor = .tertiaryLabel
-            detailLabel.numberOfLines = 2
-            detailLabel.translatesAutoresizingMaskIntoConstraints = false
+            self.detailLabel.font = .systemFont(ofSize: 11)
+            self.detailLabel.textColor = .tertiaryLabel
+            self.detailLabel.numberOfLines = 2
+            self.detailLabel.translatesAutoresizingMaskIntoConstraints = false
 
-            badgeStack.axis = .horizontal
-            badgeStack.spacing = 4
-            badgeStack.translatesAutoresizingMaskIntoConstraints = false
+            self.badgeStack.axis = .horizontal
+            self.badgeStack.spacing = 4
+            self.badgeStack.translatesAutoresizingMaskIntoConstraints = false
 
-            contentView.addSubview(titleLabel)
-            contentView.addSubview(subtitleLabel)
-            contentView.addSubview(detailLabel)
-            contentView.addSubview(badgeStack)
+            contentView.addSubview(self.titleLabel)
+            contentView.addSubview(self.subtitleLabel)
+            contentView.addSubview(self.detailLabel)
+            contentView.addSubview(self.badgeStack)
 
             NSLayoutConstraint.activate([
-                titleLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
-                titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-                titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: badgeStack.leadingAnchor, constant: -8),
+                self.titleLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
+                self.titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+                self.titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: self.badgeStack.leadingAnchor, constant: -8),
 
-                badgeStack.centerYAnchor.constraint(equalTo: titleLabel.centerYAnchor),
-                badgeStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+                self.badgeStack.centerYAnchor.constraint(equalTo: self.titleLabel.centerYAnchor),
+                self.badgeStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
 
-                subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 2),
-                subtitleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-                subtitleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+                self.subtitleLabel.topAnchor.constraint(equalTo: self.titleLabel.bottomAnchor, constant: 2),
+                self.subtitleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+                self.subtitleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
 
-                detailLabel.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 2),
-                detailLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-                detailLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-                detailLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10),
+                self.detailLabel.topAnchor.constraint(equalTo: self.subtitleLabel.bottomAnchor, constant: 2),
+                self.detailLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+                self.detailLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+                self.detailLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10),
             ])
 
             accessoryType = .disclosureIndicator

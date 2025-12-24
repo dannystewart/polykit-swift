@@ -1,3 +1,9 @@
+//
+//  iOSPolyDataExplorerDetailController.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 #if os(iOS)
 
     import UIKit
@@ -15,8 +21,6 @@
             case actions
         }
 
-        // MARK: Properties
-
         private var record: AnyObject?
         private var entity: AnyPolyDataEntity?
         private let dataSource: PolyDataExplorerDataSource
@@ -28,7 +32,7 @@
         public init(
             record: AnyObject,
             entity: AnyPolyDataEntity,
-            dataSource: PolyDataExplorerDataSource
+            dataSource: PolyDataExplorerDataSource,
         ) {
             self.record = record
             self.entity = entity
@@ -48,58 +52,17 @@
             fatalError("init(coder:) has not been implemented")
         }
 
-        // MARK: Lifecycle
-
         override public func viewDidLoad() {
             super.viewDidLoad()
-            setupUI()
-            setupEmptyState()
-            updateEmptyState()
-        }
-
-        // MARK: Setup
-
-        private func setupUI() {
-            tableView.register(UITableViewCell.self, forCellReuseIdentifier: "Cell")
-            tableView.register(PolyTextFieldCell.self, forCellReuseIdentifier: PolyTextFieldCell.reuseIdentifier)
-            tableView.register(PolyTextViewCell.self, forCellReuseIdentifier: PolyTextViewCell.reuseIdentifier)
-            tableView.register(PolyToggleCell.self, forCellReuseIdentifier: PolyToggleCell.reuseIdentifier)
-        }
-
-        private func setupEmptyState() {
-            emptyStateLabel.translatesAutoresizingMaskIntoConstraints = false
-            emptyStateLabel.text = "Select a record to view details"
-            emptyStateLabel.textAlignment = .center
-            emptyStateLabel.textColor = .secondaryLabel
-            emptyStateLabel.numberOfLines = 0
-            tableView.backgroundView = emptyStateLabel
-        }
-
-        private func updateEmptyState() {
-            let hasRecord = (record != nil && entity != nil)
-            emptyStateLabel.isHidden = hasRecord
-            tableView.separatorStyle = hasRecord ? .singleLine : .none
-
-            if let entity {
-                title = "\(entity.displayName) Details"
-            } else {
-                title = "Inspector"
-            }
-        }
-
-        // MARK: Public API
-
-        public func setRecord(_ record: AnyObject?, entity: AnyPolyDataEntity?) {
-            self.record = record
-            self.entity = entity
-            updateEmptyState()
-            tableView.reloadData()
+            self.setupUI()
+            self.setupEmptyState()
+            self.updateEmptyState()
         }
 
         // MARK: UITableViewDataSource
 
         override public func numberOfSections(in _: UITableView) -> Int {
-            guard record != nil, entity != nil else { return 0 }
+            guard self.record != nil, self.entity != nil else { return 0 }
             return Section.allCases.count
         }
 
@@ -133,11 +96,11 @@
 
             switch sectionType {
             case .fields:
-                return fieldCell(at: indexPath, tableView: tableView, entity: entity, record: record)
+                return self.fieldCell(at: indexPath, tableView: tableView, entity: entity, record: record)
             case .relationships:
-                return relationshipCell(at: indexPath, tableView: tableView, entity: entity, record: record)
+                return self.relationshipCell(at: indexPath, tableView: tableView, entity: entity, record: record)
             case .actions:
-                return deleteCell(tableView: tableView)
+                return self.deleteCell(tableView: tableView)
             }
         }
 
@@ -156,10 +119,10 @@
             case .relationships:
                 guard indexPath.row < entity.detailRelationships.count else { return }
                 let relationship = entity.detailRelationships[indexPath.row]
-                relationship.navigateAction(record, dataSource.context)
+                relationship.navigateAction(record, self.dataSource.context)
 
             case .actions:
-                confirmDelete()
+                self.confirmDelete()
             }
         }
 
@@ -177,13 +140,52 @@
             return UITableView.automaticDimension
         }
 
+        // MARK: Public API
+
+        public func setRecord(_ record: AnyObject?, entity: AnyPolyDataEntity?) {
+            self.record = record
+            self.entity = entity
+            self.updateEmptyState()
+            self.tableView.reloadData()
+        }
+
+        // MARK: Setup
+
+        private func setupUI() {
+            self.tableView.register(UITableViewCell.self, forCellReuseIdentifier: "Cell")
+            self.tableView.register(PolyTextFieldCell.self, forCellReuseIdentifier: PolyTextFieldCell.reuseIdentifier)
+            self.tableView.register(PolyTextViewCell.self, forCellReuseIdentifier: PolyTextViewCell.reuseIdentifier)
+            self.tableView.register(PolyToggleCell.self, forCellReuseIdentifier: PolyToggleCell.reuseIdentifier)
+        }
+
+        private func setupEmptyState() {
+            self.emptyStateLabel.translatesAutoresizingMaskIntoConstraints = false
+            self.emptyStateLabel.text = "Select a record to view details"
+            self.emptyStateLabel.textAlignment = .center
+            self.emptyStateLabel.textColor = .secondaryLabel
+            self.emptyStateLabel.numberOfLines = 0
+            self.tableView.backgroundView = self.emptyStateLabel
+        }
+
+        private func updateEmptyState() {
+            let hasRecord = (record != nil && entity != nil)
+            self.emptyStateLabel.isHidden = hasRecord
+            self.tableView.separatorStyle = hasRecord ? .singleLine : .none
+
+            if let entity {
+                title = "\(entity.displayName) Details"
+            } else {
+                title = "Inspector"
+            }
+        }
+
         // MARK: Cell Builders
 
         private func fieldCell(
             at indexPath: IndexPath,
             tableView: UITableView,
             entity: AnyPolyDataEntity,
-            record: AnyObject
+            record: AnyObject,
         ) -> UITableViewCell {
             guard indexPath.row < entity.detailFields.count else { return UITableViewCell() }
             let field = entity.detailFields[indexPath.row]
@@ -191,13 +193,13 @@
             if field.isToggle {
                 let cell = tableView.dequeueReusableCell(
                     withIdentifier: PolyToggleCell.reuseIdentifier,
-                    for: indexPath
+                    for: indexPath,
                 ) as! PolyToggleCell
                 let isOn = field.getToggleValue?(record) ?? false
                 cell.configure(label: field.label, isOn: isOn) { [weak self] newValue in
                     guard let self else { return }
                     field.toggleAction?(record, newValue)
-                    dataSource.save()
+                    self.dataSource.save()
                 }
                 return cell
             }
@@ -206,23 +208,23 @@
                 if field.isMultiline {
                     let cell = tableView.dequeueReusableCell(
                         withIdentifier: PolyTextViewCell.reuseIdentifier,
-                        for: indexPath
+                        for: indexPath,
                     ) as! PolyTextViewCell
                     cell.configure(label: field.label, value: field.getValue(record)) { [weak self] newValue in
                         guard let self else { return }
                         field.editAction?(record, newValue)
-                        dataSource.save()
+                        self.dataSource.save()
                     }
                     return cell
                 } else {
                     let cell = tableView.dequeueReusableCell(
                         withIdentifier: PolyTextFieldCell.reuseIdentifier,
-                        for: indexPath
+                        for: indexPath,
                     ) as! PolyTextFieldCell
                     cell.configure(label: field.label, value: field.getValue(record)) { [weak self] newValue in
                         guard let self else { return }
                         field.editAction?(record, newValue)
-                        dataSource.save()
+                        self.dataSource.save()
                     }
                     return cell
                 }
@@ -245,7 +247,7 @@
             at indexPath: IndexPath,
             tableView: UITableView,
             entity: AnyPolyDataEntity,
-            record: AnyObject
+            record: AnyObject,
         ) -> UITableViewCell {
             guard indexPath.row < entity.detailRelationships.count else { return UITableViewCell() }
             let relationship = entity.detailRelationships[indexPath.row]
@@ -278,7 +280,7 @@
             let alert = UIAlertController(
                 title: "Delete \(entity.displayName)?",
                 message: "This action cannot be undone.",
-                preferredStyle: .alert
+                preferredStyle: .alert,
             )
 
             alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
@@ -292,13 +294,13 @@
         private func performDelete() {
             guard let record else { return }
             Task {
-                await dataSource.deleteRecord(record)
-                dataSource.context.reloadData?()
+                await self.dataSource.deleteRecord(record)
+                self.dataSource.context.reloadData?()
 
                 if splitViewController?.isCollapsed == true {
                     splitViewController?.show(.primary)
                 } else {
-                    setRecord(nil, entity: nil)
+                    self.setRecord(nil, entity: nil)
                 }
             }
         }
@@ -315,7 +317,7 @@
 
         override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
             super.init(style: style, reuseIdentifier: reuseIdentifier)
-            setupUI()
+            self.setupUI()
         }
 
         @available(*, unavailable)
@@ -325,12 +327,12 @@
 
         func configure(label: String, value: String, action: ((String) -> Void)?) {
             self.label.text = label
-            textField.text = value
-            editAction = action
+            self.textField.text = value
+            self.editAction = action
         }
 
         func textFieldDidEndEditing(_ textField: UITextField) {
-            editAction?(textField.text ?? "")
+            self.editAction?(textField.text ?? "")
         }
 
         func textFieldShouldReturn(_ textField: UITextField) -> Bool {
@@ -341,27 +343,27 @@
         private func setupUI() {
             selectionStyle = .none
 
-            label.font = .systemFont(ofSize: 14)
-            label.textColor = .secondaryLabel
-            label.translatesAutoresizingMaskIntoConstraints = false
+            self.label.font = .systemFont(ofSize: 14)
+            self.label.textColor = .secondaryLabel
+            self.label.translatesAutoresizingMaskIntoConstraints = false
 
-            textField.font = .systemFont(ofSize: 14)
-            textField.borderStyle = .roundedRect
-            textField.translatesAutoresizingMaskIntoConstraints = false
-            textField.delegate = self
+            self.textField.font = .systemFont(ofSize: 14)
+            self.textField.borderStyle = .roundedRect
+            self.textField.translatesAutoresizingMaskIntoConstraints = false
+            self.textField.delegate = self
 
-            contentView.addSubview(label)
-            contentView.addSubview(textField)
+            contentView.addSubview(self.label)
+            contentView.addSubview(self.textField)
 
             NSLayoutConstraint.activate([
-                label.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
-                label.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-                label.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+                self.label.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
+                self.label.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+                self.label.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
 
-                textField.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 4),
-                textField.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-                textField.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-                textField.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10),
+                self.textField.topAnchor.constraint(equalTo: self.label.bottomAnchor, constant: 4),
+                self.textField.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+                self.textField.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+                self.textField.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10),
             ])
         }
     }
@@ -377,7 +379,7 @@
 
         override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
             super.init(style: style, reuseIdentifier: reuseIdentifier)
-            setupUI()
+            self.setupUI()
         }
 
         @available(*, unavailable)
@@ -387,41 +389,41 @@
 
         func configure(label: String, value: String, action: ((String) -> Void)?) {
             self.label.text = label
-            textView.text = value
-            editAction = action
+            self.textView.text = value
+            self.editAction = action
         }
 
         func textViewDidEndEditing(_ textView: UITextView) {
-            editAction?(textView.text)
+            self.editAction?(textView.text)
         }
 
         private func setupUI() {
             selectionStyle = .none
 
-            label.font = .systemFont(ofSize: 14)
-            label.textColor = .secondaryLabel
-            label.translatesAutoresizingMaskIntoConstraints = false
+            self.label.font = .systemFont(ofSize: 14)
+            self.label.textColor = .secondaryLabel
+            self.label.translatesAutoresizingMaskIntoConstraints = false
 
-            textView.font = .systemFont(ofSize: 14)
-            textView.layer.borderColor = UIColor.separator.cgColor
-            textView.layer.borderWidth = 0.5
-            textView.layer.cornerRadius = 6
-            textView.translatesAutoresizingMaskIntoConstraints = false
-            textView.delegate = self
+            self.textView.font = .systemFont(ofSize: 14)
+            self.textView.layer.borderColor = UIColor.separator.cgColor
+            self.textView.layer.borderWidth = 0.5
+            self.textView.layer.cornerRadius = 6
+            self.textView.translatesAutoresizingMaskIntoConstraints = false
+            self.textView.delegate = self
 
-            contentView.addSubview(label)
-            contentView.addSubview(textView)
+            contentView.addSubview(self.label)
+            contentView.addSubview(self.textView)
 
             NSLayoutConstraint.activate([
-                label.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
-                label.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-                label.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+                self.label.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
+                self.label.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+                self.label.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
 
-                textView.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 4),
-                textView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-                textView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-                textView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10),
-                textView.heightAnchor.constraint(greaterThanOrEqualToConstant: 240),
+                self.textView.topAnchor.constraint(equalTo: self.label.bottomAnchor, constant: 4),
+                self.textView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+                self.textView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+                self.textView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10),
+                self.textView.heightAnchor.constraint(greaterThanOrEqualToConstant: 240),
             ])
         }
     }
@@ -437,7 +439,7 @@
 
         override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
             super.init(style: style, reuseIdentifier: reuseIdentifier)
-            setupUI()
+            self.setupUI()
         }
 
         @available(*, unavailable)
@@ -447,33 +449,33 @@
 
         func configure(label: String, isOn: Bool, action: ((Bool) -> Void)?) {
             self.label.text = label
-            toggle.isOn = isOn
-            toggleAction = action
+            self.toggle.isOn = isOn
+            self.toggleAction = action
         }
 
         private func setupUI() {
             selectionStyle = .none
 
-            label.font = .systemFont(ofSize: 14)
-            label.translatesAutoresizingMaskIntoConstraints = false
+            self.label.font = .systemFont(ofSize: 14)
+            self.label.translatesAutoresizingMaskIntoConstraints = false
 
-            toggle.translatesAutoresizingMaskIntoConstraints = false
-            toggle.addTarget(self, action: #selector(toggleChanged), for: .valueChanged)
+            self.toggle.translatesAutoresizingMaskIntoConstraints = false
+            self.toggle.addTarget(self, action: #selector(self.toggleChanged), for: .valueChanged)
 
-            contentView.addSubview(label)
-            contentView.addSubview(toggle)
+            contentView.addSubview(self.label)
+            contentView.addSubview(self.toggle)
 
             NSLayoutConstraint.activate([
-                label.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-                label.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+                self.label.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+                self.label.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
 
-                toggle.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-                toggle.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+                self.toggle.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+                self.toggle.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
             ])
         }
 
         @objc private func toggleChanged() {
-            toggleAction?(toggle.isOn)
+            self.toggleAction?(self.toggle.isOn)
         }
     }
 

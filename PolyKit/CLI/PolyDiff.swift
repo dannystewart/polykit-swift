@@ -33,7 +33,7 @@ public enum PolyDiff {
         do {
             let oldContent = try String(contentsOfFile: oldPath, encoding: .utf8)
             let newContent = try String(contentsOfFile: newPath, encoding: .utf8)
-            return content(old: oldContent, new: newContent, filename: newPath)
+            return self.content(old: oldContent, new: newContent, filename: newPath)
         } catch {
             print("Error reading files: \(error)")
             return DiffResult(hasChanges: false, changes: [], additions: [], deletions: [])
@@ -54,7 +54,7 @@ public enum PolyDiff {
         var additions = [String]()
         var deletions = [String]()
 
-        let diff = unifiedDiff(
+        let diff = self.unifiedDiff(
             old: old.components(separatedBy: .newlines),
             new: new.components(separatedBy: .newlines),
             fromFile: "current \(content)",
@@ -74,7 +74,7 @@ public enum PolyDiff {
 
         for line in diff {
             changes.append(line)
-            processDiffLine(line, additions: &additions, deletions: &deletions)
+            self.processDiffLine(line, additions: &additions, deletions: &deletions)
         }
 
         return DiffResult(hasChanges: true, changes: changes, additions: additions, deletions: deletions)
@@ -87,11 +87,11 @@ public enum PolyDiff {
         let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if line.hasPrefix("+") {
-            let normalizedLine = normalizeDiffLine(line)
+            let normalizedLine = self.normalizeDiffLine(line)
             PolyTerm.printColor("  \(normalizedLine)", .green)
             additions.append(normalizedLine)
         } else if line.hasPrefix("-") {
-            let normalizedLine = normalizeDiffLine(line)
+            let normalizedLine = self.normalizeDiffLine(line)
             PolyTerm.printColor("  \(normalizedLine)", .red)
             deletions.append(normalizedLine)
         } else {

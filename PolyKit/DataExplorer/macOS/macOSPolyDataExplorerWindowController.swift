@@ -33,7 +33,7 @@
         ///   - modelContext: The SwiftData model context.
         public init(configuration: PolyDataExplorerConfiguration, modelContext: ModelContext) {
             self.configuration = configuration
-            dataSource = PolyDataExplorerDataSource(
+            self.dataSource = PolyDataExplorerDataSource(
                 configuration: configuration,
                 modelContext: modelContext,
             )
@@ -41,10 +41,10 @@
             let window = Self.createWindow(title: configuration.title)
             super.init(window: window)
 
-            setupContextCallbacks()
-            setupToolbar()
-            setupContent()
-            setupKeyCommands()
+            self.setupContextCallbacks()
+            self.setupToolbar()
+            self.setupContent()
+            self.setupKeyCommands()
         }
 
         @available(*, unavailable)
@@ -103,13 +103,13 @@
 
         /// Refreshes the data display.
         public func refresh() {
-            splitViewController?.refresh()
+            self.splitViewController?.refresh()
         }
 
         // MARK: Setup
 
         private func setupContextCallbacks() {
-            let context = dataSource.context
+            let context = self.dataSource.context
 
             context.reloadData = { [weak self] in
                 self?.splitViewController?.refresh()
@@ -159,7 +159,7 @@
             // Ensure ⌘R refresh works when this Data Explorer window is in the foreground.
             // We intentionally scope this to `window` being the key window to avoid
             // interfering with host app shortcuts outside the Data Explorer.
-            refreshKeyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            self.refreshKeyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
                 guard let self else { return event }
                 guard let window, NSApp.keyWindow === window else { return event }
 
@@ -167,14 +167,14 @@
                 guard flags == .command else { return event }
                 guard event.charactersIgnoringModifiers?.lowercased() == "r" else { return event }
 
-                refresh()
+                self.refresh()
                 return nil
             }
         }
 
         private func setupContent() {
-            splitViewController = macOSPolyDataExplorerSplitViewController(dataSource: dataSource)
-            window?.contentViewController = splitViewController
+            self.splitViewController = macOSPolyDataExplorerSplitViewController(dataSource: self.dataSource)
+            window?.contentViewController = self.splitViewController
 
             // Ensure window is at the desired size after content is set
             // (contentViewController assignment can resize the window)
@@ -184,18 +184,18 @@
                 window.center()
             }
 
-            splitViewController?.refresh()
+            self.splitViewController?.refresh()
         }
 
         // MARK: Private Methods
 
         private func switchToEntity(at index: Int) {
-            entitySegmentedControl?.selectedSegment = index
-            splitViewController?.switchToEntity(at: index)
+            self.entitySegmentedControl?.selectedSegment = index
+            self.splitViewController?.switchToEntity(at: index)
         }
 
         @objc private func entitySegmentChanged(_ sender: NSSegmentedControl) {
-            switchToEntity(at: sender.selectedSegment)
+            self.switchToEntity(at: sender.selectedSegment)
         }
 
         private func showAlert(title: String, message: String) {
@@ -235,7 +235,7 @@
             let label = NSTextField(labelWithString: message)
             label.font = .systemFont(ofSize: 14, weight: .medium)
             label.translatesAutoresizingMaskIntoConstraints = false
-            progressLabel = label
+            self.progressLabel = label
 
             container.addSubview(spinner)
             container.addSubview(label)
@@ -270,7 +270,7 @@
                     break
                 }
             }
-            progressLabel = nil
+            self.progressLabel = nil
         }
     }
 
@@ -289,13 +289,13 @@
 
             switch itemIdentifier.rawValue {
             case "entitySelector":
-                return createEntitySelectorItem()
+                return self.createEntitySelectorItem()
             case "refresh":
-                return createRefreshItem()
+                return self.createRefreshItem()
             case "tools":
-                return createToolsItem()
+                return self.createToolsItem()
             case "toggleInspector":
-                return createToggleInspectorItem()
+                return self.createToggleInspectorItem()
             default:
                 return nil
             }
@@ -308,7 +308,7 @@
                 NSToolbarItem.Identifier("refresh"),
             ]
 
-            if !configuration.toolbarSections.isEmpty {
+            if !self.configuration.toolbarSections.isEmpty {
                 identifiers.append(NSToolbarItem.Identifier("tools"))
             }
 
@@ -324,7 +324,7 @@
                 NSToolbarItem.Identifier("toggleInspector"),
             ]
 
-            if !configuration.toolbarSections.isEmpty {
+            if !self.configuration.toolbarSections.isEmpty {
                 identifiers.append(NSToolbarItem.Identifier("tools"))
             }
 
@@ -337,9 +337,9 @@
             let segmented = NSSegmentedControl()
             segmented.segmentStyle = .texturedRounded
             segmented.trackingMode = .selectOne
-            segmented.segmentCount = configuration.entities.count
+            segmented.segmentCount = self.configuration.entities.count
 
-            for (index, entity) in configuration.entities.enumerated() {
+            for (index, entity) in self.configuration.entities.enumerated() {
                 segmented.setLabel(entity.displayName, forSegment: index)
                 if let image = NSImage(systemSymbolName: entity.iconName, accessibilityDescription: entity.displayName) {
                     segmented.setImage(image, forSegment: index)
@@ -348,12 +348,12 @@
                 segmented.setWidth(0, forSegment: index) // Auto-size per segment
             }
 
-            segmented.selectedSegment = configuration.defaultEntityIndex
+            segmented.selectedSegment = self.configuration.defaultEntityIndex
             segmented.target = self
-            segmented.action = #selector(entitySegmentChanged(_:))
+            segmented.action = #selector(self.entitySegmentChanged(_:))
             segmented.sizeToFit()
 
-            entitySegmentedControl = segmented
+            self.entitySegmentedControl = segmented
             item.view = segmented
 
             return item
@@ -366,13 +366,13 @@
             item.toolTip = "Refresh data"
             item.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: "Refresh")
             item.target = self
-            item.action = #selector(refreshButtonClicked)
+            item.action = #selector(self.refreshButtonClicked)
 
             return item
         }
 
         @objc private func refreshButtonClicked() {
-            splitViewController?.refresh()
+            self.splitViewController?.refresh()
         }
 
         private func createToolsItem() -> NSToolbarItem {
@@ -383,13 +383,13 @@
             // Build menu
             let menu = NSMenu()
 
-            for section in configuration.toolbarSections {
+            for section in self.configuration.toolbarSections {
                 if !menu.items.isEmpty {
                     menu.addItem(.separator())
                 }
 
                 for action in section.actions {
-                    let menuItem = NSMenuItem(title: action.title, action: #selector(toolbarActionTriggered(_:)), keyEquivalent: "")
+                    let menuItem = NSMenuItem(title: action.title, action: #selector(self.toolbarActionTriggered(_:)), keyEquivalent: "")
                     menuItem.target = self
                     menuItem.representedObject = action.id
                     if let image = NSImage(systemSymbolName: action.iconName, accessibilityDescription: action.title) {
@@ -412,19 +412,19 @@
             item.toolTip = "Show or hide the inspector panel"
             item.image = NSImage(systemSymbolName: "sidebar.right", accessibilityDescription: "Toggle Inspector")
             item.target = self
-            item.action = #selector(toggleInspectorClicked)
+            item.action = #selector(self.toggleInspectorClicked)
             return item
         }
 
         @objc private func toggleInspectorClicked() {
-            splitViewController?.toggleDetailPanel()
+            self.splitViewController?.toggleDetailPanel()
         }
 
         @objc private func toolbarActionTriggered(_ sender: NSMenuItem) {
             guard let actionID = sender.representedObject as? String else { return }
 
             // Find the action
-            for section in configuration.toolbarSections {
+            for section in self.configuration.toolbarSections {
                 for action in section.actions where action.id == actionID {
                     Task {
                         await action.action(dataSource.context)

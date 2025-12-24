@@ -28,10 +28,10 @@ public struct ReconcileResult: Sendable {
     public let errors: [ReconcileError]
 
     /// Whether reconciliation completed without errors.
-    public var succeeded: Bool { errors.isEmpty }
+    public var succeeded: Bool { self.errors.isEmpty }
 
     /// Total records processed.
-    public var total: Int { pulled + pushed + tombstonesAdopted + skipped }
+    public var total: Int { self.pulled + self.pushed + self.tombstonesAdopted + self.skipped }
 }
 
 // MARK: - ReconcileError
@@ -43,7 +43,7 @@ public struct ReconcileError: Error, Sendable {
     public let underlyingError: String
 
     public var localizedDescription: String {
-        "Reconcile \(action) failed for \(entityID): \(underlyingError)"
+        "Reconcile \(self.action) failed for \(self.entityID): \(self.underlyingError)"
     }
 }
 
@@ -109,11 +109,11 @@ public final class PolyReconciliationService {
     /// Initialize with the app's model context.
     /// Call this once during app startup (can share context with PolySyncCoordinator).
     public func initialize(with context: ModelContext) {
-        guard modelContext == nil else {
+        guard self.modelContext == nil else {
             polyDebug("PolyReconciliationService already initialized")
             return
         }
-        modelContext = context
+        self.modelContext = context
         polyDebug("PolyReconciliationService initialized")
     }
 
@@ -170,7 +170,7 @@ public final class PolyReconciliationService {
         // 1. Pull all remote versions
         let remoteVersions: [String: (version: Int, deleted: Bool)]
         do {
-            remoteVersions = try await pullVersions(entityType)
+            remoteVersions = try await self.pullVersions(entityType)
         } catch {
             polyError("PolyReconciliationService: Failed to pull versions: \(error)")
             return ReconcileResult(
@@ -433,7 +433,7 @@ public final class PolyReconciliationService {
 
         // Mark all as recently pushed
         for entity in entities {
-            pushEngine.markAsPushed(entity.id, table: config.tableName)
+            self.pushEngine.markAsPushed(entity.id, table: config.tableName)
         }
 
         // Push in batches

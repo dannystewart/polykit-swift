@@ -64,13 +64,13 @@ public struct AnimatedEqualizer: View {
 
     public var body: some View {
         GeometryReader { geometry in
-            HStack(spacing: spacing) {
-                ForEach(0 ..< barCount, id: \.self) { index in
+            HStack(spacing: self.spacing) {
+                ForEach(0 ..< self.barCount, id: \.self) { index in
                     Capsule()
-                        .fill(barColor)
+                        .fill(self.barColor)
                         .frame(
-                            width: barWidth(containerWidth: geometry.size.width),
-                            height: barHeight(for: index, containerHeight: geometry.size.height),
+                            width: self.barWidth(containerWidth: geometry.size.width),
+                            height: self.barHeight(for: index, containerHeight: geometry.size.height),
                         )
                         .frame(maxHeight: .infinity, alignment: .center)
                 }
@@ -81,21 +81,21 @@ public struct AnimatedEqualizer: View {
         // instead of restarting a spring for every individual value change.
         .animation(
             .spring(response: 0.12, dampingFraction: 0.8, blendDuration: 0.02),
-            value: barHeights,
+            value: self.barHeights,
         )
         .onAppear {
-            initializeBarHeights()
+            self.initializeBarHeights()
         }
-        .onChange(of: isPlaying) { _, newValue in
+        .onChange(of: self.isPlaying) { _, newValue in
             if !newValue {
-                resetToMinimum()
+                self.resetToMinimum()
             }
         }
-        .onChange(of: frequencyData) { _, newData in
-            if isPlaying, let data = newData, !data.isEmpty {
-                updateFromFrequencyData(data)
-            } else if !isPlaying {
-                resetToMinimum()
+        .onChange(of: self.frequencyData) { _, newData in
+            if self.isPlaying, let data = newData, !data.isEmpty {
+                self.updateFromFrequencyData(data)
+            } else if !self.isPlaying {
+                self.resetToMinimum()
             }
         }
     }
@@ -103,35 +103,35 @@ public struct AnimatedEqualizer: View {
     // MARK: - Private Methods
 
     private func initializeBarHeights() {
-        barHeights = Array(repeating: minimumBarHeight, count: barCount)
+        self.barHeights = Array(repeating: self.minimumBarHeight, count: self.barCount)
     }
 
     private func barWidth(containerWidth: CGFloat) -> CGFloat {
-        let totalSpacing = spacing * CGFloat(barCount - 1)
+        let totalSpacing = self.spacing * CGFloat(self.barCount - 1)
         let availableWidth = containerWidth - totalSpacing
-        let barWidth = (availableWidth / CGFloat(barCount)) * 0.4
+        let barWidth = (availableWidth / CGFloat(self.barCount)) * 0.4
         return max(barWidth, 1.5)
     }
 
     private func barHeight(for index: Int, containerHeight: CGFloat) -> CGFloat {
-        guard index < barHeights.count else { return containerHeight * minimumBarHeight }
-        return containerHeight * barHeights[index]
+        guard index < self.barHeights.count else { return containerHeight * self.minimumBarHeight }
+        return containerHeight * self.barHeights[index]
     }
 
     private func updateFromFrequencyData(_ data: [Float]) {
-        guard !data.isEmpty, barCount > 0 else { return }
+        guard !data.isEmpty, self.barCount > 0 else { return }
 
         let sourceCount = data.count
 
-        for barIndex in 0 ..< barCount {
-            guard barIndex < barHeights.count else { continue }
+        for barIndex in 0 ..< self.barCount {
+            guard barIndex < self.barHeights.count else { continue }
 
             // Map each visual bar across the *entire* frequency range so we
             // don't over-represent the lowest bands when `data.count > barCount`.
-            let barPosition: CGFloat = if barCount == 1 {
+            let barPosition: CGFloat = if self.barCount == 1 {
                 0
             } else {
-                CGFloat(barIndex) / CGFloat(barCount - 1)
+                CGFloat(barIndex) / CGFloat(self.barCount - 1)
             }
 
             let sourcePosition = barPosition * CGFloat(sourceCount - 1)
@@ -150,15 +150,15 @@ public struct AnimatedEqualizer: View {
             let targetHeight = max(minimumBarHeight, clampedMagnitude)
 
             // Let the view-level spring interpolate between heights smoothly.
-            barHeights[barIndex] = targetHeight
+            self.barHeights[barIndex] = targetHeight
         }
     }
 
     private func resetToMinimum() {
         withAnimation(.easeOut(duration: 0.2)) {
-            for i in 0 ..< barCount {
-                if i < barHeights.count {
-                    barHeights[i] = minimumBarHeight
+            for i in 0 ..< self.barCount {
+                if i < self.barHeights.count {
+                    self.barHeights[i] = self.minimumBarHeight
                 }
             }
         }

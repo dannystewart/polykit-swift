@@ -1,3 +1,9 @@
+//
+//  macOSPolyDataExplorerDetailPanel.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 #if os(macOS)
 
     import AppKit
@@ -7,8 +13,6 @@
     /// Detail panel for displaying field information about a selected record.
     @MainActor
     public final class macOSPolyDataExplorerDetailPanel: NSViewController {
-        // MARK: Properties
-
         private let dataSource: PolyDataExplorerDataSource
         private var currentRecord: AnyObject?
         private var currentEntity: AnyPolyDataEntity?
@@ -29,8 +33,6 @@
             fatalError("init(coder:) has not been implemented")
         }
 
-        // MARK: Lifecycle
-
         override public func loadView() {
             view = NSView()
             view.translatesAutoresizingMaskIntoConstraints = false
@@ -38,124 +40,124 @@
 
         override public func viewDidLoad() {
             super.viewDidLoad()
-            setupUI()
-            showEmpty()
-        }
-
-        // MARK: Setup
-
-        private func setupUI() {
-            // Empty state label
-            emptyLabel = NSTextField(labelWithString: "Select a record to view details")
-            emptyLabel.translatesAutoresizingMaskIntoConstraints = false
-            emptyLabel.textColor = .secondaryLabelColor
-            emptyLabel.alignment = .center
-            view.addSubview(emptyLabel)
-
-            // Stack view for fields - use a flipped clip view to pin content to top
-            stackView = NSStackView()
-            stackView.translatesAutoresizingMaskIntoConstraints = false
-            stackView.orientation = .vertical
-            stackView.alignment = .leading
-            stackView.spacing = 12
-            stackView.edgeInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-
-            // Use a flipped clip view so content stays at top
-            let flippedClipView = FlippedClipView()
-            flippedClipView.documentView = stackView
-
-            scrollView = NSScrollView()
-            scrollView.translatesAutoresizingMaskIntoConstraints = false
-            scrollView.contentView = flippedClipView
-            scrollView.hasVerticalScroller = true
-            scrollView.hasHorizontalScroller = false
-            scrollView.autohidesScrollers = true
-            scrollView.borderType = .noBorder
-            scrollView.isHidden = true
-            view.addSubview(scrollView)
-
-            NSLayoutConstraint.activate([
-                emptyLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-                emptyLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-
-                scrollView.topAnchor.constraint(equalTo: view.topAnchor),
-                scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-                scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-                scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-
-                stackView.topAnchor.constraint(equalTo: scrollView.contentView.topAnchor),
-                stackView.leadingAnchor.constraint(equalTo: scrollView.contentView.leadingAnchor),
-                stackView.trailingAnchor.constraint(equalTo: scrollView.contentView.trailingAnchor),
-            ])
+            self.setupUI()
+            self.showEmpty()
         }
 
         // MARK: Public Methods
 
         public func showRecord(_ record: AnyObject?, entity: AnyPolyDataEntity?) {
-            currentRecord = record
-            currentEntity = entity
+            self.currentRecord = record
+            self.currentEntity = entity
 
             guard let record, let entity else {
-                showEmpty()
+                self.showEmpty()
                 return
             }
 
-            buildFields(for: record, entity: entity)
+            self.buildFields(for: record, entity: entity)
         }
 
         public func showEmpty() {
-            emptyLabel.isHidden = false
-            scrollView.isHidden = true
+            self.emptyLabel.isHidden = false
+            self.scrollView.isHidden = true
 
             // Clear stack view
-            for subview in stackView.arrangedSubviews {
-                stackView.removeArrangedSubview(subview)
+            for subview in self.stackView.arrangedSubviews {
+                self.stackView.removeArrangedSubview(subview)
                 subview.removeFromSuperview()
             }
         }
 
         public func refresh() {
             if let record = currentRecord, let entity = currentEntity {
-                showRecord(record, entity: entity)
+                self.showRecord(record, entity: entity)
             }
+        }
+
+        // MARK: Setup
+
+        private func setupUI() {
+            // Empty state label
+            self.emptyLabel = NSTextField(labelWithString: "Select a record to view details")
+            self.emptyLabel.translatesAutoresizingMaskIntoConstraints = false
+            self.emptyLabel.textColor = .secondaryLabelColor
+            self.emptyLabel.alignment = .center
+            view.addSubview(self.emptyLabel)
+
+            // Stack view for fields - use a flipped clip view to pin content to top
+            self.stackView = NSStackView()
+            self.stackView.translatesAutoresizingMaskIntoConstraints = false
+            self.stackView.orientation = .vertical
+            self.stackView.alignment = .leading
+            self.stackView.spacing = 12
+            self.stackView.edgeInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+
+            // Use a flipped clip view so content stays at top
+            let flippedClipView = FlippedClipView()
+            flippedClipView.documentView = self.stackView
+
+            self.scrollView = NSScrollView()
+            self.scrollView.translatesAutoresizingMaskIntoConstraints = false
+            self.scrollView.contentView = flippedClipView
+            self.scrollView.hasVerticalScroller = true
+            self.scrollView.hasHorizontalScroller = false
+            self.scrollView.autohidesScrollers = true
+            self.scrollView.borderType = .noBorder
+            self.scrollView.isHidden = true
+            view.addSubview(self.scrollView)
+
+            NSLayoutConstraint.activate([
+                self.emptyLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                self.emptyLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+
+                self.scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+                self.scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                self.scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                self.scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+                self.stackView.topAnchor.constraint(equalTo: self.scrollView.contentView.topAnchor),
+                self.stackView.leadingAnchor.constraint(equalTo: self.scrollView.contentView.leadingAnchor),
+                self.stackView.trailingAnchor.constraint(equalTo: self.scrollView.contentView.trailingAnchor),
+            ])
         }
 
         // MARK: Private Methods
 
         private func buildFields(for record: AnyObject, entity: AnyPolyDataEntity) {
-            emptyLabel.isHidden = true
-            scrollView.isHidden = false
+            self.emptyLabel.isHidden = true
+            self.scrollView.isHidden = false
 
             // Clear existing fields
-            for subview in stackView.arrangedSubviews {
-                stackView.removeArrangedSubview(subview)
+            for subview in self.stackView.arrangedSubviews {
+                self.stackView.removeArrangedSubview(subview)
                 subview.removeFromSuperview()
             }
 
             // Add header
             let header = NSTextField(labelWithString: "\(entity.displayName) Details")
             header.font = .systemFont(ofSize: 14, weight: .semibold)
-            stackView.addArrangedSubview(header)
+            self.stackView.addArrangedSubview(header)
 
             // Add separator
             let separator = NSBox()
             separator.boxType = .separator
             separator.translatesAutoresizingMaskIntoConstraints = false
-            stackView.addArrangedSubview(separator)
-            separator.widthAnchor.constraint(equalTo: stackView.widthAnchor, constant: -24).isActive = true
+            self.stackView.addArrangedSubview(separator)
+            separator.widthAnchor.constraint(equalTo: self.stackView.widthAnchor, constant: -24).isActive = true
 
             // Add fields section header
             if !entity.detailFields.isEmpty {
                 let fieldsHeader = NSTextField(labelWithString: "Fields")
                 fieldsHeader.font = .systemFont(ofSize: 12, weight: .medium)
                 fieldsHeader.textColor = .secondaryLabelColor
-                stackView.addArrangedSubview(fieldsHeader)
+                self.stackView.addArrangedSubview(fieldsHeader)
             }
 
             // Add detail fields
             for field in entity.detailFields {
-                let fieldView = createFieldView(field: field, record: record)
-                stackView.addArrangedSubview(fieldView)
+                let fieldView = self.createFieldView(field: field, record: record)
+                self.stackView.addArrangedSubview(fieldView)
             }
 
             // Add relationships section
@@ -163,11 +165,11 @@
                 let relHeader = NSTextField(labelWithString: "Relationships")
                 relHeader.font = .systemFont(ofSize: 12, weight: .medium)
                 relHeader.textColor = .secondaryLabelColor
-                stackView.addArrangedSubview(relHeader)
+                self.stackView.addArrangedSubview(relHeader)
 
                 for relationship in entity.detailRelationships {
-                    let relView = createRelationshipView(relationship: relationship, record: record)
-                    stackView.addArrangedSubview(relView)
+                    let relView = self.createRelationshipView(relationship: relationship, record: record)
+                    self.stackView.addArrangedSubview(relView)
                 }
             }
         }
@@ -189,7 +191,7 @@
                 checkbox.isEnabled = field.toggleAction != nil
                 if field.toggleAction != nil {
                     checkbox.target = self
-                    checkbox.tag = currentEntity?.detailFields.firstIndex(where: { $0.label == field.label }) ?? 0
+                    checkbox.tag = self.currentEntity?.detailFields.firstIndex(where: { $0.label == field.label }) ?? 0
                 }
                 container.addArrangedSubview(checkbox)
             } else if field.isEditable {
@@ -231,19 +233,20 @@
         }
 
         private func createRelationshipView(relationship: PolyDataRelationship, record: AnyObject) -> NSView {
-            let button = NSButton(title: "\(relationship.label): \(relationship.getValue(record))", target: self, action: #selector(relationshipClicked(_:)))
+            let button = NSButton(title: "\(relationship.label): \(relationship.getValue(record))", target: self, action: #selector(self.relationshipClicked(_:)))
             button.bezelStyle = .inline
-            button.tag = currentEntity?.detailRelationships.firstIndex(where: { $0.label == relationship.label }) ?? 0
+            button.tag = self.currentEntity?.detailRelationships.firstIndex(where: { $0.label == relationship.label }) ?? 0
             return button
         }
 
         @objc private func relationshipClicked(_ sender: NSButton) {
-            guard let record = currentRecord,
-                  let entity = currentEntity,
-                  sender.tag < entity.detailRelationships.count else { return }
+            guard
+                let record = currentRecord,
+                let entity = currentEntity,
+                sender.tag < entity.detailRelationships.count else { return }
 
             let relationship = entity.detailRelationships[sender.tag]
-            relationship.navigateAction(record, dataSource.context)
+            relationship.navigateAction(record, self.dataSource.context)
         }
     }
 

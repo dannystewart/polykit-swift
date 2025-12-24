@@ -82,22 +82,27 @@ public struct PolyBaseOfflineOperation: Codable, Sendable {
 /// }
 /// ```
 public final class PolyBaseOfflineQueue: @unchecked Sendable {
+    private struct OperationKey: Hashable, Sendable {
+        let table: String
+        let entityId: String
+    }
+
     private var operations: [PolyBaseOfflineOperation] = []
     private let fileURL: URL
     private let lock: NSLock = .init()
 
     /// Whether the queue has pending operations.
     public var hasPendingOperations: Bool {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        return !operations.isEmpty
+        return !self.operations.isEmpty
     }
 
     /// Number of pending operations.
     public var pendingCount: Int {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        return operations.count
+        return self.operations.count
     }
 
     /// Create an offline queue for your app.
@@ -117,12 +122,12 @@ public final class PolyBaseOfflineQueue: @unchecked Sendable {
         // Create directory if needed
         try? FileManager.default.createDirectory(at: appDir, withIntermediateDirectories: true)
 
-        fileURL = appDir.appendingPathComponent("offline_queue.json")
+        self.fileURL = appDir.appendingPathComponent("offline_queue.json")
 
         // Load existing queue
-        loadQueue()
+        self.loadQueue()
 
-        polyInfo("PolyBase: Offline queue initialized with \(operations.count) pending operations")
+        polyInfo("PolyBase: Offline queue initialized with \(self.operations.count) pending operations")
     }
 
     // MARK: - Enqueue Operations
@@ -143,11 +148,11 @@ public final class PolyBaseOfflineQueue: @unchecked Sendable {
         payload: Data? = nil,
         entityId: String,
     ) {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
 
         // Remove any existing operation for this entity in this table
-        operations.removeAll { $0.table == table && $0.entityId == entityId }
+        self.operations.removeAll { $0.table == table && $0.entityId == entityId }
 
         // Add the new operation
         let operation = PolyBaseOfflineOperation(
@@ -156,10 +161,10 @@ public final class PolyBaseOfflineQueue: @unchecked Sendable {
             payload: payload,
             entityId: entityId,
         )
-        operations.append(operation)
+        self.operations.append(operation)
 
-        saveQueue()
-        polyInfo("PolyBase: Queued \(action.rawValue) for \(table)/\(entityId), queue size: \(operations.count)")
+        self.saveQueue()
+        polyInfo("PolyBase: Queued \(action.rawValue) for \(table)/\(entityId), queue size: \(self.operations.count)")
     }
 
     /// Convenience: Enqueue an insert operation with an Encodable payload.
@@ -172,7 +177,7 @@ public final class PolyBaseOfflineQueue: @unchecked Sendable {
             polyError("PolyBase: Failed to encode payload for insert")
             return
         }
-        enqueue(table: table, action: .insert, payload: data, entityId: entityId)
+        self.enqueue(table: table, action: .insert, payload: data, entityId: entityId)
     }
 
     /// Convenience: Enqueue an update operation with an Encodable payload.
@@ -185,12 +190,12 @@ public final class PolyBaseOfflineQueue: @unchecked Sendable {
             polyError("PolyBase: Failed to encode payload for update")
             return
         }
-        enqueue(table: table, action: .update, payload: data, entityId: entityId)
+        self.enqueue(table: table, action: .update, payload: data, entityId: entityId)
     }
 
     /// Convenience: Enqueue a delete operation.
     public func enqueueDelete(table: String, entityId: String) {
-        enqueue(table: table, action: .delete, payload: nil, entityId: entityId)
+        self.enqueue(table: table, action: .delete, payload: nil, entityId: entityId)
     }
 
     // MARK: - Process Queue
@@ -204,7 +209,7 @@ public final class PolyBaseOfflineQueue: @unchecked Sendable {
     public func processQueue(
         executor: @Sendable (PolyBaseOfflineOperation) async throws -> Void,
     ) async -> Int {
-        let operationsToProcess = getOperationsSnapshot()
+        let operationsToProcess = self.getOperationsSnapshot()
 
         guard !operationsToProcess.isEmpty else { return 0 }
 
@@ -243,23 +248,18 @@ public final class PolyBaseOfflineQueue: @unchecked Sendable {
 
     /// Clear all pending operations (use with caution).
     public func clearQueue() {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        operations.removeAll()
-        saveQueue()
+        self.operations.removeAll()
+        self.saveQueue()
         polyInfo("PolyBase: Queue cleared")
     }
 
     /// Get a snapshot of current operations (thread-safe, synchronous).
     private func getOperationsSnapshot() -> [PolyBaseOfflineOperation] {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        return operations
-    }
-
-    private struct OperationKey: Hashable, Sendable {
-        let table: String
-        let entityId: String
+        return self.operations
     }
 
     /// Update the queue after processing a snapshot, without dropping concurrent enqueues.
@@ -271,7 +271,7 @@ public final class PolyBaseOfflineQueue: @unchecked Sendable {
         snapshot: [PolyBaseOfflineOperation],
         failed: [PolyBaseOfflineOperation],
     ) {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
 
         let snapshotQueuedAtByKey: [OperationKey: Date] = Dictionary(
@@ -281,9 +281,9 @@ public final class PolyBaseOfflineQueue: @unchecked Sendable {
 
         // Preserve any operations that were enqueued while processing was in-flight.
         var retained = [PolyBaseOfflineOperation]()
-        retained.reserveCapacity(operations.count)
+        retained.reserveCapacity(self.operations.count)
 
-        for op in operations {
+        for op in self.operations {
             let key = OperationKey(table: op.table, entityId: op.entityId)
             if let snapshotQueuedAt = snapshotQueuedAtByKey[key], snapshotQueuedAt == op.queuedAt {
                 // This exact operation was part of the snapshot and is now processed (success or failure).
@@ -305,28 +305,28 @@ public final class PolyBaseOfflineQueue: @unchecked Sendable {
             retainedKeys.insert(key)
         }
 
-        operations = retained
-        saveQueue()
+        self.operations = retained
+        self.saveQueue()
     }
 
     // MARK: - Persistence
 
     private func loadQueue() {
-        guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
+        guard FileManager.default.fileExists(atPath: self.fileURL.path) else { return }
 
         do {
             let data = try Data(contentsOf: fileURL)
-            operations = try JSONDecoder().decode([PolyBaseOfflineOperation].self, from: data)
+            self.operations = try JSONDecoder().decode([PolyBaseOfflineOperation].self, from: data)
         } catch {
             polyWarning("PolyBase: Failed to load offline queue: \(error.localizedDescription)")
-            operations = []
+            self.operations = []
         }
     }
 
     private func saveQueue() {
         do {
-            let data = try JSONEncoder().encode(operations)
-            try data.write(to: fileURL, options: .atomic)
+            let data = try JSONEncoder().encode(self.operations)
+            try data.write(to: self.fileURL, options: .atomic)
         } catch {
             polyError("PolyBase: Failed to save offline queue: \(error.localizedDescription)")
         }

@@ -1,3 +1,9 @@
+//
+//  PolyDataField.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 import Foundation
 
 // MARK: - PolyDataField
@@ -31,62 +37,6 @@ public struct PolyDataField {
     /// Optional getter for toggle initial value (only for toggle fields).
     public let getToggleValue: ((AnyObject) -> Bool)?
 
-    // MARK: Initialization
-
-    /// Creates a read-only field.
-    public static func readOnly(
-        label: String,
-        getValue: @escaping (AnyObject) -> String
-    ) -> PolyDataField {
-        PolyDataField(
-            label: label,
-            getValue: getValue,
-            isEditable: false,
-            isToggle: false,
-            isMultiline: false,
-            editAction: nil,
-            toggleAction: nil,
-            getToggleValue: nil
-        )
-    }
-
-    /// Creates an editable text field.
-    public static func editable(
-        label: String,
-        getValue: @escaping (AnyObject) -> String,
-        isMultiline: Bool = false,
-        editAction: @escaping (AnyObject, String) -> Void
-    ) -> PolyDataField {
-        PolyDataField(
-            label: label,
-            getValue: getValue,
-            isEditable: true,
-            isToggle: false,
-            isMultiline: isMultiline,
-            editAction: editAction,
-            toggleAction: nil,
-            getToggleValue: nil
-        )
-    }
-
-    /// Creates a toggle field.
-    public static func toggle(
-        label: String,
-        getValue: @escaping (AnyObject) -> Bool,
-        toggleAction: @escaping (AnyObject, Bool) -> Void
-    ) -> PolyDataField {
-        PolyDataField(
-            label: label,
-            getValue: { _ in "" },
-            isEditable: false,
-            isToggle: true,
-            isMultiline: false,
-            editAction: nil,
-            toggleAction: toggleAction,
-            getToggleValue: getValue
-        )
-    }
-
     /// Full memberwise initializer.
     public init(
         label: String,
@@ -96,7 +46,7 @@ public struct PolyDataField {
         isMultiline: Bool,
         editAction: ((AnyObject, String) -> Void)?,
         toggleAction: ((AnyObject, Bool) -> Void)?,
-        getToggleValue: ((AnyObject) -> Bool)?
+        getToggleValue: ((AnyObject) -> Bool)?,
     ) {
         self.label = label
         self.getValue = getValue
@@ -106,6 +56,62 @@ public struct PolyDataField {
         self.editAction = editAction
         self.toggleAction = toggleAction
         self.getToggleValue = getToggleValue
+    }
+
+    // MARK: Initialization
+
+    /// Creates a read-only field.
+    public static func readOnly(
+        label: String,
+        getValue: @escaping (AnyObject) -> String,
+    ) -> PolyDataField {
+        PolyDataField(
+            label: label,
+            getValue: getValue,
+            isEditable: false,
+            isToggle: false,
+            isMultiline: false,
+            editAction: nil,
+            toggleAction: nil,
+            getToggleValue: nil,
+        )
+    }
+
+    /// Creates an editable text field.
+    public static func editable(
+        label: String,
+        getValue: @escaping (AnyObject) -> String,
+        isMultiline: Bool = false,
+        editAction: @escaping (AnyObject, String) -> Void,
+    ) -> PolyDataField {
+        PolyDataField(
+            label: label,
+            getValue: getValue,
+            isEditable: true,
+            isToggle: false,
+            isMultiline: isMultiline,
+            editAction: editAction,
+            toggleAction: nil,
+            getToggleValue: nil,
+        )
+    }
+
+    /// Creates a toggle field.
+    public static func toggle(
+        label: String,
+        getValue: @escaping (AnyObject) -> Bool,
+        toggleAction: @escaping (AnyObject, Bool) -> Void,
+    ) -> PolyDataField {
+        PolyDataField(
+            label: label,
+            getValue: { _ in "" },
+            isEditable: false,
+            isToggle: true,
+            isMultiline: false,
+            editAction: nil,
+            toggleAction: toggleAction,
+            getToggleValue: getValue,
+        )
     }
 }
 
@@ -130,7 +136,7 @@ public struct PolyDataRelationship {
     public init(
         label: String,
         getValue: @escaping (AnyObject) -> String,
-        navigateAction: @escaping (AnyObject, PolyDataExplorerContext) -> Void
+        navigateAction: @escaping (AnyObject, PolyDataExplorerContext) -> Void,
     ) {
         self.label = label
         self.getValue = getValue

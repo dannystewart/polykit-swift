@@ -45,14 +45,14 @@ public final class PolyPushEngine {
     ///
     /// This is `nonisolated` to avoid accidental `MainActor` hops inside merge loops.
     public nonisolated static func wasRecentlyPushed(_ id: String, table: String) -> Bool {
-        echoTracker.wasPushedRecently(id, table: table)
+        self.echoTracker.wasPushedRecently(id, table: table)
     }
 
     /// Mark an entity as recently pushed.
     ///
     /// This is `nonisolated` so callers can mark echoes without requiring `MainActor`.
     public nonisolated static func markAsPushed(_ id: String, table: String) {
-        echoTracker.markAsPushed(id, table: table)
+        self.echoTracker.markAsPushed(id, table: table)
     }
 
     /// Clear all echo tracking state.
@@ -60,7 +60,7 @@ public final class PolyPushEngine {
     /// Call this during force repair or reset operations to ensure
     /// pulled data isn't incorrectly filtered as "recently pushed."
     public nonisolated static func clearEchoTracker() {
-        echoTracker.clear()
+        self.echoTracker.clear()
     }
 
     // MARK: - Single Entity Push
@@ -97,7 +97,7 @@ public final class PolyPushEngine {
         // Mark BEFORE push to prevent race conditions
         Self.markAsPushed(entity.id, table: config.tableName)
 
-        try await push(entity)
+        try await self.push(entity)
     }
 
     // MARK: - Batch Push
@@ -135,7 +135,7 @@ public final class PolyPushEngine {
             let batch = Array(entities[batchStart ..< batchEnd])
 
             do {
-                let records = try batch.map { try buildRecord(from: $0, config: config) }
+                let records = try batch.map { try self.buildRecord(from: $0, config: config) }
                 try await client
                     .from(config.tableName)
                     .upsert(records, onConflict: "id")
@@ -167,7 +167,7 @@ public final class PolyPushEngine {
             Self.markAsPushed(entity.id, table: config.tableName)
         }
 
-        return await pushBatch(entities, batchSize: batchSize)
+        return await self.pushBatch(entities, batchSize: batchSize)
     }
 
     // MARK: - Tombstone Push
@@ -217,7 +217,7 @@ public final class PolyPushEngine {
         var successCount = 0
         for tombstone in tombstones {
             do {
-                try await updateTombstone(
+                try await self.updateTombstone(
                     id: tombstone.id,
                     version: tombstone.version,
                     deleted: tombstone.deleted,

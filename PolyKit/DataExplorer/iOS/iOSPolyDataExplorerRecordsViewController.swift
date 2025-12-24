@@ -1,3 +1,9 @@
+//
+//  iOSPolyDataExplorerRecordsViewController.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 #if os(iOS)
 
     import UIKit
@@ -15,8 +21,6 @@
 
         var onSelectRecord: ((AnyObject) -> Void)?
         var onEntitySelected: ((Int) -> Void)?
-
-        // MARK: Properties
 
         private let dataSource: PolyDataExplorerDataSource
         private var records: [AnyObject] = []
@@ -42,14 +46,33 @@
             fatalError("init(coder:) has not been implemented")
         }
 
-        // MARK: Lifecycle
-
         override func viewDidLoad() {
             super.viewDidLoad()
-            setupUI()
-            setupNavigationBar()
-            setupSearchController()
-            reloadData()
+            self.setupUI()
+            self.setupNavigationBar()
+            self.setupSearchController()
+            self.reloadData()
+        }
+
+        // MARK: Public API
+
+        func setSelectedEntityIndex(_ index: Int) {
+            self.dataSource.selectEntity(at: index)
+            self.reloadData()
+        }
+
+        // MARK: Data Loading
+
+        func reloadData() {
+            self.dataSource.invalidateIntegrityCache()
+            _ = self.dataSource.getIntegrityReport()
+
+            self.records = self.dataSource.fetchCurrentRecords()
+
+            self.tableView.reloadData()
+            self.updateStats()
+            self.rebuildBanners()
+            self.refreshMenus()
         }
 
         // MARK: Setup
@@ -58,86 +81,86 @@
             view.backgroundColor = .systemGroupedBackground
 
             // Stats label at top
-            statsLabel = UILabel()
-            statsLabel.translatesAutoresizingMaskIntoConstraints = false
-            statsLabel.font = .systemFont(ofSize: 12)
-            statsLabel.textColor = .secondaryLabel
-            statsLabel.textAlignment = .center
-            view.addSubview(statsLabel)
+            self.statsLabel = UILabel()
+            self.statsLabel.translatesAutoresizingMaskIntoConstraints = false
+            self.statsLabel.font = .systemFont(ofSize: 12)
+            self.statsLabel.textColor = .secondaryLabel
+            self.statsLabel.textAlignment = .center
+            view.addSubview(self.statsLabel)
 
             // Banner stack (filter and warning banners can both be present).
-            bannerStack.translatesAutoresizingMaskIntoConstraints = false
-            bannerStack.axis = .vertical
-            bannerStack.alignment = .fill
-            bannerStack.distribution = .fill
-            bannerStack.spacing = 8
-            view.addSubview(bannerStack)
+            self.bannerStack.translatesAutoresizingMaskIntoConstraints = false
+            self.bannerStack.axis = .vertical
+            self.bannerStack.alignment = .fill
+            self.bannerStack.distribution = .fill
+            self.bannerStack.spacing = 8
+            view.addSubview(self.bannerStack)
 
             // Table view
-            tableView = UITableView(frame: .zero, style: .plain)
-            tableView.translatesAutoresizingMaskIntoConstraints = false
-            tableView.delegate = self
-            tableView.dataSource = self
-            tableView.register(
+            self.tableView = UITableView(frame: .zero, style: .plain)
+            self.tableView.translatesAutoresizingMaskIntoConstraints = false
+            self.tableView.delegate = self
+            self.tableView.dataSource = self
+            self.tableView.register(
                 iOSPolyDataExplorerCell.self,
-                forCellReuseIdentifier: iOSPolyDataExplorerCell.reuseIdentifier
+                forCellReuseIdentifier: iOSPolyDataExplorerCell.reuseIdentifier,
             )
-            tableView.rowHeight = UITableView.automaticDimension
-            tableView.estimatedRowHeight = 80
-            view.addSubview(tableView)
+            self.tableView.rowHeight = UITableView.automaticDimension
+            self.tableView.estimatedRowHeight = 80
+            view.addSubview(self.tableView)
 
             NSLayoutConstraint.activate([
-                statsLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
-                statsLabel.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 16),
-                statsLabel.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
+                self.statsLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+                self.statsLabel.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 16),
+                self.statsLabel.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
 
-                bannerStack.topAnchor.constraint(equalTo: statsLabel.bottomAnchor, constant: 12),
-                bannerStack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 16),
-                bannerStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
+                self.bannerStack.topAnchor.constraint(equalTo: self.statsLabel.bottomAnchor, constant: 12),
+                self.bannerStack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 16),
+                self.bannerStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
 
-                tableView.topAnchor.constraint(equalTo: bannerStack.bottomAnchor, constant: 12),
-                tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-                tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-                tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+                self.tableView.topAnchor.constraint(equalTo: self.bannerStack.bottomAnchor, constant: 12),
+                self.tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                self.tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                self.tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             ])
         }
 
         private func setupNavigationBar() {
-            title = dataSource.configuration.title
+            title = self.dataSource.configuration.title
             navigationController?.navigationBar.prefersLargeTitles = false
 
             navigationItem.rightBarButtonItem = UIBarButtonItem(
                 barButtonSystemItem: .done,
                 target: self,
-                action: #selector(handleDone)
+                action: #selector(self.handleDone),
             )
 
             let entityPicker = UIBarButtonItem(
                 title: dataSource.currentEntity?.displayName ?? "Entity",
-                menu: createEntityMenu()
+                menu: self.createEntityMenu(),
             )
 
             let refreshButton = UIBarButtonItem(
                 image: UIImage(systemName: "arrow.clockwise"),
                 style: .plain,
                 target: self,
-                action: #selector(handleRefresh)
+                action: #selector(handleRefresh),
             )
 
             // Sort menu
             let sortButton = UIBarButtonItem(
                 image: UIImage(systemName: "arrow.up.arrow.down"),
-                menu: createSortMenu()
+                menu: createSortMenu(),
             )
 
             var leftItems = [UIBarButtonItem]()
             leftItems.append(entityPicker)
             leftItems.append(refreshButton)
 
-            if !dataSource.configuration.toolbarSections.isEmpty {
+            if !self.dataSource.configuration.toolbarSections.isEmpty {
                 let toolsButton = UIBarButtonItem(
                     image: UIImage(systemName: "wrench.and.screwdriver"),
-                    menu: createToolsMenu()
+                    menu: createToolsMenu(),
                 )
                 leftItems.append(toolsButton)
             }
@@ -147,51 +170,42 @@
         }
 
         private func setupSearchController() {
-            searchController = UISearchController(searchResultsController: nil)
-            searchController.searchResultsUpdater = self
-            searchController.obscuresBackgroundDuringPresentation = false
-            searchController.searchBar.placeholder = "Search..."
-            navigationItem.searchController = searchController
+            self.searchController = UISearchController(searchResultsController: nil)
+            self.searchController.searchResultsUpdater = self
+            self.searchController.obscuresBackgroundDuringPresentation = false
+            self.searchController.searchBar.placeholder = "Search..."
+            navigationItem.searchController = self.searchController
             definesPresentationContext = true
         }
 
-        // MARK: Public API
-
-        func setSelectedEntityIndex(_ index: Int) {
-            dataSource.selectEntity(at: index)
-            reloadData()
-        }
-
-        // MARK: Actions
-
         @objc private func handleDone() {
-            dataSource.context.dismiss?()
+            self.dataSource.context.dismiss?()
         }
 
         @objc private func handleRefresh() {
-            reloadData()
+            self.reloadData()
         }
 
         @objc private func clearFilter() {
-            dataSource.clearFilter()
-            reloadData()
+            self.dataSource.clearFilter()
+            self.reloadData()
         }
 
         // MARK: Menus
 
         private func createEntityMenu() -> UIMenu {
-            let report = dataSource.getIntegrityReport()
+            let report = self.dataSource.getIntegrityReport()
             let issueCounts = report?.issueCountsByEntity ?? [:]
-            let currentID = dataSource.currentEntity?.id
+            let currentID = self.dataSource.currentEntity?.id
 
-            let actions = dataSource.configuration.entities.enumerated().map { index, entity in
+            let actions = self.dataSource.configuration.entities.enumerated().map { index, entity in
                 let issueCount = issueCounts[entity.id] ?? 0
                 let title = issueCount > 0 ? "⚠️ \(entity.displayName)" : entity.displayName
 
                 return UIAction(
                     title: title,
                     image: UIImage(systemName: entity.iconName),
-                    state: (entity.id == currentID) ? .on : .off
+                    state: (entity.id == currentID) ? .on : .off,
                 ) { [weak self] _ in
                     guard let self else { return }
                     self.onEntitySelected?(index)
@@ -206,8 +220,8 @@
                 return UIMenu(title: "Sort By", children: [])
             }
 
-            let currentFieldID = dataSource.currentSortFieldID
-            let ascending = dataSource.currentSortAscending
+            let currentFieldID = self.dataSource.currentSortFieldID
+            let ascending = self.dataSource.currentSortAscending
 
             let actions = (0 ..< entity.sortFieldCount).map { i in
                 let fieldID = entity.sortFieldID(i)
@@ -217,7 +231,7 @@
                 return UIAction(
                     title: displayName,
                     image: isSelected ? UIImage(systemName: ascending ? "chevron.up" : "chevron.down") : nil,
-                    state: isSelected ? .on : .off
+                    state: isSelected ? .on : .off,
                 ) { [weak self] _ in
                     self?.dataSource.toggleSort(fieldID: fieldID)
                     self?.reloadData()
@@ -231,12 +245,12 @@
         private func createToolsMenu() -> UIMenu {
             var menuChildren = [UIMenuElement]()
 
-            for section in dataSource.configuration.toolbarSections {
+            for section in self.dataSource.configuration.toolbarSections {
                 let sectionActions = section.actions.map { action in
                     UIAction(
                         title: action.title,
                         image: UIImage(systemName: action.iconName),
-                        attributes: action.isDestructive ? .destructive : []
+                        attributes: action.isDestructive ? .destructive : [],
                     ) { [weak self] _ in
                         guard let self else { return }
                         Task {
@@ -257,61 +271,47 @@
 
             for item in leftItems {
                 if item.image == UIImage(systemName: "arrow.up.arrow.down") {
-                    item.menu = createSortMenu()
+                    item.menu = self.createSortMenu()
                 } else if item.menu?.title == "Entities" {
-                    item.title = dataSource.currentEntity?.displayName ?? "Entity"
-                    item.menu = createEntityMenu()
+                    item.title = self.dataSource.currentEntity?.displayName ?? "Entity"
+                    item.menu = self.createEntityMenu()
                 }
             }
         }
 
-        // MARK: Data Loading
-
-        func reloadData() {
-            dataSource.invalidateIntegrityCache()
-            _ = dataSource.getIntegrityReport()
-
-            records = dataSource.fetchCurrentRecords()
-
-            tableView.reloadData()
-            updateStats()
-            rebuildBanners()
-            refreshMenus()
-        }
-
         private func updateStats() {
-            guard dataSource.configuration.showStats else {
-                statsLabel.isHidden = true
+            guard self.dataSource.configuration.showStats else {
+                self.statsLabel.isHidden = true
                 return
             }
 
-            statsLabel.isHidden = false
-            let stats = dataSource.fetchStats()
-            statsLabel.text = stats.formattedString
+            self.statsLabel.isHidden = false
+            let stats = self.dataSource.fetchStats()
+            self.statsLabel.text = stats.formattedString
         }
 
         private func rebuildBanners() {
-            filterBanner = nil
-            warningBanner = nil
-            bannerStack.arrangedSubviews.forEach { subview in
-                bannerStack.removeArrangedSubview(subview)
+            self.filterBanner = nil
+            self.warningBanner = nil
+            for subview in self.bannerStack.arrangedSubviews {
+                self.bannerStack.removeArrangedSubview(subview)
                 subview.removeFromSuperview()
             }
 
             if let filterView = buildFilterBannerIfNeeded() {
-                bannerStack.addArrangedSubview(filterView)
-                filterBanner = filterView
+                self.bannerStack.addArrangedSubview(filterView)
+                self.filterBanner = filterView
             }
 
             if let warningView = buildWarningBannerIfNeeded() {
-                bannerStack.addArrangedSubview(warningView)
-                warningBanner = warningView
+                self.bannerStack.addArrangedSubview(warningView)
+                self.warningBanner = warningView
             }
         }
 
         private func buildFilterBannerIfNeeded() -> UIView? {
-            let showIssuesFilter = dataSource.showOnlyIssues
-            let regularFilter = dataSource.currentFilter
+            let showIssuesFilter = self.dataSource.showOnlyIssues
+            let regularFilter = self.dataSource.currentFilter
 
             guard showIssuesFilter || regularFilter != nil else { return nil }
 
@@ -338,7 +338,7 @@
             clearButton.setTitle("Clear", for: .normal)
             clearButton.titleLabel?.font = .systemFont(ofSize: 12, weight: .semibold)
             clearButton.tintColor = showIssuesFilter ? .systemRed : .systemBlue
-            clearButton.addTarget(self, action: #selector(clearFilter), for: .touchUpInside)
+            clearButton.addTarget(self, action: #selector(self.clearFilter), for: .touchUpInside)
 
             banner.addSubview(label)
             banner.addSubview(clearButton)
@@ -358,8 +358,9 @@
         }
 
         private func buildWarningBannerIfNeeded() -> UIView? {
-            guard let report = dataSource.getIntegrityReport(),
-                  let entity = dataSource.currentEntity else { return nil }
+            guard
+                let report = dataSource.getIntegrityReport(),
+                let entity = dataSource.currentEntity else { return nil }
 
             let currentEntityIssues = report.issues(for: entity.id)
             guard !currentEntityIssues.isEmpty else { return nil }
@@ -387,14 +388,14 @@
             fixButton.setTitle("Fix", for: .normal)
             fixButton.titleLabel?.font = .systemFont(ofSize: 12, weight: .semibold)
             fixButton.tintColor = .systemRed
-            fixButton.addTarget(self, action: #selector(fixIssuesTapped), for: .touchUpInside)
+            fixButton.addTarget(self, action: #selector(self.fixIssuesTapped), for: .touchUpInside)
 
             let showButton = UIButton(type: .system)
             showButton.translatesAutoresizingMaskIntoConstraints = false
             showButton.setTitle("Show", for: .normal)
             showButton.titleLabel?.font = .systemFont(ofSize: 12, weight: .medium)
             showButton.tintColor = .systemRed
-            showButton.addTarget(self, action: #selector(filterToIssuesTapped), for: .touchUpInside)
+            showButton.addTarget(self, action: #selector(self.filterToIssuesTapped), for: .touchUpInside)
 
             banner.addSubview(warningIcon)
             banner.addSubview(label)
@@ -425,14 +426,15 @@
         }
 
         @objc private func filterToIssuesTapped() {
-            dataSource.setIssueFilter(enabled: true)
-            reloadData()
+            self.dataSource.setIssueFilter(enabled: true)
+            self.reloadData()
         }
 
         @objc private func fixIssuesTapped() {
-            guard let report = dataSource.getIntegrityReport(),
-                  let entity = dataSource.currentEntity,
-                  let checker = dataSource.configuration.integrityChecker else { return }
+            guard
+                let report = dataSource.getIntegrityReport(),
+                let entity = dataSource.currentEntity,
+                let checker = dataSource.configuration.integrityChecker else { return }
 
             let currentEntityIssues = report.issues(for: entity.id)
             guard !currentEntityIssues.isEmpty else { return }
@@ -442,7 +444,7 @@
             let alert = UIAlertController(
                 title: "Fix Data Issues?",
                 message: message,
-                preferredStyle: .alert
+                preferredStyle: .alert,
             )
 
             alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
@@ -454,19 +456,18 @@
         }
 
         private func performFix(issues: [PolyDataIntegrityIssue], checker: any PolyDataIntegrityChecker) {
-            dataSource.context.showProgress?("Fixing data issues...")
+            self.dataSource.context.showProgress?("Fixing data issues...")
 
             Task { [weak self] in
                 guard let self else { return }
-                let fixedCount = await checker.fix(issues: issues, context: dataSource.modelContext)
+                let fixedCount = await checker.fix(issues: issues, context: self.dataSource.modelContext)
 
-                dataSource.invalidateIntegrityCache()
-                reloadData()
-                dataSource.context.hideProgress?()
-                dataSource.context.showAlert?(
+                self.dataSource.invalidateIntegrityCache()
+                self.reloadData()
+                self.dataSource.context.hideProgress?()
+                self.dataSource.context.showAlert?(
                     "Fix Complete",
-                    "Fixed \(fixedCount) issue\(fixedCount == 1 ? "" : "s")."
-                )
+                    "Fixed \(fixedCount) issue\(fixedCount == 1 ? "" : "s").")
             }
         }
     }
@@ -475,20 +476,21 @@
 
     extension iOSPolyDataExplorerRecordsViewController: UITableViewDataSource {
         func tableView(_: UITableView, numberOfRowsInSection _: Int) -> Int {
-            records.count
+            self.records.count
         }
 
         func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
             let cell = tableView.dequeueReusableCell(
                 withIdentifier: iOSPolyDataExplorerCell.reuseIdentifier,
-                for: indexPath
+                for: indexPath,
             ) as! iOSPolyDataExplorerCell
 
-            guard indexPath.row < records.count,
-                  let entity = dataSource.currentEntity else { return cell }
+            guard
+                indexPath.row < self.records.count,
+                let entity = dataSource.currentEntity else { return cell }
 
-            let record = records[indexPath.row]
-            let report = dataSource.getIntegrityReport()
+            let record = self.records[indexPath.row]
+            let report = self.dataSource.getIntegrityReport()
 
             cell.configure(with: record, entity: entity, report: report)
 
@@ -500,13 +502,13 @@
 
     extension iOSPolyDataExplorerRecordsViewController: UITableViewDelegate {
         func tableView(_: UITableView, didSelectRowAt indexPath: IndexPath) {
-            guard indexPath.row < records.count else { return }
-            onSelectRecord?(records[indexPath.row])
+            guard indexPath.row < self.records.count else { return }
+            self.onSelectRecord?(self.records[indexPath.row])
         }
 
         func tableView(
             _: UITableView,
-            trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath
+            trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath,
         ) -> UISwipeActionsConfiguration? {
             let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { [weak self] _, _, completion in
                 self?.deleteRecord(at: indexPath)
@@ -517,18 +519,18 @@
         }
 
         private func deleteRecord(at indexPath: IndexPath) {
-            guard indexPath.row < records.count else { return }
+            guard indexPath.row < self.records.count else { return }
 
             let alert = UIAlertController(
                 title: "Delete Record?",
                 message: "This action cannot be undone.",
-                preferredStyle: .alert
+                preferredStyle: .alert,
             )
 
             alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
             alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
                 guard let self else { return }
-                let record = records[indexPath.row]
+                let record = self.records[indexPath.row]
                 Task {
                     await self.dataSource.deleteRecord(record)
                     self.reloadData()
@@ -543,8 +545,8 @@
 
     extension iOSPolyDataExplorerRecordsViewController: UISearchResultsUpdating {
         func updateSearchResults(for searchController: UISearchController) {
-            dataSource.setSearchText(searchController.searchBar.text ?? "")
-            reloadData()
+            self.dataSource.setSearchText(searchController.searchBar.text ?? "")
+            self.reloadData()
         }
     }
 

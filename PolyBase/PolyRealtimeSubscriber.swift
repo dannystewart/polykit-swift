@@ -33,17 +33,17 @@ public struct PolyRealtimeEvent: Sendable {
 
     /// Extract the entity ID from the record
     public var entityID: String? {
-        record["id"]?.stringValue
+        self.record["id"]?.stringValue
     }
 
     /// Extract the version from the record
     public var version: Int? {
-        record["version"]?.integerValue
+        self.record["version"]?.integerValue
     }
 
     /// Extract the deleted flag from the record
     public var isDeleted: Bool {
-        record["deleted"]?.boolValue ?? false
+        self.record["deleted"]?.boolValue ?? false
     }
 }
 
@@ -120,7 +120,7 @@ public final class PolyRealtimeSubscriber {
 
     /// Register a handler for a specific table.
     public func registerHandler(for tableName: String, handler: any PolyRealtimeHandler) {
-        handlers[tableName] = handler
+        self.handlers[tableName] = handler
     }
 
     /// Register a closure handler for a specific table.
@@ -128,14 +128,14 @@ public final class PolyRealtimeSubscriber {
         for tableName: String,
         handler: @escaping @Sendable @MainActor (PolyRealtimeEvent) async -> Bool,
     ) {
-        handlers[tableName] = ClosureHandler(handler: handler)
+        self.handlers[tableName] = ClosureHandler(handler: handler)
     }
 
     /// Set a generic handler for all events.
     public func setGenericHandler(
         _ handler: @escaping @Sendable (PolyRealtimeEvent) async -> Bool,
     ) {
-        genericHandler = handler
+        self.genericHandler = handler
     }
 
     // MARK: - Subscription Management
@@ -144,7 +144,7 @@ public final class PolyRealtimeSubscriber {
     ///
     /// Automatically subscribes to all tables registered with `PolyBaseRegistry`.
     public func startListening() async throws {
-        guard !isListening else {
+        guard !self.isListening else {
             polyDebug("PolyRealtimeSubscriber: Already listening")
             return
         }
@@ -159,7 +159,7 @@ public final class PolyRealtimeSubscriber {
 
         polyDebug("PolyRealtimeSubscriber: Starting subscriptions for \(tables.count) tables")
 
-        let newChannel = client.realtimeV2.channel(channelName)
+        let newChannel = client.realtimeV2.channel(self.channelName)
 
         // Subscribe to all registered tables
         for table in tables {
@@ -174,21 +174,21 @@ public final class PolyRealtimeSubscriber {
                     await self?.handleAction(action, tableName: table)
                 }
             }
-            listeningTasks.append(task)
+            self.listeningTasks.append(task)
         }
 
         // Subscribe to the channel
         try await newChannel.subscribeWithError()
 
-        channel = newChannel
-        isListening = true
+        self.channel = newChannel
+        self.isListening = true
 
         polyDebug("PolyRealtimeSubscriber: Now listening to \(tables.count) tables")
     }
 
     /// Start listening to specific tables only.
     public func startListening(to tables: [String]) async throws {
-        guard !isListening else {
+        guard !self.isListening else {
             polyDebug("PolyRealtimeSubscriber: Already listening")
             return
         }
@@ -202,7 +202,7 @@ public final class PolyRealtimeSubscriber {
 
         polyDebug("PolyRealtimeSubscriber: Starting subscriptions for \(tables.count) tables")
 
-        let newChannel = client.realtimeV2.channel(channelName)
+        let newChannel = client.realtimeV2.channel(self.channelName)
 
         for table in tables {
             let stream = newChannel.postgresChange(
@@ -216,29 +216,29 @@ public final class PolyRealtimeSubscriber {
                     await self?.handleAction(action, tableName: table)
                 }
             }
-            listeningTasks.append(task)
+            self.listeningTasks.append(task)
         }
 
         try await newChannel.subscribeWithError()
 
-        channel = newChannel
-        isListening = true
+        self.channel = newChannel
+        self.isListening = true
 
         polyDebug("PolyRealtimeSubscriber: Now listening to \(tables.count) tables")
     }
 
     /// Stop listening to real-time changes.
     public func stopListening() async {
-        for task in listeningTasks {
+        for task in self.listeningTasks {
             task.cancel()
         }
-        listeningTasks.removeAll()
+        self.listeningTasks.removeAll()
 
         if let channel {
             await channel.unsubscribe()
         }
         channel = nil
-        isListening = false
+        self.isListening = false
 
         polyDebug("PolyRealtimeSubscriber: Stopped listening")
     }
@@ -247,12 +247,12 @@ public final class PolyRealtimeSubscriber {
 
     /// Mark an entity as recently pushed (for echo prevention).
     public func markAsPushed(_ id: String, table: String) {
-        echoTracker.markAsPushed(id, table: table)
+        self.echoTracker.markAsPushed(id, table: table)
     }
 
     /// Check if an entity was recently pushed.
     public func wasPushedRecently(_ id: String, table: String) -> Bool {
-        echoTracker.wasPushedRecently(id, table: table)
+        self.echoTracker.wasPushedRecently(id, table: table)
     }
 
     // MARK: - Event Handling
@@ -287,7 +287,7 @@ public final class PolyRealtimeSubscriber {
 
         // Check for echo
         if let entityID = event.entityID {
-            if echoTracker.wasPushedRecently(entityID, table: tableName) {
+            if self.echoTracker.wasPushedRecently(entityID, table: tableName) {
                 polyDebug("PolyRealtimeSubscriber: Skipping echo for \(tableName)/\(entityID)")
                 return
             }
@@ -308,7 +308,7 @@ public final class PolyRealtimeSubscriber {
         }
 
         // No handler - post notification
-        postChangeNotification(for: tableName)
+        self.postChangeNotification(for: tableName)
     }
 
     /// Post a debounced change notification.
@@ -318,10 +318,10 @@ public final class PolyRealtimeSubscriber {
             let config = PolyBaseRegistry.shared.config(forTable: tableName),
             let notification = config.notification
         {
-            notifier.post(notification, object: nil, userInfo: nil)
+            self.notifier.post(notification, object: nil, userInfo: nil)
         } else {
             // Post generic notification
-            notifier.post(.polyBaseRealtimeDidChange, object: nil, userInfo: ["table": tableName])
+            self.notifier.post(.polyBaseRealtimeDidChange, object: nil, userInfo: ["table": tableName])
         }
     }
 }
@@ -334,6 +334,6 @@ private struct ClosureHandler: PolyRealtimeHandler {
 
     @MainActor
     func handle(_ event: PolyRealtimeEvent) async -> Bool {
-        await handler(event)
+        await self.handler(event)
     }
 }

@@ -47,10 +47,10 @@
     public extension EnvironmentValues {
         @Entry var deviceIdiom: DeviceIdiom = Device.idiom
 
-        var isPhone: Bool { deviceIdiom == .iPhone }
-        var isPad: Bool { deviceIdiom == .iPad }
-        var isMac: Bool { deviceIdiom == .Mac }
-        var isWatch: Bool { deviceIdiom == .Watch }
+        var isPhone: Bool { self.deviceIdiom == .iPhone }
+        var isPad: Bool { self.deviceIdiom == .iPad }
+        var isMac: Bool { self.deviceIdiom == .Mac }
+        var isWatch: Bool { self.deviceIdiom == .Watch }
     }
 
     public extension View {

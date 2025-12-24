@@ -45,7 +45,7 @@ public final class AudioAnalyzer: @unchecked Sendable {
 
     /// Whether audio analysis is currently active
     public var isAnalyzing: Bool {
-        _isAnalyzing
+        self._isAnalyzing
     }
 
     /// Initialize the audio analyzer.
@@ -63,18 +63,18 @@ public final class AudioAnalyzer: @unchecked Sendable {
         self.numberOfBands = numberOfBands
         self.smoothingFactor = smoothingFactor
 
-        smoothedBands = [Float](repeating: 0, count: numberOfBands)
-        frequencyBands = [Float](repeating: 0, count: numberOfBands)
+        self.smoothedBands = [Float](repeating: 0, count: numberOfBands)
+        self.frequencyBands = [Float](repeating: 0, count: numberOfBands)
 
         // Create Hann window for FFT
         var tempWindow = [Float](repeating: 0, count: fftSize)
-        vDSP_hann_window(&tempWindow, vDSP_Length(fftSize), Int32(vDSP_HANN_NORM))
-        window = tempWindow
+        vDSP_hann_window(&tempWindow, vDSP_Length(self.fftSize), Int32(vDSP_HANN_NORM))
+        self.window = tempWindow
 
         // Setup FFT
-        fftSetup = vDSP_DFT_zop_CreateSetup(
+        self.fftSetup = vDSP_DFT_zop_CreateSetup(
             nil,
-            vDSP_Length(fftSize),
+            vDSP_Length(self.fftSize),
             .FORWARD,
         )
     }
@@ -92,11 +92,11 @@ public final class AudioAnalyzer: @unchecked Sendable {
     /// Start analyzing audio from the engine's main mixer node.
     public func start() {
         // If already analyzing, stop first to handle audio device changes
-        if _isAnalyzing {
-            stop()
+        if self._isAnalyzing {
+            self.stop()
         }
 
-        let mainMixer = engine.mainMixerNode
+        let mainMixer = self.engine.mainMixerNode
         let format = mainMixer.outputFormat(forBus: 0)
 
         // Remove any existing tap first (defensive)
@@ -104,35 +104,35 @@ public final class AudioAnalyzer: @unchecked Sendable {
 
         mainMixer.installTap(
             onBus: 0,
-            bufferSize: AVAudioFrameCount(fftSize),
+            bufferSize: AVAudioFrameCount(self.fftSize),
             format: format,
         ) { [weak self] buffer, _ in
             self?.processAudioBuffer(buffer)
         }
 
-        _isAnalyzing = true
+        self._isAnalyzing = true
     }
 
     /// Stop analyzing audio and remove the audio tap.
     public func stop() {
-        guard _isAnalyzing else { return }
+        guard self._isAnalyzing else { return }
 
-        engine.mainMixerNode.removeTap(onBus: 0)
-        _isAnalyzing = false
+        self.engine.mainMixerNode.removeTap(onBus: 0)
+        self._isAnalyzing = false
 
         // Reset frequency bands and smoothed state to zero
-        for i in 0 ..< numberOfBands {
-            frequencyBands[i] = 0
-            smoothedBands[i] = 0
+        for i in 0 ..< self.numberOfBands {
+            self.frequencyBands[i] = 0
+            self.smoothedBands[i] = 0
         }
-        smoothedVolume = 0
-        currentVolume = 0
+        self.smoothedVolume = 0
+        self.currentVolume = 0
     }
 
     /// Restart audio analysis (useful after audio device changes)
     public func restart() {
-        stop()
-        start()
+        self.stop()
+        self.start()
     }
 
     /// Process a raw audio buffer for analysis (alternative to using audio tap).
@@ -141,7 +141,7 @@ public final class AudioAnalyzer: @unchecked Sendable {
     /// samples from an `MTAudioProcessingTap` into the analyzer.
     /// - Parameter buffer: The audio buffer to analyze.
     public nonisolated func processBuffer(_ buffer: AVAudioPCMBuffer) {
-        processAudioBuffer(buffer)
+        self.processAudioBuffer(buffer)
     }
 
     // MARK: - Private Processing
@@ -157,7 +157,7 @@ public final class AudioAnalyzer: @unchecked Sendable {
         guard frameCount > 0 else {
             // Reset to zeros when we get bad data
             Task { @MainActor in
-                self.updateFrequencyBands([Float](repeating: 0, count: numberOfBands), volume: 0)
+                self.updateFrequencyBands([Float](repeating: 0, count: self.numberOfBands), volume: 0)
             }
             return
         }
@@ -185,7 +185,7 @@ public final class AudioAnalyzer: @unchecked Sendable {
         }
 
         // Apply window
-        vDSP_vmul(windowedSamples, 1, window, 1, &windowedSamples, 1, vDSP_Length(fftSize))
+        vDSP_vmul(windowedSamples, 1, self.window, 1, &windowedSamples, 1, vDSP_Length(self.fftSize))
 
         // Prepare buffers
         var real = [Float](repeating: 0, count: fftSize)
@@ -199,14 +199,14 @@ public final class AudioAnalyzer: @unchecked Sendable {
 
         // Calculate magnitudes
         var magnitudes = [Float](repeating: 0, count: fftSize / 2)
-        for i in 0 ..< fftSize / 2 {
+        for i in 0 ..< self.fftSize / 2 {
             let realPart = real[i]
             let imagPart = imaginary[i]
             magnitudes[i] = sqrtf(realPart * realPart + imagPart * imagPart)
         }
 
         // Convert to frequency bands
-        let bands = calculateFrequencyBands(from: magnitudes, isAboveNoiseGate: isAboveNoiseGate)
+        let bands = self.calculateFrequencyBands(from: magnitudes, isAboveNoiseGate: isAboveNoiseGate)
 
         // Update on main actor
         Task { @MainActor in
@@ -217,7 +217,7 @@ public final class AudioAnalyzer: @unchecked Sendable {
     private func calculateFrequencyBands(from magnitudes: [Float], isAboveNoiseGate: Bool) -> [Float] {
         // If we're below the noise gate, just return zeros
         guard isAboveNoiseGate else {
-            return [Float](repeating: 0, count: numberOfBands)
+            return [Float](repeating: 0, count: self.numberOfBands)
         }
 
         var bands = [Float](repeating: 0, count: numberOfBands)
@@ -232,10 +232,10 @@ public final class AudioAnalyzer: @unchecked Sendable {
         let logMax = log10(maxFreq)
         let logRange = logMax - logMin
 
-        for band in 0 ..< numberOfBands {
+        for band in 0 ..< self.numberOfBands {
             // Calculate frequency range for this band using log scale
-            let logStart = logMin + (logRange * Float(band) / Float(numberOfBands))
-            let logEnd = logMin + (logRange * Float(band + 1) / Float(numberOfBands))
+            let logStart = logMin + (logRange * Float(band) / Float(self.numberOfBands))
+            let logEnd = logMin + (logRange * Float(band + 1) / Float(self.numberOfBands))
 
             let freqStart = pow(10, logStart)
             let freqEnd = pow(10, logEnd)
@@ -270,7 +270,7 @@ public final class AudioAnalyzer: @unchecked Sendable {
 
             // Extra visual tilt based on band index: lowest band is more attenuated,
             // highest band significantly boosted. This is purely for the visual feel.
-            let bandPosition = Float(band) / Float(max(numberOfBands - 1, 1))
+            let bandPosition = Float(band) / Float(max(self.numberOfBands - 1, 1))
             let indexWeight: Float = 0.35 + 1.65 * bandPosition // Bass reduced from 0.5 to 0.35
 
             bands[band] *= frequencyWeight * indexWeight
@@ -283,12 +283,12 @@ public final class AudioAnalyzer: @unchecked Sendable {
         // Edge case protection: if all bands are zero or very low, return zeros
         // This prevents stuck "solid block" when audio device switches
         guard maxMagnitude > 0.001 else {
-            return [Float](repeating: 0, count: numberOfBands)
+            return [Float](repeating: 0, count: self.numberOfBands)
         }
 
         let threshold = maxMagnitude * 0.30 // Cut bottom 30% of the range
 
-        for i in 0 ..< numberOfBands {
+        for i in 0 ..< self.numberOfBands {
             // Apply threshold - anything below this becomes zero
             if bands[i] < threshold {
                 bands[i] = 0.0
@@ -304,7 +304,7 @@ public final class AudioAnalyzer: @unchecked Sendable {
         }
 
         // Now normalize the remaining values to 0-1 range
-        for i in 0 ..< numberOfBands {
+        for i in 0 ..< self.numberOfBands {
             // Light compression for visibility
             bands[i] = sqrtf(max(0, bands[i])) // Ensure non-negative for sqrt
         }
@@ -314,13 +314,13 @@ public final class AudioAnalyzer: @unchecked Sendable {
 
     private func updateFrequencyBands(_ newBands: [Float], volume: Float) {
         // Apply smoothing for less jittery animation
-        for i in 0 ..< numberOfBands {
-            smoothedBands[i] = smoothedBands[i] * smoothingFactor + newBands[i] * (1.0 - smoothingFactor)
-            frequencyBands[i] = smoothedBands[i]
+        for i in 0 ..< self.numberOfBands {
+            self.smoothedBands[i] = self.smoothedBands[i] * self.smoothingFactor + newBands[i] * (1.0 - self.smoothingFactor)
+            self.frequencyBands[i] = self.smoothedBands[i]
         }
 
         // Smooth the volume as well
-        smoothedVolume = smoothedVolume * smoothingFactor + volume * (1.0 - smoothingFactor)
-        currentVolume = smoothedVolume
+        self.smoothedVolume = self.smoothedVolume * self.smoothingFactor + volume * (1.0 - self.smoothingFactor)
+        self.currentVolume = self.smoothedVolume
     }
 }

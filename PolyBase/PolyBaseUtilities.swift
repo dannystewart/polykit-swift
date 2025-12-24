@@ -80,7 +80,7 @@ public extension Array {
     }
 }
 
-// MARK: - ISO8601 Date Helpers
+// MARK: - PolyISO8601
 
 /// Thread-safe ISO8601 date formatters for Supabase.
 ///
@@ -120,12 +120,12 @@ public enum PolyISO8601 {
         // Try with space normalized to T
         let normalized = value.replacingOccurrences(of: " ", with: "T")
         if let date = formatterWithFractional.date(from: normalized) { return date }
-        return formatter.date(from: normalized)
+        return self.formatter.date(from: normalized)
     }
 
     /// Format a date as ISO8601 string for Supabase (without fractional seconds).
     public static func format(_ date: Date) -> String {
-        formatter.string(from: date)
+        self.formatter.string(from: date)
     }
 }
 

@@ -1,3 +1,9 @@
+//
+//  PolyDataExplorerContext.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 import Foundation
 import SwiftData
 
@@ -75,7 +81,7 @@ public struct PolyDataFilter: Sendable {
 
     /// Display text for the filter banner.
     public var displayText: String {
-        "\(field) = \(value)"
+        "\(self.field) = \(self.value)"
     }
 
     // MARK: Initialization

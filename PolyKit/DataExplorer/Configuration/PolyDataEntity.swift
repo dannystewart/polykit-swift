@@ -1,3 +1,9 @@
+//
+//  PolyDataEntity.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 import Foundation
 import SwiftData
 
@@ -68,7 +74,7 @@ public struct PolyDataEntity<Model: PersistentModel> {
         filterMatches: @escaping (Model, PolyDataFilter) -> Bool = { _, _ in true },
         delete: @escaping @MainActor (Model, ModelContext) async -> Void,
         recordID: @escaping (Model) -> String,
-        count: @escaping (ModelContext) -> Int
+        count: @escaping (ModelContext) -> Int,
     ) {
         self.id = id
         self.displayName = displayName

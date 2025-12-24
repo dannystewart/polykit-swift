@@ -36,7 +36,7 @@ public struct LogEntry: Sendable, Identifiable {
         group: LogGroup?,
         formattedText: String,
     ) {
-        id = UUID()
+        self.id = UUID()
         self.timestamp = timestamp
         self.level = level
         self.message = message
@@ -61,9 +61,9 @@ public final class LogBuffer: @unchecked Sendable {
 
     /// Returns the number of entries currently in the buffer.
     public var count: Int {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        return entries.count
+        return self.entries.count
     }
 
     /// Creates a new log buffer with the specified capacity.
@@ -72,32 +72,32 @@ public final class LogBuffer: @unchecked Sendable {
     ///   dropped when the buffer is full. Defaults to 5000.
     public init(capacity: Int = LogBuffer.defaultCapacity) {
         self.capacity = capacity
-        entries.reserveCapacity(capacity)
+        self.entries.reserveCapacity(capacity)
     }
 
     /// Appends a new entry to the buffer, dropping the oldest if at capacity.
     public func append(_ entry: LogEntry) {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
 
-        if entries.count >= capacity {
-            entries.removeFirst()
+        if self.entries.count >= self.capacity {
+            self.entries.removeFirst()
         }
-        entries.append(entry)
+        self.entries.append(entry)
     }
 
     /// Returns all captured entries in chronological order.
     public func allEntries() -> [LogEntry] {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        return entries
+        return self.entries
     }
 
     /// Clears all entries from the buffer.
     public func clear() {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        entries.removeAll(keepingCapacity: true)
+        self.entries.removeAll(keepingCapacity: true)
     }
 
     /// Exports all entries as plain text, one entry per line.
@@ -216,23 +216,23 @@ public final class PolyLog: @unchecked Sendable {
 
     /// Returns whether log capture is currently enabled.
     public var isCaptureEnabled: Bool {
-        groupLock.lock()
+        self.groupLock.lock()
         defer { groupLock.unlock() }
-        return logBuffer != nil
+        return self.logBuffer != nil
     }
 
     /// Returns whether log persistence is currently enabled.
     public var isPersistenceEnabled: Bool {
-        groupLock.lock()
+        self.groupLock.lock()
         defer { groupLock.unlock() }
-        return persistence != nil
+        return self.persistence != nil
     }
 
     /// Returns the number of captured entries.
     public var capturedEntryCount: Int {
-        groupLock.lock()
-        let buffer = logBuffer
-        groupLock.unlock()
+        self.groupLock.lock()
+        let buffer = self.logBuffer
+        self.groupLock.unlock()
 
         return buffer?.count ?? 0
     }
@@ -241,7 +241,7 @@ public final class PolyLog: @unchecked Sendable {
         #if canImport(os)
             /// Use the app's bundle identifier
             let subsystem = Bundle.main.bundleIdentifier ?? "com.unknown.app.polylog"
-            osLogger = Logger(subsystem: subsystem, category: "PolyLog")
+            self.osLogger = Logger(subsystem: subsystem, category: "PolyLog")
         #endif
     }
 
@@ -254,20 +254,20 @@ public final class PolyLog: @unchecked Sendable {
     ///
     /// - Parameter capacity: Maximum number of entries to retain. Defaults to 5000.
     public func enableCapture(capacity: Int = LogBuffer.defaultCapacity) {
-        groupLock.lock()
+        self.groupLock.lock()
         defer { groupLock.unlock() }
 
-        if logBuffer == nil {
-            logBuffer = LogBuffer(capacity: capacity)
+        if self.logBuffer == nil {
+            self.logBuffer = LogBuffer(capacity: capacity)
         }
     }
 
     /// Disables log capture and clears the buffer.
     public func disableCapture() {
-        groupLock.lock()
+        self.groupLock.lock()
         defer { groupLock.unlock() }
 
-        logBuffer = nil
+        self.logBuffer = nil
     }
 
     // MARK: - Persistence Control
@@ -281,23 +281,23 @@ public final class PolyLog: @unchecked Sendable {
     ///   - directoryName: Directory name relative to Application Support. Defaults to "Logs".
     ///   - maxSessions: Maximum number of session files to retain. Defaults to 10.
     public func enablePersistence(directoryName: String = "Logs", maxSessions: Int = 10) {
-        groupLock.lock()
+        self.groupLock.lock()
         defer { groupLock.unlock() }
 
-        if persistence == nil {
+        if self.persistence == nil {
             let service = LogPersistence(directoryName: directoryName, maxSessions: maxSessions)
             service.startNewSession()
-            persistence = service
+            self.persistence = service
         }
     }
 
     /// Disables log persistence and ends the current session.
     public func disablePersistence() {
-        groupLock.lock()
+        self.groupLock.lock()
         defer { groupLock.unlock() }
 
-        persistence?.endSession()
-        persistence = nil
+        self.persistence?.endSession()
+        self.persistence = nil
     }
 
     /// Flushes all buffered log entries to disk.
@@ -305,9 +305,9 @@ public final class PolyLog: @unchecked Sendable {
     /// Normally logs are flushed automatically, but you can call this to ensure
     /// critical logs are written immediately (e.g., before app termination).
     public func flushPersistence() {
-        groupLock.lock()
-        let service = persistence
-        groupLock.unlock()
+        self.groupLock.lock()
+        let service = self.persistence
+        self.groupLock.unlock()
 
         service?.flush()
     }
@@ -316,9 +316,9 @@ public final class PolyLog: @unchecked Sendable {
     ///
     /// - Returns: URL of the logs directory, or nil if persistence is not enabled.
     public func getLogsDirectoryURL() -> URL? {
-        groupLock.lock()
-        let service = persistence
-        groupLock.unlock()
+        self.groupLock.lock()
+        let service = self.persistence
+        self.groupLock.unlock()
 
         return service?.getLogsDirectoryURL()
     }
@@ -329,9 +329,9 @@ public final class PolyLog: @unchecked Sendable {
     ///
     /// - Returns: Array of session file URLs.
     public func getSessionFiles() -> [URL] {
-        groupLock.lock()
-        let service = persistence
-        groupLock.unlock()
+        self.groupLock.lock()
+        let service = self.persistence
+        self.groupLock.unlock()
 
         return service?.getSessionFiles() ?? []
     }
@@ -340,9 +340,9 @@ public final class PolyLog: @unchecked Sendable {
     ///
     /// - Returns: The current session file URL, or nil if persistence is not enabled.
     public func getCurrentSessionFile() -> URL? {
-        groupLock.lock()
-        let service = persistence
-        groupLock.unlock()
+        self.groupLock.lock()
+        let service = self.persistence
+        self.groupLock.unlock()
 
         return service?.getCurrentSessionFile()
     }
@@ -352,9 +352,9 @@ public final class PolyLog: @unchecked Sendable {
     /// - Parameter fileURL: The session file to read.
     /// - Returns: The file contents as a string, or nil if reading fails.
     public func readSessionFile(_ fileURL: URL) -> String? {
-        groupLock.lock()
-        let service = persistence
-        groupLock.unlock()
+        self.groupLock.lock()
+        let service = self.persistence
+        self.groupLock.unlock()
 
         return service?.readSessionFile(fileURL)
     }
@@ -364,9 +364,9 @@ public final class PolyLog: @unchecked Sendable {
     /// - Returns: URL of the created zip file in the temporary directory.
     /// - Throws: Error if zip creation fails or persistence is not enabled.
     public func createLogsArchive() throws -> URL {
-        groupLock.lock()
-        let service = persistence
-        groupLock.unlock()
+        self.groupLock.lock()
+        let service = self.persistence
+        self.groupLock.unlock()
 
         guard let service else {
             throw NSError(
@@ -383,18 +383,18 @@ public final class PolyLog: @unchecked Sendable {
     ///
     /// Returns an empty array if capture is not enabled.
     public func capturedEntries() -> [LogEntry] {
-        groupLock.lock()
-        let buffer = logBuffer
-        groupLock.unlock()
+        self.groupLock.lock()
+        let buffer = self.logBuffer
+        self.groupLock.unlock()
 
         return buffer?.allEntries() ?? []
     }
 
     /// Clears all captured log entries.
     public func clearCapturedEntries() {
-        groupLock.lock()
-        let buffer = logBuffer
-        groupLock.unlock()
+        self.groupLock.lock()
+        let buffer = self.logBuffer
+        self.groupLock.unlock()
 
         buffer?.clear()
     }
@@ -403,9 +403,9 @@ public final class PolyLog: @unchecked Sendable {
     ///
     /// - Returns: A string containing all log entries, or an empty string if capture is disabled.
     public func exportCapturedEntries() -> String {
-        groupLock.lock()
-        let buffer = logBuffer
-        groupLock.unlock()
+        self.groupLock.lock()
+        let buffer = self.logBuffer
+        self.groupLock.unlock()
 
         return buffer?.exportAsText() ?? ""
     }
@@ -413,23 +413,23 @@ public final class PolyLog: @unchecked Sendable {
     // MARK: Public Logging Methods
 
     public func debug(_ message: String, group: LogGroup? = nil) {
-        log(message, level: .debug, group: group)
+        self.log(message, level: .debug, group: group)
     }
 
     public func info(_ message: String, group: LogGroup? = nil) {
-        log(message, level: .info, group: group)
+        self.log(message, level: .info, group: group)
     }
 
     public func warning(_ message: String, group: LogGroup? = nil) {
-        log(message, level: .warning, group: group)
+        self.log(message, level: .warning, group: group)
     }
 
     public func error(_ message: String, group: LogGroup? = nil) {
-        log(message, level: .error, group: group)
+        self.log(message, level: .error, group: group)
     }
 
     public func fault(_ message: String, group: LogGroup? = nil) {
-        log(message, level: .fault, group: group)
+        self.log(message, level: .fault, group: group)
     }
 
     // MARK: Group Management
@@ -437,57 +437,57 @@ public final class PolyLog: @unchecked Sendable {
     /// Disables logging for a specific group.
     /// - Parameter group: The group to disable.
     public func disableGroup(_ group: LogGroup) {
-        groupLock.lock()
+        self.groupLock.lock()
         defer { groupLock.unlock() }
-        disabledGroups.insert(group)
+        self.disabledGroups.insert(group)
     }
 
     /// Enables logging for a specific group.
     /// - Parameter group: The group to enable.
     public func enableGroup(_ group: LogGroup) {
-        groupLock.lock()
+        self.groupLock.lock()
         defer { groupLock.unlock() }
-        disabledGroups.remove(group)
+        self.disabledGroups.remove(group)
     }
 
     /// Disables multiple groups at once.
     /// - Parameter groups: The groups to disable.
     public func disableGroups(_ groups: [LogGroup]) {
-        groupLock.lock()
+        self.groupLock.lock()
         defer { groupLock.unlock() }
-        disabledGroups.formUnion(groups)
+        self.disabledGroups.formUnion(groups)
     }
 
     /// Enables multiple groups at once.
     /// - Parameter groups: The groups to enable.
     public func enableGroups(_ groups: [LogGroup]) {
-        groupLock.lock()
+        self.groupLock.lock()
         defer { groupLock.unlock() }
-        groups.forEach { disabledGroups.remove($0) }
+        groups.forEach { self.disabledGroups.remove($0) }
     }
 
     /// Checks if an group is currently enabled.
     /// - Parameter group: The group to check.
     /// - Returns: `true` if the group is enabled (not disabled).
     public func isGroupEnabled(_ group: LogGroup) -> Bool {
-        groupLock.lock()
+        self.groupLock.lock()
         defer { groupLock.unlock() }
-        return !disabledGroups.contains(group)
+        return !self.disabledGroups.contains(group)
     }
 
     /// Returns all currently disabled groups.
     /// - Returns: A set of disabled groups.
     public func getDisabledGroups() -> Set<LogGroup> {
-        groupLock.lock()
+        self.groupLock.lock()
         defer { groupLock.unlock() }
-        return disabledGroups
+        return self.disabledGroups
     }
 
     /// Enables all groups (clears the disabled list).
     public func enableAllGroups() {
-        groupLock.lock()
+        self.groupLock.lock()
         defer { groupLock.unlock() }
-        disabledGroups.removeAll()
+        self.disabledGroups.removeAll()
     }
 
     /// Applies default enabled/disabled states based on `registeredGroups` and their `defaultEnabled` property.
@@ -502,14 +502,14 @@ public final class PolyLog: @unchecked Sendable {
     /// logger.loadPersistedStates() // Override with user preferences if available
     /// ```
     public func applyDefaultStates() {
-        groupLock.lock()
+        self.groupLock.lock()
         defer { groupLock.unlock() }
 
-        for group in registeredGroups {
+        for group in self.registeredGroups {
             if group.defaultEnabled {
-                disabledGroups.remove(group)
+                self.disabledGroups.remove(group)
             } else {
-                disabledGroups.insert(group)
+                self.disabledGroups.insert(group)
             }
         }
     }
@@ -521,12 +521,12 @@ public final class PolyLog: @unchecked Sendable {
     ///
     /// - Parameter key: The UserDefaults key to use. Defaults to "EnabledLogGroups".
     public func saveEnabledGroups(key: String = "EnabledLogGroups") {
-        groupLock.lock()
-        let disabled = disabledGroups
-        groupLock.unlock()
+        self.groupLock.lock()
+        let disabled = self.disabledGroups
+        self.groupLock.unlock()
 
         // Find which registered groups are enabled (not in disabled set)
-        let enabledIdentifiers = registeredGroups
+        let enabledIdentifiers = self.registeredGroups
             .filter { !disabled.contains($0) }
             .map(\.identifier)
 
@@ -556,11 +556,11 @@ public final class PolyLog: @unchecked Sendable {
         let enabledIdentifiers = Set(savedIdentifiers)
 
         // Saved preferences exist - treat them as authoritative
-        for group in registeredGroups {
+        for group in self.registeredGroups {
             if enabledIdentifiers.contains(group.identifier) {
-                enableGroup(group)
+                self.enableGroup(group)
             } else {
-                disableGroup(group)
+                self.disableGroup(group)
             }
         }
     }
@@ -577,9 +577,9 @@ public final class PolyLog: @unchecked Sendable {
     private func log(_ message: String, level: LogLevel, group: LogGroup? = nil) {
         // Check if this group is disabled (but only for filterable levels)
         if let group, filterableLevels.contains(level) {
-            groupLock.lock()
-            let isDisabled = disabledGroups.contains(group)
-            groupLock.unlock()
+            self.groupLock.lock()
+            let isDisabled = self.disabledGroups.contains(group)
+            self.groupLock.unlock()
 
             if isDisabled {
                 return // Skip logging for disabled groups (filterable levels only)
@@ -587,19 +587,19 @@ public final class PolyLog: @unchecked Sendable {
         }
 
         let now = Date()
-        let formattedMessage = formatConsoleMessage(message, level: level, group: group, timestamp: now)
+        let formattedMessage = self.formatConsoleMessage(message, level: level, group: group, timestamp: now)
 
         // Get optional outputs
-        groupLock.lock()
-        let buffer = logBuffer
-        let persistenceService = persistence
-        let entryCallback = onLogEntry
-        groupLock.unlock()
+        self.groupLock.lock()
+        let buffer = self.logBuffer
+        let persistenceService = self.persistence
+        let entryCallback = self.onLogEntry
+        self.groupLock.unlock()
 
         // Create LogEntry if any consumer needs it (buffer or remote callback)
         let entry: LogEntry?
         if buffer != nil || entryCallback != nil {
-            let plainText = formatPlainMessage(message, level: level, group: group, timestamp: now)
+            let plainText = self.formatPlainMessage(message, level: level, group: group, timestamp: now)
             entry = LogEntry(
                 timestamp: now,
                 level: level,
@@ -623,7 +623,7 @@ public final class PolyLog: @unchecked Sendable {
 
         // Write to persistence if enabled
         if let persistenceService {
-            let plainText = entry?.formattedText ?? formatPlainMessage(message, level: level, group: group, timestamp: now)
+            let plainText = entry?.formattedText ?? self.formatPlainMessage(message, level: level, group: group, timestamp: now)
             persistenceService.write(plainText)
         }
 
@@ -668,7 +668,7 @@ public final class PolyLog: @unchecked Sendable {
         group: LogGroup? = nil,
         timestamp: Date,
     ) -> String {
-        let timestampString = formatTimestamp(timestamp)
+        let timestampString = self.formatTimestamp(timestamp)
 
         if PolyTerm.supportsANSI() {
             // Format: timestamp level-emoji | [group-emoji] message
@@ -693,7 +693,7 @@ public final class PolyLog: @unchecked Sendable {
             let messageFormatted = "\(level.color.rawValue)\(message)\(ANSIColor.reset.rawValue)"
             return "\(timestampFormatted) \(levelFormatted)\(separator)\(groupFormatted)\(messageFormatted)"
         } else {
-            return formatPlainMessage(message, level: level, group: group, timestamp: timestamp)
+            return self.formatPlainMessage(message, level: level, group: group, timestamp: timestamp)
         }
     }
 
@@ -713,7 +713,7 @@ public final class PolyLog: @unchecked Sendable {
         group: LogGroup?,
         timestamp: Date,
     ) -> String {
-        let timestampString = formatTimestamp(timestamp)
+        let timestampString = self.formatTimestamp(timestamp)
 
         // Pipe separator
         let separator = "|"

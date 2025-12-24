@@ -62,9 +62,9 @@ public enum PolyTerm {
     /// Uses the terminal's raw mode to read a single character without waiting for Enter.
     public static func readSingleChar() -> String {
         #if os(Windows)
-            return readSingleCharWindows()
+            return self.readSingleCharWindows()
         #else
-            return readSingleCharPOSIX()
+            return self.readSingleCharPOSIX()
         #endif
     }
 

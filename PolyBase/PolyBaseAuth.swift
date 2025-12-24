@@ -57,12 +57,12 @@ public final class PolyBaseAuth: NSObject {
 
     /// Whether the user is currently signed in.
     public var isSignedIn: Bool {
-        currentUser != nil
+        self.currentUser != nil
     }
 
     /// The current user's UUID (for including in database records).
     public var userID: UUID? {
-        currentUser?.id
+        self.currentUser?.id
     }
 
     override private init() {
@@ -177,16 +177,16 @@ extension PolyBaseAuth: ASAuthorizationControllerDelegate {
         controller _: ASAuthorizationController,
         didCompleteWithAuthorization authorization: ASAuthorization,
     ) {
-        authContinuation?.resume(returning: authorization)
-        authContinuation = nil
+        self.authContinuation?.resume(returning: authorization)
+        self.authContinuation = nil
     }
 
     public func authorizationController(
         controller _: ASAuthorizationController,
         didCompleteWithError error: Error,
     ) {
-        authContinuation?.resume(throwing: error)
-        authContinuation = nil
+        self.authContinuation?.resume(throwing: error)
+        self.authContinuation = nil
     }
 }
 

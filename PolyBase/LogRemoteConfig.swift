@@ -82,9 +82,9 @@ public struct LogRemoteConfig: Sendable {
         supabaseKey: String,
         tableName: String = "polylogs",
     ) {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        _shared = LogRemoteConfig(
+        self._shared = LogRemoteConfig(
             supabaseURL: supabaseURL,
             supabaseKey: supabaseKey,
             tableName: tableName,
@@ -113,9 +113,9 @@ public struct LogRemoteConfig: Sendable {
 
         let tableName = plist["TableName"] as? String ?? "polylogs"
 
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        _shared = LogRemoteConfig(
+        self._shared = LogRemoteConfig(
             supabaseURL: supabaseURL,
             supabaseKey: supabaseKey,
             tableName: tableName,
@@ -125,8 +125,8 @@ public struct LogRemoteConfig: Sendable {
 
     /// Clear the shared configuration.
     public static func reset() {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        _shared = nil
+        self._shared = nil
     }
 }

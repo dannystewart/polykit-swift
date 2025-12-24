@@ -10,15 +10,15 @@ import PolyKit
 import Supabase
 
 #if canImport(UIKit) && !os(macOS)
-import UIKit
+    import UIKit
 #endif
 
 #if canImport(WatchKit)
-import WatchKit
+    import WatchKit
 #endif
 
 #if canImport(IOKit)
-import IOKit
+    import IOKit
 #endif
 
 // MARK: - LogRemote
@@ -106,75 +106,6 @@ public final class LogRemote: @unchecked Sendable {
         return newID
     }()
 
-    /// Get a stable hardware-based device identifier.
-    ///
-    /// - macOS: Uses IOPlatformUUID (stable per-device, consistent across all apps)
-    /// - iOS/tvOS/visionOS/watchOS: Uses identifierForVendor (stable per-device, per-vendor)
-    ///
-    /// Returns nil if unable to retrieve hardware ID.
-    private static func getHardwareDeviceID() -> String? {
-        #if os(macOS)
-        return getIOPlatformUUID()
-        #elseif os(watchOS)
-        return getWatchVendorIdentifier()
-        #elseif os(iOS) || os(tvOS) || os(visionOS)
-        return getVendorIdentifier()
-        #else
-        return nil
-        #endif
-    }
-
-    /// Retrieve IOPlatformUUID from IOKit (macOS only).
-    ///
-    /// This is the same UUID used by system profilers and is stable per-device.
-    private static func getIOPlatformUUID() -> String? {
-        #if canImport(IOKit)
-        let platformExpert = IOServiceGetMatchingService(
-            kIOMainPortDefault,
-            IOServiceMatching("IOPlatformExpertDevice")
-        )
-
-        guard platformExpert != 0 else { return nil }
-        defer { IOObjectRelease(platformExpert) }
-
-        guard let uuidCF = IORegistryEntryCreateCFProperty(
-            platformExpert,
-            "IOPlatformUUID" as CFString,
-            kCFAllocatorDefault,
-            0
-        )?.takeRetainedValue() else {
-            return nil
-        }
-
-        return uuidCF as? String
-        #else
-        return nil
-        #endif
-    }
-
-    /// Retrieve vendor identifier from UIDevice (iOS/tvOS/watchOS/visionOS).
-    ///
-    /// Stable per-device as long as at least one app from the same vendor remains installed.
-    /// This is the officially sanctioned way to get a device identifier on iOS.
-    private static func getVendorIdentifier() -> String? {
-        #if canImport(UIKit) && (os(iOS) || os(tvOS) || os(visionOS))
-        return UIDevice.current.identifierForVendor?.uuidString
-        #else
-        return nil
-        #endif
-    }
-
-    /// Retrieve vendor identifier from WKInterfaceDevice (watchOS).
-    ///
-    /// Stable per-device as long as at least one app from the same vendor remains installed.
-    private static func getWatchVendorIdentifier() -> String? {
-        #if canImport(WatchKit) && os(watchOS)
-        return WKInterfaceDevice.current().identifierForVendor?.uuidString
-        #else
-        return nil
-        #endif
-    }
-
     /// Unique session identifier (changes on each app launch).
     /// ULID timestamp indicates when the session started.
     private let sessionID = ULIDGenerator.shared.next()
@@ -193,6 +124,77 @@ public final class LogRemote: @unchecked Sendable {
 
     private init() {}
 
+    /// Get a stable hardware-based device identifier.
+    ///
+    /// - macOS: Uses IOPlatformUUID (stable per-device, consistent across all apps)
+    /// - iOS/tvOS/visionOS/watchOS: Uses identifierForVendor (stable per-device, per-vendor)
+    ///
+    /// Returns nil if unable to retrieve hardware ID.
+    private static func getHardwareDeviceID() -> String? {
+        #if os(macOS)
+            return self.getIOPlatformUUID()
+        #elseif os(watchOS)
+            return self.getWatchVendorIdentifier()
+        #elseif os(iOS) || os(tvOS) || os(visionOS)
+            return self.getVendorIdentifier()
+        #else
+            return nil
+        #endif
+    }
+
+    /// Retrieve IOPlatformUUID from IOKit (macOS only).
+    ///
+    /// This is the same UUID used by system profilers and is stable per-device.
+    private static func getIOPlatformUUID() -> String? {
+        #if canImport(IOKit)
+            let platformExpert = IOServiceGetMatchingService(
+                kIOMainPortDefault,
+                IOServiceMatching("IOPlatformExpertDevice"),
+            )
+
+            guard platformExpert != 0 else { return nil }
+            defer { IOObjectRelease(platformExpert) }
+
+            guard
+                let uuidCF = IORegistryEntryCreateCFProperty(
+                    platformExpert,
+                    "IOPlatformUUID" as CFString,
+                    kCFAllocatorDefault,
+                    0,
+                )?.takeRetainedValue() else
+            {
+                return nil
+            }
+
+            return uuidCF as? String
+        #else
+            return nil
+        #endif
+    }
+
+    /// Retrieve vendor identifier from UIDevice (iOS/tvOS/watchOS/visionOS).
+    ///
+    /// Stable per-device as long as at least one app from the same vendor remains installed.
+    /// This is the officially sanctioned way to get a device identifier on iOS.
+    private static func getVendorIdentifier() -> String? {
+        #if canImport(UIKit) && (os(iOS) || os(tvOS) || os(visionOS))
+            return UIDevice.current.identifierForVendor?.uuidString
+        #else
+            return nil
+        #endif
+    }
+
+    /// Retrieve vendor identifier from WKInterfaceDevice (watchOS).
+    ///
+    /// Stable per-device as long as at least one app from the same vendor remains installed.
+    private static func getWatchVendorIdentifier() -> String? {
+        #if canImport(WatchKit) && os(watchOS)
+            return WKInterfaceDevice.current().identifierForVendor?.uuidString
+        #else
+            return nil
+        #endif
+    }
+
     /// Start remote logging.
     ///
     /// Credentials are loaded in this order:
@@ -203,7 +205,7 @@ public final class LogRemote: @unchecked Sendable {
     public func start() {
         // Try shared config first
         if let config = LogRemoteConfig.shared {
-            start(config: config)
+            self.start(config: config)
             return
         }
 
@@ -212,7 +214,7 @@ public final class LogRemote: @unchecked Sendable {
             polyWarning("LogRemote: No configuration available. Add POLYLOGS_URL and POLYLOGS_KEY to Info.plist, or call LogRemoteConfig.configure().")
             return
         }
-        start(config: config)
+        self.start(config: config)
     }
 
     /// Start remote logging with explicit configuration.
@@ -231,16 +233,16 @@ public final class LogRemote: @unchecked Sendable {
         let sessionIDValue: String
         let appBundleIDValue: String
 
-        lock.lock()
+        self.lock.lock()
 
-        guard !isRunning else {
-            lock.unlock()
+        guard !self.isRunning else {
+            self.lock.unlock()
             polyDebug("LogRemote: Already running")
             return
         }
 
         self.config = config
-        client = SupabaseClient(
+        self.client = SupabaseClient(
             supabaseURL: config.supabaseURL,
             supabaseKey: config.supabaseKey,
             options: .init(
@@ -256,16 +258,16 @@ public final class LogRemote: @unchecked Sendable {
             self?.bufferEntry(entry)
         }
 
-        isRunning = true
-        startFlushTimerUnsafe()
+        self.isRunning = true
+        self.startFlushTimerUnsafe()
 
         // Capture values before unlocking
         hostName = config.supabaseURL.host ?? "unknown"
-        deviceIDValue = deviceID
-        sessionIDValue = sessionID
-        appBundleIDValue = appBundleID
+        deviceIDValue = self.deviceID
+        sessionIDValue = self.sessionID
+        appBundleIDValue = self.appBundleID
 
-        lock.unlock()
+        self.lock.unlock()
 
         // Log AFTER releasing the lock to avoid deadlock
         polyInfo("LogRemote: Started streaming to \(hostName)")
@@ -274,34 +276,34 @@ public final class LogRemote: @unchecked Sendable {
 
     /// Stop remote logging and flush remaining entries.
     public func stop() {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
 
-        guard isRunning else { return }
+        guard self.isRunning else { return }
 
         // Remove hook from logger
         PolyBaseConfig.shared.logger?.onLogEntry = nil
 
         // Flush remaining entries
-        flushBufferUnsafe()
+        self.flushBufferUnsafe()
 
-        stopFlushTimerUnsafe()
+        self.stopFlushTimerUnsafe()
 
-        client = nil
-        config = nil
-        isRunning = false
+        self.client = nil
+        self.config = nil
+        self.isRunning = false
 
         polyInfo("LogRemote: Stopped")
     }
 
     /// Flush all buffered entries immediately.
     public func flush() {
-        lock.lock()
-        let entries = buffer
-        buffer.removeAll(keepingCapacity: true)
+        self.lock.lock()
+        let entries = self.buffer
+        self.buffer.removeAll(keepingCapacity: true)
         let currentClient = client
         let currentConfig = config
-        lock.unlock()
+        self.lock.unlock()
 
         guard !entries.isEmpty, let client = currentClient, let config = currentConfig else {
             return
@@ -346,22 +348,22 @@ public final class LogRemote: @unchecked Sendable {
 
     /// Buffer a log entry for later push.
     private func bufferEntry(_ entry: LogEntry) {
-        lock.lock()
-        buffer.append(entry)
-        let shouldFlush = buffer.count >= bufferFlushThreshold
-        lock.unlock()
+        self.lock.lock()
+        self.buffer.append(entry)
+        let shouldFlush = self.buffer.count >= self.bufferFlushThreshold
+        self.lock.unlock()
 
         if shouldFlush {
-            flush()
+            self.flush()
         }
     }
 
     /// Flush buffer without lock (caller must hold lock).
     private func flushBufferUnsafe() {
-        guard !buffer.isEmpty, let client, let config else { return }
+        guard !self.buffer.isEmpty, let client, let config else { return }
 
-        let entries = buffer
-        buffer.removeAll(keepingCapacity: true)
+        let entries = self.buffer
+        self.buffer.removeAll(keepingCapacity: true)
 
         let deviceID = deviceID
         let sessionID = sessionID
@@ -456,24 +458,24 @@ public final class LogRemote: @unchecked Sendable {
 
     /// Start the periodic flush timer (must hold lock).
     private func startFlushTimerUnsafe() {
-        guard flushTimer == nil, isRunning || buffer.isEmpty == false else { return }
+        guard self.flushTimer == nil, self.isRunning || self.buffer.isEmpty == false else { return }
 
-        let timer = DispatchSource.makeTimerSource(queue: flushQueue)
+        let timer = DispatchSource.makeTimerSource(queue: self.flushQueue)
         timer.schedule(
-            deadline: .now() + flushInterval,
-            repeating: flushInterval,
+            deadline: .now() + self.flushInterval,
+            repeating: self.flushInterval,
             leeway: .milliseconds(50),
         )
         timer.setEventHandler { [weak self] in
             self?.flush()
         }
         timer.resume()
-        flushTimer = timer
+        self.flushTimer = timer
     }
 
     /// Stop the periodic flush timer (must hold lock).
     private func stopFlushTimerUnsafe() {
-        flushTimer?.cancel()
-        flushTimer = nil
+        self.flushTimer?.cancel()
+        self.flushTimer = nil
     }
 }

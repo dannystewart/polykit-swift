@@ -72,26 +72,41 @@ public final class PolySyncCoordinator {
 
     /// Whether there are pending offline operations.
     public var hasPendingOfflineOperations: Bool {
-        offlineQueue.hasPendingOperations
+        self.offlineQueue.hasPendingOperations
     }
 
     /// Number of pending offline operations.
     public var pendingOfflineOperationCount: Int {
-        offlineQueue.pendingCount
+        self.offlineQueue.pendingCount
     }
 
     private init() {}
+
+    /// Check if an error is permanent (should not be retried).
+    ///
+    /// Permanent errors include:
+    /// - Version regression (local version < remote)
+    /// - Immutable field violations (e.g., created_at)
+    /// - Same-version mutations (already at that version)
+    /// - Invalid undelete attempts (requires version >= old + 1000)
+    private nonisolated static func isPermanentOfflineQueueError(_ error: Error) -> Bool {
+        let errorString = String(describing: error)
+        return errorString.contains("version regression") ||
+            errorString.contains("is immutable") ||
+            errorString.contains("same-version mutation") ||
+            errorString.contains("undelete requires version")
+    }
 
     // MARK: - Initialization
 
     /// Initialize with the app's model context.
     /// Call this once during app startup.
     public func initialize(with context: ModelContext) {
-        guard modelContext == nil else {
+        guard self.modelContext == nil else {
             polyDebug("PolySyncCoordinator already initialized")
             return
         }
-        modelContext = context
+        self.modelContext = context
         polyInfo("PolySyncCoordinator initialized")
     }
 
@@ -129,7 +144,7 @@ public final class PolySyncCoordinator {
 
         // 2. Bump hierarchy if configured
         if bumpHierarchy, let parentRelation = config.parentRelation {
-            try bumpParentHierarchy(
+            try self.bumpParentHierarchy(
                 parentID: parentRelation.getParentID(from: entity),
                 parentTable: parentRelation.parentTableName,
                 context: context,
@@ -149,7 +164,7 @@ public final class PolySyncCoordinator {
         // Build record now (before push) so we can queue it if push fails
         let record: [String: AnyJSON]
         do {
-            record = try pushEngine.buildRecord(from: entity, config: config)
+            record = try self.pushEngine.buildRecord(from: entity, config: config)
         } catch {
             polyError("PolySyncCoordinator: Failed to build record for \(Entity.self) \(entityID): \(error)")
             return
@@ -158,7 +173,7 @@ public final class PolySyncCoordinator {
         // 5. Push to Supabase (non-blocking with offline queue backup)
         // We spawn a Task to avoid blocking the main thread on network I/O.
         // The offline queue handles retry if the push fails.
-        pushEngine.markAsPushed(entityID, table: tableName)
+        self.pushEngine.markAsPushed(entityID, table: tableName)
         let entityType = String(describing: Entity.self)
         Task { [weak self, pushEngine] in
             guard let self else { return }
@@ -167,14 +182,14 @@ public final class PolySyncCoordinator {
 
                 // Push parent if hierarchy was bumped
                 if let parentID, let parentTable {
-                    await pushParentHierarchy(
+                    await self.pushParentHierarchy(
                         parentID: parentID,
                         parentTable: parentTable,
                         context: context,
                     )
                 }
             } catch {
-                handlePushError(
+                self.handlePushError(
                     error,
                     entityType: entityType,
                     entityId: entityID,
@@ -227,7 +242,7 @@ public final class PolySyncCoordinator {
         // 3. Bump parent hierarchy
         if let parentRelation = config.parentRelation {
             for parentID in parentIDs {
-                try bumpParentHierarchy(
+                try self.bumpParentHierarchy(
                     parentID: parentID,
                     parentTable: parentRelation.parentTableName,
                     context: context,
@@ -244,7 +259,7 @@ public final class PolySyncCoordinator {
 
         // 6. Mark all as recently pushed
         for entity in entities {
-            pushEngine.markAsPushed(entity.id, table: tableName)
+            self.pushEngine.markAsPushed(entity.id, table: tableName)
         }
 
         // 7. Batch push to Supabase (non-blocking)
@@ -256,7 +271,7 @@ public final class PolySyncCoordinator {
             // Push parents
             if let parentTable {
                 for parentID in capturedParentIDs {
-                    await pushParentHierarchy(
+                    await self.pushParentHierarchy(
                         parentID: parentID,
                         parentTable: parentTable,
                         context: context,
@@ -291,7 +306,7 @@ public final class PolySyncCoordinator {
 
         // 1. Bump parent hierarchy if configured
         if bumpHierarchy, let parentRelation = config.parentRelation {
-            try bumpParentHierarchy(
+            try self.bumpParentHierarchy(
                 parentID: parentRelation.getParentID(from: entity),
                 parentTable: parentRelation.parentTableName,
                 context: context,
@@ -310,14 +325,14 @@ public final class PolySyncCoordinator {
         // Build record now (before push) so we can queue it if push fails
         let record: [String: AnyJSON]
         do {
-            record = try pushEngine.buildRecord(from: entity, config: config)
+            record = try self.pushEngine.buildRecord(from: entity, config: config)
         } catch {
             polyError("PolySyncCoordinator: Failed to build record for new \(Entity.self) \(entityID): \(error)")
             return
         }
 
         // 4. Push to Supabase (non-blocking with offline queue backup)
-        pushEngine.markAsPushed(entityID, table: tableName)
+        self.pushEngine.markAsPushed(entityID, table: tableName)
         let entityType = String(describing: Entity.self)
         Task { [weak self, pushEngine] in
             guard let self else { return }
@@ -326,14 +341,14 @@ public final class PolySyncCoordinator {
 
                 // Push parent if hierarchy was bumped
                 if let parentID, let parentTable {
-                    await pushParentHierarchy(
+                    await self.pushParentHierarchy(
                         parentID: parentID,
                         parentTable: parentTable,
                         context: context,
                     )
                 }
             } catch {
-                handlePushError(
+                self.handlePushError(
                     error,
                     entityType: entityType,
                     entityId: entityID,
@@ -380,7 +395,7 @@ public final class PolySyncCoordinator {
 
         // 3. Bump parent hierarchy if configured
         if bumpHierarchy, let parentRelation = config.parentRelation {
-            try bumpParentHierarchy(
+            try self.bumpParentHierarchy(
                 parentID: parentID,
                 parentTable: parentRelation.parentTableName,
                 context: context,
@@ -391,7 +406,7 @@ public final class PolySyncCoordinator {
         try context.save()
 
         // 5. Push tombstone to Supabase (non-blocking, use UPDATE not upsert)
-        pushEngine.markAsPushed(entityID, table: tableName)
+        self.pushEngine.markAsPushed(entityID, table: tableName)
         let entityType = String(describing: Entity.self)
         Task { [weak self, pushEngine] in
             guard let self else { return }
@@ -405,7 +420,7 @@ public final class PolySyncCoordinator {
 
                 // Push parent if hierarchy was bumped
                 if let parentID, let parentTable {
-                    await pushParentHierarchy(
+                    await self.pushParentHierarchy(
                         parentID: parentID,
                         parentTable: parentTable,
                         context: context,
@@ -423,7 +438,7 @@ public final class PolySyncCoordinator {
                     tombstoneRecord["user_id"] = .string(userID.uuidString)
                 }
 
-                handlePushError(
+                self.handlePushError(
                     error,
                     entityType: entityType,
                     entityId: entityID,
@@ -475,7 +490,7 @@ public final class PolySyncCoordinator {
                 }
             }
             for parentID in parentIDs {
-                try bumpParentHierarchy(
+                try self.bumpParentHierarchy(
                     parentID: parentID,
                     parentTable: parentRelation.parentTableName,
                     context: context,
@@ -488,7 +503,7 @@ public final class PolySyncCoordinator {
 
         // 5. Mark all as recently pushed
         for tombstone in tombstones {
-            pushEngine.markAsPushed(tombstone.id, table: tableName)
+            self.pushEngine.markAsPushed(tombstone.id, table: tableName)
         }
 
         // 6. Batch update tombstones (non-blocking, use UPDATE not upsert)
@@ -500,7 +515,7 @@ public final class PolySyncCoordinator {
             // Push parents
             if let parentTable {
                 for parentID in capturedParentIDs {
-                    await pushParentHierarchy(
+                    await self.pushParentHierarchy(
                         parentID: parentID,
                         parentTable: parentTable,
                         context: context,
@@ -553,7 +568,7 @@ public final class PolySyncCoordinator {
         // Build record before push
         let record: [String: AnyJSON]
         do {
-            record = try pushEngine.buildRecord(from: entity, config: config)
+            record = try self.pushEngine.buildRecord(from: entity, config: config)
         } catch {
             polyError("PolySyncCoordinator: Failed to build record for undelete \(Entity.self) \(entityID): \(error)")
             return
@@ -563,14 +578,14 @@ public final class PolySyncCoordinator {
         try context.save()
 
         // Push to Supabase (non-blocking)
-        pushEngine.markAsPushed(entityID, table: tableName)
+        self.pushEngine.markAsPushed(entityID, table: tableName)
         let entityType = String(describing: Entity.self)
         Task { [weak self, pushEngine] in
             guard let self else { return }
             do {
                 try await pushEngine.pushRawRecord(record, to: tableName)
             } catch {
-                handlePushError(
+                self.handlePushError(
                     error,
                     entityType: entityType,
                     entityId: entityID,
@@ -632,13 +647,13 @@ public final class PolySyncCoordinator {
     /// - Returns: The number of operations successfully processed.
     @discardableResult
     public func processOfflineQueue() async -> Int {
-        guard offlineQueue.hasPendingOperations else { return 0 }
+        guard self.offlineQueue.hasPendingOperations else { return 0 }
 
-        polyInfo("PolySyncCoordinator: Processing \(offlineQueue.pendingCount) offline operations")
+        polyInfo("PolySyncCoordinator: Processing \(self.offlineQueue.pendingCount) offline operations")
 
         // Run offline queue replay off MainActor so large queues and disk I/O don't hitch the UI.
         // SwiftData persistence stays on MainActor; this is push-only replay of already-built records.
-        let queue = offlineQueue
+        let queue = self.offlineQueue
 
         return await Task.detached(priority: .utility) {
             await queue.processQueue { operation in
@@ -712,23 +727,8 @@ public final class PolySyncCoordinator {
     ///
     /// Use with caution - this discards all queued operations without retrying them.
     public func clearOfflineQueue() {
-        offlineQueue.clearQueue()
+        self.offlineQueue.clearQueue()
         polyInfo("PolySyncCoordinator: Offline queue cleared")
-    }
-
-    /// Check if an error is permanent (should not be retried).
-    ///
-    /// Permanent errors include:
-    /// - Version regression (local version < remote)
-    /// - Immutable field violations (e.g., created_at)
-    /// - Same-version mutations (already at that version)
-    /// - Invalid undelete attempts (requires version >= old + 1000)
-    private nonisolated static func isPermanentOfflineQueueError(_ error: Error) -> Bool {
-        let errorString = String(describing: error)
-        return errorString.contains("version regression") ||
-            errorString.contains("is immutable") ||
-            errorString.contains("same-version mutation") ||
-            errorString.contains("undelete requires version")
     }
 
     /// Get the current model context or throw.
@@ -753,7 +753,7 @@ public final class PolySyncCoordinator {
         guard let parentID, !parentID.isEmpty else { return }
 
         // Verify parent is registered
-        guard registry.config(forTable: parentTable) != nil else {
+        guard self.registry.config(forTable: parentTable) != nil else {
             polyWarning("PolySyncCoordinator: Parent table '\(parentTable)' not registered")
             return
         }
@@ -797,7 +797,7 @@ public final class PolySyncCoordinator {
             return
         }
 
-        offlineQueue.enqueue(
+        self.offlineQueue.enqueue(
             table: table,
             action: action,
             payload: payload,
@@ -850,7 +850,7 @@ public final class PolySyncCoordinator {
         record: [String: AnyJSON],
         action: PolyBaseOfflineOperation.Action,
     ) {
-        if isVersionRegressionError(error) {
+        if self.isVersionRegressionError(error) {
             // Permanent failure: local is stale, needs reconciliation
             polyWarning(
                 "PolySyncCoordinator: Version regression for \(entityType) \(entityId) - " +
@@ -870,7 +870,7 @@ public final class PolySyncCoordinator {
             return
         }
 
-        if isInvalidUndeleteError(error) {
+        if self.isInvalidUndeleteError(error) {
             // Permanent failure: trying to undelete without proper version bump
             polyWarning(
                 "PolySyncCoordinator: Invalid undelete attempt for \(entityType) \(entityId) - " +
@@ -890,7 +890,7 @@ public final class PolySyncCoordinator {
             return
         }
 
-        if isSameVersionMutationError(error) {
+        if self.isSameVersionMutationError(error) {
             // Benign duplicate — the push already happened, ignore
             polyDebug("PolySyncCoordinator: Same-version mutation for \(entityType) \(entityId) - ignoring")
             return
@@ -898,7 +898,7 @@ public final class PolySyncCoordinator {
 
         // Transient failure — queue for retry
         polyError("PolySyncCoordinator: Push failed for \(entityType) \(entityId), queueing for retry: \(error)")
-        queueOperation(table: tableName, action: action, record: record, entityId: entityId)
+        self.queueOperation(table: tableName, action: action, record: record, entityId: entityId)
     }
 }
 

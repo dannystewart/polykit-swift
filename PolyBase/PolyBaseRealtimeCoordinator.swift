@@ -72,12 +72,12 @@ public final class PolyBaseRealtimeCoordinator {
 
     /// Number of IDs currently being tracked for echo prevention.
     public var trackedEchoCount: Int {
-        echoTracker.trackedCount
+        self.echoTracker.trackedCount
     }
 
     /// Whether a notification is currently pending (waiting to fire after debounce).
     public var hasPendingNotification: Bool {
-        notifier.isPending(notificationName)
+        self.notifier.isPending(self.notificationName)
     }
 
     // MARK: - Initialization
@@ -93,8 +93,8 @@ public final class PolyBaseRealtimeCoordinator {
         debounceInterval: Duration = PolyBaseDebouncedNotifier.defaultInterval,
         notificationName: Notification.Name = .polyBaseRealtimeDidChange,
     ) {
-        echoTracker = PolyBaseEchoTracker(expiryDuration: echoExpiry)
-        notifier = PolyBaseDebouncedNotifier(debounceInterval: debounceInterval)
+        self.echoTracker = PolyBaseEchoTracker(expiryDuration: echoExpiry)
+        self.notifier = PolyBaseDebouncedNotifier(debounceInterval: debounceInterval)
         self.notificationName = notificationName
     }
 
@@ -128,7 +128,7 @@ public final class PolyBaseRealtimeCoordinator {
         channelName: String = "polybase-realtime",
         onChange: @escaping @Sendable () async throws -> Void,
     ) async throws {
-        guard !isSubscribed else {
+        guard !self.isSubscribed else {
             polyWarning("PolyBaseRealtimeCoordinator: Already subscribed")
             return
         }
@@ -141,17 +141,17 @@ public final class PolyBaseRealtimeCoordinator {
         // Subscribe to all tables
         let changeStream = newChannel.postgresChange(AnyAction.self, schema: "public")
 
-        channel = newChannel
+        self.channel = newChannel
 
         // Subscribe with error handling
         try await newChannel.subscribeWithError()
-        isSubscribed = true
+        self.isSubscribed = true
 
         polyDebug("PolyBaseRealtimeCoordinator: Subscribed to \(tables.count) table(s)")
 
         // Set up notification observer
         NotificationCenter.default.addObserver(
-            forName: notificationName,
+            forName: self.notificationName,
             object: nil,
             queue: .main,
         ) { _ in
@@ -165,7 +165,7 @@ public final class PolyBaseRealtimeCoordinator {
         }
 
         // Listen to the change stream
-        realtimeTask = Task { @MainActor in
+        self.realtimeTask = Task { @MainActor in
             for await _ in changeStream {
                 // Post debounced notification
                 // The notification observer above will call onChange()
@@ -178,19 +178,19 @@ public final class PolyBaseRealtimeCoordinator {
     ///
     /// Cancels the realtime task and removes the notification observer.
     public func unsubscribe() async {
-        realtimeTask?.cancel()
-        realtimeTask = nil
+        self.realtimeTask?.cancel()
+        self.realtimeTask = nil
 
         if let channel {
             await channel.unsubscribe()
         }
 
         channel = nil
-        isSubscribed = false
+        self.isSubscribed = false
 
         NotificationCenter.default.removeObserver(
             self,
-            name: notificationName,
+            name: self.notificationName,
             object: nil,
         )
 
@@ -219,7 +219,7 @@ public final class PolyBaseRealtimeCoordinator {
     /// // When realtime event arrives, it will be ignored
     /// ```
     public func markPushed(_ id: UUID, table: String) {
-        echoTracker.markAsPushed(id, table: table)
+        self.echoTracker.markAsPushed(id, table: table)
     }
 
     /// Check if an ID was recently pushed (and should be treated as an echo).
@@ -229,7 +229,7 @@ public final class PolyBaseRealtimeCoordinator {
     ///   - table: The table name
     /// - Returns: `true` if this ID was recently pushed and should be ignored
     public func wasPushedRecently(_ id: UUID, table: String) -> Bool {
-        echoTracker.wasPushedRecently(id, table: table)
+        self.echoTracker.wasPushedRecently(id, table: table)
     }
 
     // MARK: - Debouncing Control
@@ -238,12 +238,12 @@ public final class PolyBaseRealtimeCoordinator {
     ///
     /// Use this for user-initiated actions that should feel instant.
     public func notifyImmediately() {
-        notifier.post(notificationName, object: nil, userInfo: nil)
+        self.notifier.post(self.notificationName, object: nil, userInfo: nil)
     }
 
     /// Cancel any pending debounced notifications.
     public func cancelPending() {
-        notifier.cancel(notificationName)
+        self.notifier.cancel(self.notificationName)
     }
 }
 

@@ -41,9 +41,9 @@ public final class PolyBaseEchoTracker: @unchecked Sendable {
 
     /// Number of currently tracked IDs.
     public var trackedCount: Int {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        return trackedIds.count
+        return self.trackedIds.count
     }
 
     /// Create an echo tracker.
@@ -65,11 +65,11 @@ public final class PolyBaseEchoTracker: @unchecked Sendable {
     ///   - id: The entity's unique identifier
     ///   - table: The table name (combined with ID for uniqueness across tables)
     public func markAsPushed(_ id: String, table: String? = nil) {
-        let key = makeKey(id: id, table: table)
+        let key = self.makeKey(id: id, table: table)
 
-        lock.lock()
-        trackedIds[key] = Date()
-        lock.unlock()
+        self.lock.lock()
+        self.trackedIds[key] = Date()
+        self.lock.unlock()
 
         // Schedule cleanup
         Task { [weak self] in
@@ -80,12 +80,12 @@ public final class PolyBaseEchoTracker: @unchecked Sendable {
 
     /// Mark a UUID as recently pushed.
     public func markAsPushed(_ id: UUID, table: String? = nil) {
-        markAsPushed(id.uuidString, table: table)
+        self.markAsPushed(id.uuidString, table: table)
     }
 
     /// Mark an integer ID as recently pushed.
     public func markAsPushed(_ id: Int, table: String? = nil) {
-        markAsPushed(String(id), table: table)
+        self.markAsPushed(String(id), table: table)
     }
 
     // MARK: - Checking
@@ -97,18 +97,18 @@ public final class PolyBaseEchoTracker: @unchecked Sendable {
     ///   - table: The table name (must match what was passed to `markAsPushed`)
     /// - Returns: `true` if this ID was recently pushed and should be ignored
     public func wasPushedRecently(_ id: String, table: String? = nil) -> Bool {
-        let key = makeKey(id: id, table: table)
+        let key = self.makeKey(id: id, table: table)
 
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
 
         guard let timestamp = trackedIds[key] else { return false }
 
         // Double-check it hasn't expired (in case cleanup task hasn't run)
         let expirySeconds = Double(expiryDuration.components.seconds)
-            + Double(expiryDuration.components.attoseconds) / 1e18
+            + Double(self.expiryDuration.components.attoseconds) / 1e18
         if Date().timeIntervalSince(timestamp) > expirySeconds {
-            trackedIds.removeValue(forKey: key)
+            self.trackedIds.removeValue(forKey: key)
             return false
         }
 
@@ -117,28 +117,28 @@ public final class PolyBaseEchoTracker: @unchecked Sendable {
 
     /// Check if a UUID was recently pushed.
     public func wasPushedRecently(_ id: UUID, table: String? = nil) -> Bool {
-        wasPushedRecently(id.uuidString, table: table)
+        self.wasPushedRecently(id.uuidString, table: table)
     }
 
     /// Check if an integer ID was recently pushed.
     public func wasPushedRecently(_ id: Int, table: String? = nil) -> Bool {
-        wasPushedRecently(String(id), table: table)
+        self.wasPushedRecently(String(id), table: table)
     }
 
     // MARK: - Utilities
 
     /// Clear all tracked IDs.
     public func clear() {
-        lock.lock()
-        trackedIds.removeAll()
-        lock.unlock()
+        self.lock.lock()
+        self.trackedIds.removeAll()
+        self.lock.unlock()
     }
 
     /// Remove a tracked ID (thread-safe, synchronous).
     private func removeTrackedId(_ key: String) {
-        lock.lock()
-        trackedIds.removeValue(forKey: key)
-        lock.unlock()
+        self.lock.lock()
+        self.trackedIds.removeValue(forKey: key)
+        self.lock.unlock()
     }
 
     private func makeKey(id: String, table: String?) -> String {

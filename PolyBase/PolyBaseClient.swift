@@ -43,7 +43,7 @@ public final class PolyBaseClient: @unchecked Sendable {
 
     private init(projectURL: URL, anonKey: String) {
         self.projectURL = projectURL
-        client = SupabaseClient(
+        self.client = SupabaseClient(
             supabaseURL: projectURL,
             supabaseKey: anonKey,
             options: .init(
@@ -65,7 +65,7 @@ public final class PolyBaseClient: @unchecked Sendable {
     @discardableResult
     public static func configure(projectURL: URL, anonKey: String) -> PolyBaseClient {
         let instance = PolyBaseClient(projectURL: projectURL, anonKey: anonKey)
-        shared = instance
+        self.shared = instance
         polyDebug("PolyBase: Configured with project \(projectURL.host ?? "unknown")")
         return instance
     }
@@ -96,7 +96,7 @@ public final class PolyBaseClient: @unchecked Sendable {
             throw PolyBaseError.missingConfiguration("\(anonKeyKey) not found in Info.plist")
         }
 
-        return configure(projectURL: url, anonKey: anonKey)
+        return self.configure(projectURL: url, anonKey: anonKey)
     }
 
     /// Returns the configured client, or throws if not configured.

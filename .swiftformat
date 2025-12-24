@@ -80,7 +80,7 @@
 --ranges spaced
 --redundant-async tests-only
 --redundant-throws tests-only
---self remove
+--self insert
 --self-required
 --semicolons inline-only
 --short-optionals except-properties

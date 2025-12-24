@@ -25,10 +25,10 @@ public struct PolyHealingResult: Sendable {
     public let healed: Int
 
     /// Whether any healing was needed.
-    public var hadIssues: Bool { needsHealing > 0 }
+    public var hadIssues: Bool { self.needsHealing > 0 }
 
     /// Whether all issues were fixed.
-    public var fullyHealed: Bool { healed == needsHealing }
+    public var fullyHealed: Bool { self.healed == self.needsHealing }
 }
 
 // MARK: - PolyHealingService
@@ -68,7 +68,7 @@ public final class PolyHealingService {
     public func healAll() async -> [PolyHealingResult] {
         var results = [PolyHealingResult]()
 
-        for tableName in registry.registeredTables {
+        for tableName in self.registry.registeredTables {
             guard let config = registry.config(forTable: tableName) else { continue }
 
             // Skip tables with no encrypted fields
@@ -98,7 +98,7 @@ public final class PolyHealingService {
             )
         }
 
-        return await healTable(tableName: config.tableName, config: config)
+        return await self.healTable(tableName: config.tableName, config: config)
     }
 
     // MARK: - Private

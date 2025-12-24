@@ -93,7 +93,7 @@ public func determineReconcileAction(
     localDeleted: Bool,
     remoteVersion: Int,
     remoteDeleted: Bool,
-    undeleteVersionDelta: Int = defaultUndeleteVersionDelta
+    undeleteVersionDelta: Int = defaultUndeleteVersionDelta,
 ) -> ReconcileAction {
     // Rule 1: Tombstone always wins (unless undelete escape hatch)
     // If remote is deleted and local isn't, adopt the tombstone regardless of version.
@@ -142,7 +142,7 @@ public func determineCreateAction(
     localExists: Bool,
     remoteExists: Bool,
     localDeleted: Bool = false,
-    remoteDeleted: Bool = false
+    remoteDeleted: Bool = false,
 ) -> ReconcileAction {
     if remoteExists, !localExists {
         // Remote exists, local doesn't -> pull (create locally)

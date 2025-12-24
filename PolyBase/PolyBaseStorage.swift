@@ -83,7 +83,7 @@ public final class PolyBaseStorage: Sendable {
         let client = try PolyBaseClient.requireClient()
 
         try await client.storage
-            .from(bucketName)
+            .from(self.bucketName)
             .upload(
                 path,
                 data: data,
@@ -118,7 +118,7 @@ public final class PolyBaseStorage: Sendable {
         pathComponents.append(filename)
         let path = pathComponents.joined(separator: "/")
 
-        return try await upload(data: data, path: path, mimeType: mimeType)
+        return try await self.upload(data: data, path: path, mimeType: mimeType)
     }
 
     // MARK: - Download
@@ -131,7 +131,7 @@ public final class PolyBaseStorage: Sendable {
         let client = try PolyBaseClient.requireClient()
 
         let data = try await client.storage
-            .from(bucketName)
+            .from(self.bucketName)
             .download(path: path)
 
         polyDebug("PolyBase: Downloaded \(data.count) bytes from \(path)")
@@ -147,7 +147,7 @@ public final class PolyBaseStorage: Sendable {
         let client = try PolyBaseClient.requireClient()
 
         _ = try await client.storage
-            .from(bucketName)
+            .from(self.bucketName)
             .remove(paths: [path])
 
         polyDebug("PolyBase: Deleted \(path)")
@@ -162,7 +162,7 @@ public final class PolyBaseStorage: Sendable {
         let client = try PolyBaseClient.requireClient()
 
         _ = try await client.storage
-            .from(bucketName)
+            .from(self.bucketName)
             .remove(paths: paths)
 
         polyDebug("PolyBase: Deleted \(paths.count) files")
@@ -176,7 +176,7 @@ public final class PolyBaseStorage: Sendable {
 
         // List all files in the folder
         let files = try await client.storage
-            .from(bucketName)
+            .from(self.bucketName)
             .list(path: folderPath)
 
         guard !files.isEmpty else { return }
@@ -184,7 +184,7 @@ public final class PolyBaseStorage: Sendable {
         // Build full paths and delete
         let paths = files.map { folderPath + "/" + $0.name }
         _ = try await client.storage
-            .from(bucketName)
+            .from(self.bucketName)
             .remove(paths: paths)
 
         polyDebug("PolyBase: Deleted \(paths.count) files from folder \(folderPath)")
@@ -200,7 +200,7 @@ public final class PolyBaseStorage: Sendable {
         let client = try PolyBaseClient.requireClient()
 
         return try await client.storage
-            .from(bucketName)
+            .from(self.bucketName)
             .list(path: folderPath)
     }
 }

@@ -102,29 +102,29 @@ public struct AnyPolyDataEntity {
 
     /// Creates a type-erased wrapper from a typed entity.
     public init<Model: PersistentModel>(_ entity: PolyDataEntity<Model>) {
-        id = entity.id
-        displayName = entity.displayName
-        iconName = entity.iconName
+        self.id = entity.id
+        self.displayName = entity.displayName
+        self.iconName = entity.iconName
 
         // Column info
-        columnCount = entity.columns.count
-        columnID = { entity.columns[$0].id }
-        columnTitle = { entity.columns[$0].title }
-        columnWidth = { entity.columns[$0].width }
-        columnMinWidth = { entity.columns[$0].minWidth }
-        columnMaxWidth = { entity.columns[$0].maxWidth }
-        columnIsSortable = { entity.columns[$0].isSortable }
+        self.columnCount = entity.columns.count
+        self.columnID = { entity.columns[$0].id }
+        self.columnTitle = { entity.columns[$0].title }
+        self.columnWidth = { entity.columns[$0].width }
+        self.columnMinWidth = { entity.columns[$0].minWidth }
+        self.columnMaxWidth = { entity.columns[$0].maxWidth }
+        self.columnIsSortable = { entity.columns[$0].isSortable }
 
         // Sort fields
-        sortFieldCount = entity.sortFields.count
-        sortFieldID = { entity.sortFields[$0].id }
-        sortFieldDisplayName = { entity.sortFields[$0].displayName }
-        sortFieldDefaultAscending = { entity.sortFields[$0].defaultAscending }
-        defaultSortFieldID = entity.defaultSortFieldID
+        self.sortFieldCount = entity.sortFields.count
+        self.sortFieldID = { entity.sortFields[$0].id }
+        self.sortFieldDisplayName = { entity.sortFields[$0].displayName }
+        self.sortFieldDefaultAscending = { entity.sortFields[$0].defaultAscending }
+        self.defaultSortFieldID = entity.defaultSortFieldID
 
         // Detail view
-        detailFields = entity.detailFields
-        detailRelationships = entity.detailRelationships
+        self.detailFields = entity.detailFields
+        self.detailRelationships = entity.detailRelationships
 
         // Capture sort field makers for later use
         let sortFieldMakers = entity.sortFields.map { field in
@@ -137,7 +137,7 @@ public struct AnyPolyDataEntity {
         let columns = entity.columns
 
         // Fetch records
-        fetchRecords = { context, searchText, sortFieldID, ascending in
+        self.fetchRecords = { context, searchText, sortFieldID, ascending in
             // Find the sort descriptor maker
             let order: SortOrder = ascending ? .forward : .reverse
             let sortDescriptor: SortDescriptor<Model> = if let maker = sortFieldMakers.first(where: { $0.id == sortFieldID })?.maker {
@@ -160,7 +160,7 @@ public struct AnyPolyDataEntity {
         }
 
         // Cell value extraction
-        cellValue = { record, columnIndex in
+        self.cellValue = { record, columnIndex in
             guard
                 let model = record as? Model,
                 columnIndex < columns.count else { return "" }
@@ -168,7 +168,7 @@ public struct AnyPolyDataEntity {
         }
 
         // Cell color extraction
-        cellColor = { record, columnIndex, report in
+        self.cellColor = { record, columnIndex, report in
             guard
                 let model = record as? Model,
                 columnIndex < columns.count else { return nil }
@@ -176,7 +176,7 @@ public struct AnyPolyDataEntity {
         }
 
         // Cell badge extraction
-        cellBadge = { record, columnIndex, report in
+        self.cellBadge = { record, columnIndex, report in
             guard
                 let model = record as? Model,
                 columnIndex < columns.count else { return nil }
@@ -185,28 +185,28 @@ public struct AnyPolyDataEntity {
 
         // Filter matching
         let filterMatchesFn = entity.filterMatches
-        recordMatchesFilter = { record, filter in
+        self.recordMatchesFilter = { record, filter in
             guard let model = record as? Model else { return false }
             return filterMatchesFn(model, filter)
         }
 
         // Delete record - capture only the delete closure to avoid data races
         let deleteFn = entity.delete
-        deleteRecord = { record, context in
+        self.deleteRecord = { record, context in
             guard let model = record as? Model else { return }
             await deleteFn(model, context)
         }
 
         // Record ID
         let recordIDFn = entity.recordID
-        recordID = { record in
+        self.recordID = { record in
             guard let model = record as? Model else { return "" }
             return recordIDFn(model)
         }
 
         // Record count
         let countFn = entity.count
-        recordCount = { context in
+        self.recordCount = { context in
             countFn(context)
         }
     }

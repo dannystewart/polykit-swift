@@ -90,18 +90,18 @@ public final class LogPersistence: @unchecked Sendable {
     /// Creates a new session file and optionally prunes old sessions based on retention policy.
     /// Safe to call multiple times - subsequent calls are no-ops.
     public func startNewSession() {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
 
-        guard !isEnabled else { return }
+        guard !self.isEnabled else { return }
 
         do {
             let logsDirectory = try getLogsDirectory()
             let sessionFile = try createSessionFile(in: logsDirectory)
 
-            currentSessionFile = sessionFile
-            isEnabled = true
-            startFlushTimerUnsafe()
+            self.currentSessionFile = sessionFile
+            self.isEnabled = true
+            self.startFlushTimerUnsafe()
 
             // Prune old sessions in the background
             Task.detached { [weak self] in
@@ -115,16 +115,16 @@ public final class LogPersistence: @unchecked Sendable {
 
     /// Ends the current logging session and flushes all pending writes.
     public func endSession() {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
 
-        flushBufferUnsafe()
-        stopFlushTimerUnsafe()
+        self.flushBufferUnsafe()
+        self.stopFlushTimerUnsafe()
 
-        try? fileHandle?.close()
-        fileHandle = nil
-        currentSessionFile = nil
-        isEnabled = false
+        try? self.fileHandle?.close()
+        self.fileHandle = nil
+        self.currentSessionFile = nil
+        self.isEnabled = false
     }
 
     // MARK: - Writing
@@ -135,16 +135,16 @@ public final class LogPersistence: @unchecked Sendable {
     ///
     /// - Parameter entry: The log entry text to write (should include timestamp and formatting).
     public func write(_ entry: String) {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
 
-        guard isEnabled else { return }
+        guard self.isEnabled else { return }
 
-        writeBuffer.append(entry)
+        self.writeBuffer.append(entry)
 
         // Auto-flush when buffer is full
-        if writeBuffer.count >= bufferFlushThreshold {
-            flushBufferUnsafe()
+        if self.writeBuffer.count >= self.bufferFlushThreshold {
+            self.flushBufferUnsafe()
         }
     }
 
@@ -152,9 +152,9 @@ public final class LogPersistence: @unchecked Sendable {
     ///
     /// Safe to call multiple times. Called automatically on a timer and before app termination.
     public func flush() {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        flushBufferUnsafe()
+        self.flushBufferUnsafe()
     }
 
     // MARK: - Public Utilities
@@ -163,7 +163,7 @@ public final class LogPersistence: @unchecked Sendable {
     ///
     /// - Returns: The logs directory URL, or nil if it cannot be determined.
     public func getLogsDirectoryURL() -> URL? {
-        try? getLogsDirectory()
+        try? self.getLogsDirectory()
     }
 
     /// Returns all available session files, sorted by creation date (newest first).
@@ -194,9 +194,9 @@ public final class LogPersistence: @unchecked Sendable {
     ///
     /// - Returns: The current session file URL, or nil if no session is active.
     public func getCurrentSessionFile() -> URL? {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        return currentSessionFile
+        return self.currentSessionFile
     }
 
     /// Reads the contents of a session file.
@@ -238,49 +238,49 @@ public final class LogPersistence: @unchecked Sendable {
 
     /// Starts the periodic flush timer (must be called with `lock` held).
     private func startFlushTimerUnsafe() {
-        guard flushTimer == nil else { return }
-        guard isEnabled else { return }
+        guard self.flushTimer == nil else { return }
+        guard self.isEnabled else { return }
 
-        let timer = DispatchSource.makeTimerSource(queue: flushQueue)
-        timer.schedule(deadline: .now() + flushInterval, repeating: flushInterval, leeway: .milliseconds(50))
+        let timer = DispatchSource.makeTimerSource(queue: self.flushQueue)
+        timer.schedule(deadline: .now() + self.flushInterval, repeating: self.flushInterval, leeway: .milliseconds(50))
         timer.setEventHandler { [weak self] in
             self?.flush()
         }
         timer.resume()
-        flushTimer = timer
+        self.flushTimer = timer
     }
 
     /// Stops the periodic flush timer (must be called with `lock` held).
     private func stopFlushTimerUnsafe() {
-        flushTimer?.cancel()
-        flushTimer = nil
+        self.flushTimer?.cancel()
+        self.flushTimer = nil
     }
 
     /// Internal flush implementation (must be called with lock held).
     private func flushBufferUnsafe() {
-        guard !writeBuffer.isEmpty, isEnabled else { return }
+        guard !self.writeBuffer.isEmpty, self.isEnabled else { return }
         guard let sessionFile = currentSessionFile else { return }
 
         do {
             // Lazy open file handle on first write
-            if fileHandle == nil {
+            if self.fileHandle == nil {
                 if !FileManager.default.fileExists(atPath: sessionFile.path) {
                     FileManager.default.createFile(atPath: sessionFile.path, contents: nil)
                 }
-                fileHandle = try FileHandle(forWritingTo: sessionFile)
-                try fileHandle?.seekToEnd()
+                self.fileHandle = try FileHandle(forWritingTo: sessionFile)
+                try self.fileHandle?.seekToEnd()
             }
 
-            let content = writeBuffer.joined(separator: "\n") + "\n"
+            let content = self.writeBuffer.joined(separator: "\n") + "\n"
             if let data = content.data(using: .utf8) {
-                try fileHandle?.write(contentsOf: data)
+                try self.fileHandle?.write(contentsOf: data)
 
                 #if os(macOS) || os(iOS)
-                    try fileHandle?.synchronize() // Force write to disk
+                    try self.fileHandle?.synchronize() // Force write to disk
                 #endif
             }
 
-            writeBuffer.removeAll(keepingCapacity: true)
+            self.writeBuffer.removeAll(keepingCapacity: true)
         } catch {
             // Silently fail - don't crash app due to logging issues
             print("LogPersistence: Failed to write logs: \(error)")
@@ -300,12 +300,12 @@ public final class LogPersistence: @unchecked Sendable {
 
         #if os(macOS)
             /// On macOS, Application Support is per-app
-            let logsDir = appSupport.appendingPathComponent(directoryName, isDirectory: true)
+            let logsDir = appSupport.appendingPathComponent(self.directoryName, isDirectory: true)
         #elseif os(iOS)
             /// On iOS, Application Support is already app-scoped
-            let logsDir = appSupport.appendingPathComponent(directoryName, isDirectory: true)
+            let logsDir = appSupport.appendingPathComponent(self.directoryName, isDirectory: true)
         #else
-            let logsDir = appSupport.appendingPathComponent(directoryName, isDirectory: true)
+            let logsDir = appSupport.appendingPathComponent(self.directoryName, isDirectory: true)
         #endif
 
         try FileManager.default.createDirectory(at: logsDir, withIntermediateDirectories: true)
@@ -343,7 +343,7 @@ public final class LogPersistence: @unchecked Sendable {
             }
 
             // Remove oldest files if we exceed maxSessions
-            let filesToRemove = sortedFiles.prefix(max(0, sortedFiles.count - maxSessions))
+            let filesToRemove = sortedFiles.prefix(max(0, sortedFiles.count - self.maxSessions))
             for file in filesToRemove {
                 try? FileManager.default.removeItem(at: file)
             }

@@ -1,3 +1,9 @@
+//
+//  PolyDataExplorerConfiguration.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 import Foundation
 import SwiftData
 
@@ -49,7 +55,7 @@ public struct PolyDataExplorerConfiguration {
         toolbarSections: [PolyDataToolbarSection] = [],
         integrityChecker: (any PolyDataIntegrityChecker)? = nil,
         showStats: Bool = true,
-        title: String = "Data Explorer"
+        title: String = "Data Explorer",
     ) {
         self.entities = entities
         self.defaultEntityIndex = min(defaultEntityIndex, max(0, entities.count - 1))
@@ -63,18 +69,18 @@ public struct PolyDataExplorerConfiguration {
 
     /// Returns the entity at the specified index, or nil if out of bounds.
     public func entity(at index: Int) -> AnyPolyDataEntity? {
-        guard index >= 0, index < entities.count else { return nil }
-        return entities[index]
+        guard index >= 0, index < self.entities.count else { return nil }
+        return self.entities[index]
     }
 
     /// Finds an entity by ID.
     public func entity(withID id: String) -> AnyPolyDataEntity? {
-        entities.first { $0.id == id }
+        self.entities.first { $0.id == id }
     }
 
     /// Finds the index of an entity by ID.
     public func entityIndex(withID id: String) -> Int? {
-        entities.firstIndex { $0.id == id }
+        self.entities.firstIndex { $0.id == id }
     }
 }
 
@@ -88,6 +94,14 @@ public struct PolyDataExplorerStats {
     /// Display names per entity ID.
     public let displayNames: [String: String]
 
+    /// Formatted stats string (e.g., "Personas: 5  •  Conversations: 12").
+    public var formattedString: String {
+        self.displayNames.keys.sorted().compactMap { id in
+            guard let name = displayNames[id], let count = counts[id] else { return nil }
+            return "\(name): \(count)"
+        }.joined(separator: "  •  ")
+    }
+
     // MARK: Initialization
 
     public init(counts: [String: Int], displayNames: [String: String]) {
@@ -99,7 +113,7 @@ public struct PolyDataExplorerStats {
     @MainActor
     public static func fetch(
         from configuration: PolyDataExplorerConfiguration,
-        context: ModelContext
+        context: ModelContext,
     ) -> PolyDataExplorerStats {
         var counts = [String: Int]()
         var names = [String: String]()
@@ -110,13 +124,5 @@ public struct PolyDataExplorerStats {
         }
 
         return PolyDataExplorerStats(counts: counts, displayNames: names)
-    }
-
-    /// Formatted stats string (e.g., "Personas: 5  •  Conversations: 12").
-    public var formattedString: String {
-        displayNames.keys.sorted().compactMap { id in
-            guard let name = displayNames[id], let count = counts[id] else { return nil }
-            return "\(name): \(count)"
-        }.joined(separator: "  •  ")
     }
 }

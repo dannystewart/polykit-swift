@@ -1,3 +1,9 @@
+//
+//  PolyDataIntegrity.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 import Foundation
 import SwiftData
 
@@ -27,7 +33,7 @@ public struct PolyDataIntegrityIssue: Sendable {
         displayName: String,
         entityID: String,
         recordID: String,
-        details: String
+        details: String,
     ) {
         self.type = type
         self.displayName = displayName
@@ -41,6 +47,11 @@ public struct PolyDataIntegrityIssue: Sendable {
 
 /// Report containing all data integrity issues found during analysis.
 public struct PolyDataIntegrityReport: Sendable {
+    // MARK: Initialization
+
+    /// Creates an empty report with no issues.
+    public static let empty: PolyDataIntegrityReport = .init(issues: [])
+
     /// All issues found during analysis.
     public let issues: [PolyDataIntegrityIssue]
 
@@ -51,15 +62,24 @@ public struct PolyDataIntegrityReport: Sendable {
     private let issueTypes: [String: String]
 
     /// Whether any issues were found.
-    public var hasIssues: Bool { !issues.isEmpty }
+    public var hasIssues: Bool { !self.issues.isEmpty }
 
     /// Total number of issues.
-    public var issueCount: Int { issues.count }
+    public var issueCount: Int { self.issues.count }
 
-    // MARK: Initialization
+    /// Gets the count of issues per entity type.
+    public var issueCountsByEntity: [String: Int] {
+        var counts = [String: Int]()
+        for issue in self.issues {
+            counts[issue.entityID, default: 0] += 1
+        }
+        return counts
+    }
 
-    /// Creates an empty report with no issues.
-    public static let empty = PolyDataIntegrityReport(issues: [])
+    /// Gets issues grouped by type.
+    public var issuesByType: [String: [PolyDataIntegrityIssue]] {
+        Dictionary(grouping: self.issues, by: \.type)
+    }
 
     public init(issues: [PolyDataIntegrityIssue]) {
         self.issues = issues
@@ -87,7 +107,7 @@ public struct PolyDataIntegrityReport: Sendable {
     ///   - recordID: The record's unique identifier.
     /// - Returns: True if the record has issues.
     public func hasIssue(entityID: String, recordID: String) -> Bool {
-        issuesByEntity[entityID]?.contains(recordID) ?? false
+        self.issuesByEntity[entityID]?.contains(recordID) ?? false
     }
 
     /// Gets the issue type for a specific record.
@@ -98,7 +118,7 @@ public struct PolyDataIntegrityReport: Sendable {
     /// - Returns: The issue type string, or nil if no issue.
     public func issueType(entityID: String, recordID: String) -> String? {
         let key = "\(entityID):\(recordID)"
-        return issueTypes[key]
+        return self.issueTypes[key]
     }
 
     /// Gets all issues for a specific entity type.
@@ -106,21 +126,7 @@ public struct PolyDataIntegrityReport: Sendable {
     /// - Parameter entityID: The entity type identifier.
     /// - Returns: Array of issues for that entity.
     public func issues(for entityID: String) -> [PolyDataIntegrityIssue] {
-        issues.filter { $0.entityID == entityID }
-    }
-
-    /// Gets the count of issues per entity type.
-    public var issueCountsByEntity: [String: Int] {
-        var counts = [String: Int]()
-        for issue in issues {
-            counts[issue.entityID, default: 0] += 1
-        }
-        return counts
-    }
-
-    /// Gets issues grouped by type.
-    public var issuesByType: [String: [PolyDataIntegrityIssue]] {
-        Dictionary(grouping: issues, by: \.type)
+        self.issues.filter { $0.entityID == entityID }
     }
 }
 

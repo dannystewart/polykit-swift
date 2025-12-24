@@ -544,59 +544,59 @@ public struct AnyFieldMapping: Sendable {
     private let _setStringValue: (@Sendable (Any, String) -> Void)?
 
     public init<Entity: PolySyncable>(_ mapping: PolyFieldMapping<Entity>) {
-        columnName = mapping.columnName
-        propertyName = mapping.propertyName
-        encrypted = mapping.encrypted
-        fieldType = mapping.fieldType
-        isOptional = mapping.isOptional
-        rejectIfEmpty = mapping.rejectIfEmpty
+        self.columnName = mapping.columnName
+        self.propertyName = mapping.propertyName
+        self.encrypted = mapping.encrypted
+        self.fieldType = mapping.fieldType
+        self.isOptional = mapping.isOptional
+        self.rejectIfEmpty = mapping.rejectIfEmpty
 
-        _getValue = { entity in
+        self._getValue = { entity in
             guard let typedEntity = entity as? Entity else { return nil }
             return mapping.getValue(typedEntity)
         }
 
-        _setValue = { entity, json in
+        self._setValue = { entity, json in
             guard let typedEntity = entity as? Entity else { return false }
             return mapping.setValue(typedEntity, json)
         }
 
         if let getStr = mapping.getStringValue {
-            _getStringValue = { entity in
+            self._getStringValue = { entity in
                 guard let typedEntity = entity as? Entity else { return nil }
                 return getStr(typedEntity)
             }
         } else {
-            _getStringValue = nil
+            self._getStringValue = nil
         }
 
         if let setStr = mapping.setStringValue {
-            _setStringValue = { entity, value in
+            self._setStringValue = { entity, value in
                 guard let typedEntity = entity as? Entity else { return }
                 setStr(typedEntity, value)
             }
         } else {
-            _setStringValue = nil
+            self._setStringValue = nil
         }
     }
 
     /// Get the value from an entity.
     public func getValue(from entity: Any) -> AnyJSON? {
-        _getValue(entity)
+        self._getValue(entity)
     }
 
     /// Set a value on an entity.
     public func setValue(on entity: Any, value: AnyJSON) -> Bool {
-        _setValue(entity, value)
+        self._setValue(entity, value)
     }
 
     /// Get the string value for encryption.
     public func getStringValue(from entity: Any) -> String? {
-        _getStringValue?(entity)
+        self._getStringValue?(entity)
     }
 
     /// Set a decrypted string value.
     public func setStringValue(on entity: Any, value: String) {
-        _setStringValue?(entity, value)
+        self._setStringValue?(entity, value)
     }
 }

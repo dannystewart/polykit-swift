@@ -67,7 +67,7 @@ public enum ULID {
         let status = SecRandomCopyBytes(kSecRandomDefault, random.count, &random)
         precondition(status == errSecSuccess, "SecRandomCopyBytes failed: \(status)")
 
-        return encode(timestampMs: timestampMs, random: random)
+        return self.encode(timestampMs: timestampMs, random: random)
     }
 
     /// Decode a ULID string into its timestamp (ms) and 10-byte random component.
@@ -80,9 +80,9 @@ public enum ULID {
         var acc = [UInt8](repeating: 0, count: 17)
 
         for c in ulid.utf8 {
-            let v = decodeTable[Int(c)]
+            let v = self.decodeTable[Int(c)]
             guard v >= 0 else { return nil }
-            shiftLeft(&acc, by: 5)
+            self.shiftLeft(&acc, by: 5)
             acc[acc.count - 1] |= UInt8(v)
         }
 
@@ -134,7 +134,7 @@ public enum ULID {
             while bitsLeft >= 5 {
                 let shift = bitsLeft - 5
                 let index = Int((buffer >> shift) & 0x1F)
-                output.append(alphabet[index])
+                output.append(self.alphabet[index])
                 bitsLeft -= 5
 
                 // Mask out consumed bits to keep buffer bounded.
@@ -189,21 +189,21 @@ public final class ULIDGenerator: Sendable {
     }
 
     public nonisolated func next(date: Date = Date()) -> String {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
 
         let nowMs = UInt64(max(0, date.timeIntervalSince1970) * 1000.0)
 
-        if nowMs > lastTimestampMs {
-            lastTimestampMs = nowMs
-            lastRandom = Self.randomBytes(count: 10)
+        if nowMs > self.lastTimestampMs {
+            self.lastTimestampMs = nowMs
+            self.lastRandom = Self.randomBytes(count: 10)
         } else {
             // Clock skew backwards or multiple ULIDs in the same millisecond.
             // Keep timestamp constant and increment the random component.
-            incrementRandom(&lastRandom)
+            self.incrementRandom(&self.lastRandom)
         }
 
-        return ULID.encode(timestampMs: lastTimestampMs, random: lastRandom)
+        return ULID.encode(timestampMs: self.lastTimestampMs, random: self.lastRandom)
     }
 
     /// Seed the monotonic generator from an existing ULID.
@@ -213,21 +213,21 @@ public final class ULIDGenerator: Sendable {
     public nonisolated func seed(fromExistingMaxULID ulid: String) {
         guard let decoded = ULID.decode(ulid) else { return }
 
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
 
-        let shouldReplace: Bool = if decoded.timestampMs > lastTimestampMs {
+        let shouldReplace: Bool = if decoded.timestampMs > self.lastTimestampMs {
             true
-        } else if decoded.timestampMs < lastTimestampMs {
+        } else if decoded.timestampMs < self.lastTimestampMs {
             false
         } else {
             // Same timestamp: compare random lexicographically.
-            lastRandom.lexicographicallyPrecedes(decoded.random)
+            self.lastRandom.lexicographicallyPrecedes(decoded.random)
         }
 
         guard shouldReplace else { return }
-        lastTimestampMs = decoded.timestampMs
-        lastRandom = decoded.random
+        self.lastTimestampMs = decoded.timestampMs
+        self.lastRandom = decoded.random
     }
 
     private nonisolated func incrementRandom(_ bytes: inout [UInt8]) {

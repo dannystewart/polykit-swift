@@ -24,7 +24,7 @@ public struct PolyParentRelation<Child: PolySyncable, Parent: PolySyncable>: Sen
 
     /// Get the parent ID from a child entity
     public func getParentID(from child: Child) -> String {
-        child[keyPath: parentIDKeyPath]
+        child[keyPath: self.parentIDKeyPath]
     }
 }
 
@@ -41,7 +41,7 @@ public struct AnyParentRelation: Sendable {
     /// This is resolved lazily because the parent may not be registered when the child is registered.
     public var parentTableName: String {
         guard let parentConfig = PolyBaseRegistry.shared.config(forTypeName: parentTypeName) else {
-            polyWarning("AnyParentRelation: Parent type '\(parentTypeName)' not registered")
+            polyWarning("AnyParentRelation: Parent type '\(self.parentTypeName)' not registered")
             return ""
         }
         return parentConfig.tableName
@@ -50,15 +50,15 @@ public struct AnyParentRelation: Sendable {
     public init<Child: PolySyncable, Parent: PolySyncable>(
         _ relation: PolyParentRelation<Child, Parent>,
     ) {
-        parentTypeName = String(describing: Parent.self)
-        _getParentID = { entity in
+        self.parentTypeName = String(describing: Parent.self)
+        self._getParentID = { entity in
             guard let child = entity as? Child else { return nil }
             return relation.getParentID(from: child)
         }
     }
 
     public func getParentID(from entity: Any) -> String? {
-        _getParentID(entity)
+        self._getParentID(entity)
     }
 }
 
@@ -111,7 +111,7 @@ public final class PolyEntityConfig<Entity: PolySyncable>: @unchecked Sendable {
     private var _parentRelation: AnyParentRelation?
 
     /// Get the parent relation (if any).
-    public var parentRelation: AnyParentRelation? { _parentRelation }
+    public var parentRelation: AnyParentRelation? { self._parentRelation }
 
     public init() {}
 
@@ -130,7 +130,7 @@ public final class PolyEntityConfig<Entity: PolySyncable>: @unchecked Sendable {
             parentIDKeyPath: keyPath,
             parentType: Parent.self)
         // Table name is resolved lazily from the registry when accessed
-        _parentRelation = AnyParentRelation(relation)
+        self._parentRelation = AnyParentRelation(relation)
     }
 }
 
@@ -182,40 +182,40 @@ public final class AnyEntityConfig: @unchecked Sendable {
     private let _factory: ((_ record: [String: AnyJSON], _ context: ModelContext) throws -> Any)?
 
     /// Get all field mappings.
-    public var fields: [AnyFieldMapping] { _fields }
+    public var fields: [AnyFieldMapping] { self._fields }
 
     /// Whether this entity has a factory for creating new instances from remote records.
-    public var hasFactory: Bool { _factory != nil }
+    public var hasFactory: Bool { self._factory != nil }
 
     public init<Entity: PolySyncable>(_ config: PolyEntityConfig<Entity>) {
-        tableName = config.tableName
-        entityTypeName = String(describing: Entity.self)
-        notification = config.notification
-        parentRelation = config.parentRelation
-        userIDColumn = config.userIDColumn
-        includeUserID = config.includeUserID
-        conflictRules = config.conflictRules
-        _fields = config.fields.map { AnyFieldMapping($0) }
-        _entityType = Entity.self
+        self.tableName = config.tableName
+        self.entityTypeName = String(describing: Entity.self)
+        self.notification = config.notification
+        self.parentRelation = config.parentRelation
+        self.userIDColumn = config.userIDColumn
+        self.includeUserID = config.includeUserID
+        self.conflictRules = config.conflictRules
+        self._fields = config.fields.map { AnyFieldMapping($0) }
+        self._entityType = Entity.self
 
         // Type-erase the factory
         if let typedFactory = config.factory {
-            _factory = { record, context in
+            self._factory = { record, context in
                 try typedFactory(record, context)
             }
         } else {
-            _factory = nil
+            self._factory = nil
         }
     }
 
     /// Check if an entity is of this config's type.
     public func matches(_ entity: Any) -> Bool {
-        type(of: entity) == _entityType
+        type(of: entity) == self._entityType
     }
 
     /// Get a field mapping by column name.
     public func field(forColumn column: String) -> AnyFieldMapping? {
-        _fields.first { $0.columnName == column }
+        self._fields.first { $0.columnName == column }
     }
 
     /// Create a new entity from a remote record using the registered factory.
@@ -227,7 +227,7 @@ public final class AnyEntityConfig: @unchecked Sendable {
     /// - Throws: If no factory is registered or creation fails
     public func createEntity(from record: [String: AnyJSON], context: ModelContext) throws -> Any {
         guard let factory = _factory else {
-            throw PolyRegistryError.noFactory(entityTypeName)
+            throw PolyRegistryError.noFactory(self.entityTypeName)
         }
         return try factory(record, context)
     }
@@ -279,16 +279,16 @@ public final class PolyBaseRegistry: @unchecked Sendable {
 
     /// Get all registered table names.
     public var registeredTables: [String] {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        return Array(tableToType.keys)
+        return Array(self.tableToType.keys)
     }
 
     /// Get all registered entity type names.
     public var registeredTypes: [String] {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        return Array(configs.keys)
+        return Array(self.configs.keys)
     }
 
     private init() {}
@@ -315,10 +315,10 @@ public final class PolyBaseRegistry: @unchecked Sendable {
         let key = String(describing: Entity.self)
         let anyConfig = AnyEntityConfig(config)
 
-        lock.lock()
-        configs[key] = anyConfig
-        tableToType[config.tableName] = key
-        lock.unlock()
+        self.lock.lock()
+        self.configs[key] = anyConfig
+        self.tableToType[config.tableName] = key
+        self.lock.unlock()
 
         polyDebug("PolyBaseRegistry: Registered \(Entity.self) -> \(config.tableName) with \(config.fields.count) fields")
     }
@@ -328,54 +328,54 @@ public final class PolyBaseRegistry: @unchecked Sendable {
     /// Get the configuration for an entity type.
     public func config<Entity: PolySyncable>(for _: Entity.Type) -> AnyEntityConfig? {
         let key = String(describing: Entity.self)
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        return configs[key]
+        return self.configs[key]
     }
 
     /// Get the configuration for an entity instance.
     public func config(for entity: Any) -> AnyEntityConfig? {
         let key = String(describing: type(of: entity))
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        return configs[key]
+        return self.configs[key]
     }
 
     /// Get the configuration for a table name.
     public func config(forTable tableName: String) -> AnyEntityConfig? {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
         guard let typeKey = tableToType[tableName] else { return nil }
-        return configs[typeKey]
+        return self.configs[typeKey]
     }
 
     /// Get the configuration for a type name string.
     /// Used for lazy resolution of parent relationships.
     public func config(forTypeName typeName: String) -> AnyEntityConfig? {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        return configs[typeName]
+        return self.configs[typeName]
     }
 
     /// Check if an entity type is registered.
     public func isRegistered(_ entityType: (some PolySyncable).Type) -> Bool {
-        config(for: entityType) != nil
+        self.config(for: entityType) != nil
     }
 
     /// Check if a table is registered.
     public func isRegistered(table: String) -> Bool {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        return tableToType[table] != nil
+        return self.tableToType[table] != nil
     }
 
     // MARK: - Clear (for testing)
 
     /// Clear all registrations. Useful for testing.
     public func clearAll() {
-        lock.lock()
-        configs.removeAll()
-        tableToType.removeAll()
-        lock.unlock()
+        self.lock.lock()
+        self.configs.removeAll()
+        self.tableToType.removeAll()
+        self.lock.unlock()
     }
 }

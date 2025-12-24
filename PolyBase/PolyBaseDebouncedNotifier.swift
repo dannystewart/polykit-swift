@@ -33,7 +33,7 @@ public final class PolyBaseDebouncedNotifier {
 
     /// Number of currently pending notifications.
     public var pendingCount: Int {
-        pendingNotifications.count
+        self.pendingNotifications.count
     }
 
     /// Create a debounced notifier.
@@ -62,14 +62,14 @@ public final class PolyBaseDebouncedNotifier {
         userInfo: [AnyHashable: Any]? = nil,
     ) {
         // Cancel any pending notification with this name
-        pendingNotifications[name]?.cancel()
+        self.pendingNotifications[name]?.cancel()
 
         // Schedule a new one
-        pendingNotifications[name] = Task {
-            try? await Task.sleep(for: debounceInterval)
+        self.pendingNotifications[name] = Task {
+            try? await Task.sleep(for: self.debounceInterval)
             guard !Task.isCancelled else { return }
             NotificationCenter.default.post(name: name, object: object, userInfo: userInfo)
-            pendingNotifications.removeValue(forKey: name)
+            self.pendingNotifications.removeValue(forKey: name)
         }
     }
 
@@ -82,28 +82,28 @@ public final class PolyBaseDebouncedNotifier {
         object: Any? = nil,
         userInfo: [AnyHashable: Any]? = nil,
     ) {
-        pendingNotifications[name]?.cancel()
-        pendingNotifications.removeValue(forKey: name)
+        self.pendingNotifications[name]?.cancel()
+        self.pendingNotifications.removeValue(forKey: name)
         NotificationCenter.default.post(name: name, object: object, userInfo: userInfo)
     }
 
     /// Cancel a pending notification without posting it.
     public func cancel(_ name: Notification.Name) {
-        pendingNotifications[name]?.cancel()
-        pendingNotifications.removeValue(forKey: name)
+        self.pendingNotifications[name]?.cancel()
+        self.pendingNotifications.removeValue(forKey: name)
     }
 
     /// Cancel all pending notifications.
     public func cancelAll() {
-        for task in pendingNotifications.values {
+        for task in self.pendingNotifications.values {
             task.cancel()
         }
-        pendingNotifications.removeAll()
+        self.pendingNotifications.removeAll()
     }
 
     /// Check if a notification is pending (scheduled but not yet fired).
     public func isPending(_ name: Notification.Name) -> Bool {
-        pendingNotifications[name] != nil
+        self.pendingNotifications[name] != nil
     }
 }
 
@@ -113,14 +113,14 @@ public extension PolyBaseDebouncedNotifier {
     /// Post multiple notifications, all debounced.
     func post(_ names: Notification.Name...) {
         for name in names {
-            post(name)
+            self.post(name)
         }
     }
 
     /// Post multiple notifications immediately.
     func postImmediately(_ names: Notification.Name...) {
         for name in names {
-            postImmediately(name)
+            self.postImmediately(name)
         }
     }
 }

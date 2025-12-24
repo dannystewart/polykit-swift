@@ -1,3 +1,9 @@
+//
+//  iOSPolyDataExplorerViewController.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 #if os(iOS)
 
     import SwiftData
@@ -11,8 +17,6 @@
     /// down to list → detail navigation on iPhone.
     @MainActor
     public final class iOSPolyDataExplorerViewController: UISplitViewController {
-        // MARK: Properties
-
         private let dataSource: PolyDataExplorerDataSource
 
         private let recordsViewController: iOSPolyDataExplorerRecordsViewController
@@ -32,28 +36,28 @@
         public init(configuration: PolyDataExplorerConfiguration, modelContext: ModelContext) {
             self.dataSource = PolyDataExplorerDataSource(
                 configuration: configuration,
-                modelContext: modelContext
+                modelContext: modelContext,
             )
 
-            self.recordsViewController = iOSPolyDataExplorerRecordsViewController(dataSource: dataSource)
-            self.detailViewController = iOSPolyDataExplorerDetailController(dataSource: dataSource)
+            self.recordsViewController = iOSPolyDataExplorerRecordsViewController(dataSource: self.dataSource)
+            self.detailViewController = iOSPolyDataExplorerDetailController(dataSource: self.dataSource)
 
             super.init(style: .doubleColumn)
 
             preferredSplitBehavior = .tile
             preferredDisplayMode = .oneBesideSecondary
 
-            setViewController(recordsViewController, for: .primary)
-            setViewController(recordsViewController, for: .compact)
-            setViewController(detailViewController, for: .secondary)
+            setViewController(self.recordsViewController, for: .primary)
+            setViewController(self.recordsViewController, for: .compact)
+            setViewController(self.detailViewController, for: .secondary)
 
-            setupContextCallbacks()
+            self.setupContextCallbacks()
 
-            recordsViewController.onSelectRecord = { [weak self] record in
+            self.recordsViewController.onSelectRecord = { [weak self] record in
                 self?.showInspector(for: record)
             }
 
-            recordsViewController.onEntitySelected = { [weak self] index in
+            self.recordsViewController.onEntitySelected = { [weak self] index in
                 self?.switchToEntity(at: index)
             }
         }
@@ -66,7 +70,7 @@
         // MARK: Setup
 
         private func setupContextCallbacks() {
-            let context = dataSource.context
+            let context = self.dataSource.context
 
             context.reloadData = { [weak self] in
                 self?.recordsViewController.reloadData()
@@ -115,28 +119,28 @@
         private func showInspector(for record: AnyObject) {
             guard let entity = dataSource.currentEntity else { return }
 
-            detailViewController.setRecord(record, entity: entity)
+            self.detailViewController.setRecord(record, entity: entity)
 
             // On compact size classes, this will navigate to the detail column.
             show(.secondary)
         }
 
         private func clearInspector() {
-            detailViewController.setRecord(nil, entity: nil)
+            self.detailViewController.setRecord(nil, entity: nil)
             if isCollapsed {
                 show(.primary)
             }
         }
 
         private func switchToEntity(at index: Int) {
-            recordsViewController.setSelectedEntityIndex(index)
-            clearInspector()
+            self.recordsViewController.setSelectedEntityIndex(index)
+            self.clearInspector()
         }
 
         // MARK: Progress Overlay
 
         private func showProgressOverlay(message: String) {
-            progressOverlay?.removeFromSuperview()
+            self.progressOverlay?.removeFromSuperview()
 
             let overlay = UIView()
             overlay.translatesAutoresizingMaskIntoConstraints = false
@@ -183,18 +187,18 @@
                 label.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -24),
             ])
 
-            progressOverlay = overlay
-            progressLabel = label
+            self.progressOverlay = overlay
+            self.progressLabel = label
         }
 
         private func updateProgressOverlay(message: String) {
-            progressLabel?.text = message
+            self.progressLabel?.text = message
         }
 
         private func hideProgressOverlay() {
-            progressOverlay?.removeFromSuperview()
-            progressOverlay = nil
-            progressLabel = nil
+            self.progressOverlay?.removeFromSuperview()
+            self.progressOverlay = nil
+            self.progressLabel = nil
         }
 
         // MARK: Alerts

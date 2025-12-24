@@ -66,55 +66,55 @@ final class PlayerCore: @unchecked Sendable {
     private nonisolated(unsafe) var audioAnalyzer: AudioAnalyzer?
 
     nonisolated var frequencyBands: [Float] {
-        audioAnalyzer?.frequencyBands ?? []
+        self.audioAnalyzer?.frequencyBands ?? []
     }
 
     init() {
-        setupInterruptionHandling()
+        self.setupInterruptionHandling()
     }
 
     // MARK: - Playback Control
 
     func play(_ item: any Playable, playbackURL: URL, isCached: Bool) {
         // If it's the same item and we have a player, just resume (unless we're at the end)
-        if currentItem?.id == item.id, let player, currentTime < duration - 0.5 {
+        if self.currentItem?.id == item.id, let player, currentTime < duration - 0.5 {
             player.play()
-            isPlaying = true
-            notifyStateChanged()
+            self.isPlaying = true
+            self.notifyStateChanged()
             return
         }
 
         // New item - setup new player
-        cleanup()
-        currentItem = item
-        isLoading = true
-        errorMessage = nil
-        isStreamingPlayback = !isCached
-        canSeek = isCached
-        notifyStateChanged()
+        self.cleanup()
+        self.currentItem = item
+        self.isLoading = true
+        self.errorMessage = nil
+        self.isStreamingPlayback = !isCached
+        self.canSeek = isCached
+        self.notifyStateChanged()
 
         // Pre-create artwork for this item if it has artwork data
         if let artworkData = item.artworkImageData {
             #if canImport(UIKit)
                 if let image = UIImage(data: artworkData) {
                     let imageSize = image.size
-                    currentItemArtwork = MPMediaItemArtwork(boundsSize: imageSize) { _ in
+                    self.currentItemArtwork = MPMediaItemArtwork(boundsSize: imageSize) { _ in
                         UIImage(data: artworkData) ?? UIImage()
                     }
                 }
             #elseif canImport(AppKit)
                 if let image = NSImage(data: artworkData) {
                     let imageSize = image.size
-                    currentItemArtwork = MPMediaItemArtwork(boundsSize: imageSize) { _ in
+                    self.currentItemArtwork = MPMediaItemArtwork(boundsSize: imageSize) { _ in
                         NSImage(data: artworkData) ?? NSImage()
                     }
                 }
             #endif
         } else {
-            currentItemArtwork = nil
+            self.currentItemArtwork = nil
         }
 
-        currentPlaybackURL = playbackURL
+        self.currentPlaybackURL = playbackURL
 
         let playerItem = AVPlayerItem(url: playbackURL)
         let newPlayer = AVPlayer(playerItem: playerItem)
@@ -128,75 +128,75 @@ final class PlayerCore: @unchecked Sendable {
 
         player = newPlayer
 
-        currentPlayerItemID = UUID().uuidString
-        logger.debug("Created new player item \(currentPlayerItemID!) from \(isCached ? "cache" : "stream") for URL: \(playbackURL.lastPathComponent)")
+        self.currentPlayerItemID = UUID().uuidString
+        logger.debug("Created new player item \(self.currentPlayerItemID!) from \(isCached ? "cache" : "stream") for URL: \(playbackURL.lastPathComponent)")
 
-        setupObservers(playerItem: playerItem, player: newPlayer)
-        setupAudioAnalysis(player: newPlayer)
+        self.setupObservers(playerItem: playerItem, player: newPlayer)
+        self.setupAudioAnalysis(player: newPlayer)
 
         newPlayer.play()
-        isPlaying = true
-        notifyStateChanged()
+        self.isPlaying = true
+        self.notifyStateChanged()
 
         // Update Now Playing info immediately with the new track's metadata
         // to create a seamless A → B transition instead of A → blank → B
-        updateNowPlayingInfo()
+        self.updateNowPlayingInfo()
     }
 
     // MARK: - Configuration
 
     func setDefaultArtworkImageName(_ name: String?) {
-        defaultArtworkImageName = name
+        self.defaultArtworkImageName = name
         #if canImport(UIKit)
             if let name, let image = UIImage(named: name) {
-                defaultArtwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+                self.defaultArtwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
             } else {
-                defaultArtwork = nil
+                self.defaultArtwork = nil
             }
         #elseif canImport(AppKit)
             if let name, let image = NSImage(named: name) {
-                defaultArtwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+                self.defaultArtwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
             } else {
-                defaultArtwork = nil
+                self.defaultArtwork = nil
             }
         #endif
     }
 
     func setDefaultArtwork(_ artwork: MPMediaItemArtwork?) {
-        defaultArtwork = artwork
+        self.defaultArtwork = artwork
     }
 
     func togglePlayPause() {
         guard let player else { return }
 
-        if isPlaying {
+        if self.isPlaying {
             player.pause()
-            isPlaying = false
+            self.isPlaying = false
         } else {
             player.play()
-            isPlaying = true
+            self.isPlaying = true
         }
-        notifyStateChanged()
+        self.notifyStateChanged()
         // Don't call updateNowPlayingInfo() here - let the time observer handle it
     }
 
     func stop() {
-        cleanup()
-        currentItem = nil
-        notifyStateChanged()
+        self.cleanup()
+        self.currentItem = nil
+        self.notifyStateChanged()
     }
 
     func seek(to time: TimeInterval) {
         guard let player else { return }
-        guard canSeek else {
+        guard self.canSeek else {
             logger.debug("Seeking is disabled; the file is streaming and not yet cached")
             return
         }
 
-        logger.debug("Seeking to \(time)s (current: \(currentTime)s)")
+        logger.debug("Seeking to \(time)s (current: \(self.currentTime)s)")
 
         let cmTime = CMTime(seconds: time, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
-        lastObservedTime = time
+        self.lastObservedTime = time
 
         player.seek(to: cmTime) { [weak self] _ in
             DispatchQueue.main.async {
@@ -210,7 +210,7 @@ final class PlayerCore: @unchecked Sendable {
     func seekToStart() {
         guard let player else { return }
         let startTime = CMTime.zero
-        lastObservedTime = 0
+        self.lastObservedTime = 0
 
         player.seek(to: startTime) { [weak self] finished in
             DispatchQueue.main.async {
@@ -223,8 +223,8 @@ final class PlayerCore: @unchecked Sendable {
     }
 
     func enableSeeking() {
-        canSeek = true
-        notifyStateChanged()
+        self.canSeek = true
+        self.notifyStateChanged()
     }
 
     func switchToCachedVersion(cachedURL: URL) {
@@ -241,7 +241,7 @@ final class PlayerCore: @unchecked Sendable {
 
         // Save current playback state
         let currentPlaybackTime = currentPlayerItem.currentTime()
-        let wasPlaying = isPlaying
+        let wasPlaying = self.isPlaying
 
         logger.debug("Switching to cached version at \(currentPlaybackTime.seconds)s")
 
@@ -250,17 +250,17 @@ final class PlayerCore: @unchecked Sendable {
         let newPlayerItem = AVPlayerItem(url: cachedURL)
 
         // Clean up old observers before replacing the item
-        statusObservation?.invalidate()
-        statusObservation = nil
-        timeControlStatusObservation?.invalidate()
-        timeControlStatusObservation = nil
-        cancellables.removeAll()
+        self.statusObservation?.invalidate()
+        self.statusObservation = nil
+        self.timeControlStatusObservation?.invalidate()
+        self.timeControlStatusObservation = nil
+        self.cancellables.removeAll()
 
         // Replace immediately
         player.replaceCurrentItem(with: newPlayerItem)
 
         // Re-setup observers for the new item
-        setupObservers(playerItem: newPlayerItem, player: player)
+        self.setupObservers(playerItem: newPlayerItem, player: player)
 
         // Seek to the position
         logger.debug("Seeking to \(currentPlaybackTime.seconds)s")
@@ -351,21 +351,21 @@ final class PlayerCore: @unchecked Sendable {
     // MARK: - State Notification
 
     private func notifyStateChanged() {
-        onStateChanged?()
+        self.onStateChanged?()
     }
 
     // MARK: - Private Setup
 
     private func setupObservers(playerItem: AVPlayerItem, player: AVPlayer) {
         // Observe player status
-        statusObservation = playerItem.observe(\.status, options: [.new]) { [weak self] item, _ in
+        self.statusObservation = playerItem.observe(\.status, options: [.new]) { [weak self] item, _ in
             DispatchQueue.main.async {
                 self?.handlePlayerItemStatusChange(item)
             }
         }
 
         // Observe player time control status
-        timeControlStatusObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
+        self.timeControlStatusObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
             DispatchQueue.main.async {
                 self?.handleTimeControlStatusChange(player)
             }
@@ -377,31 +377,31 @@ final class PlayerCore: @unchecked Sendable {
             .sink { [weak self] duration in
                 guard let self, duration.isNumeric else { return }
                 self.duration = duration.seconds
-                notifyStateChanged()
+                self.notifyStateChanged()
                 // Don't call updateNowPlayingInfo() here - let the time observer handle it
             }
-            .store(in: &cancellables)
+            .store(in: &self.cancellables)
 
         // Observe buffer status
         playerItem.publisher(for: \.isPlaybackLikelyToKeepUp)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] isLikelyToKeepUp in
                 guard let self else { return }
-                if !isLikelyToKeepUp, isPlaying {
+                if !isLikelyToKeepUp, self.isPlaying {
                     logger.debug("File is buffering; playback may stall or stutter")
                 }
             }
-            .store(in: &cancellables)
+            .store(in: &self.cancellables)
 
         playerItem.publisher(for: \.isPlaybackBufferEmpty)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] isBufferEmpty in
                 guard let self else { return }
-                if isBufferEmpty, isPlaying {
+                if isBufferEmpty, self.isPlaying {
                     logger.debug("Playback buffer is empty")
                 }
             }
-            .store(in: &cancellables)
+            .store(in: &self.cancellables)
 
         // Monitor loaded time ranges
         playerItem.publisher(for: \.loadedTimeRanges)
@@ -409,33 +409,33 @@ final class PlayerCore: @unchecked Sendable {
             .sink { [weak self] timeRanges in
                 guard let self else { return }
                 if !timeRanges.isEmpty {
-                    let currentPlaybackTime = currentTime
+                    let currentPlaybackTime = self.currentTime
                     for timeRange in timeRanges {
                         let range = timeRange.timeRangeValue
                         let start = range.start.seconds
                         let rangeDuration = range.duration.seconds
 
-                        if currentPlaybackTime > start + rangeDuration - 5.0, isPlaying {
+                        if currentPlaybackTime > start + rangeDuration - 5.0, self.isPlaying {
                             logger.debug("Approaching end of loaded data at \(currentPlaybackTime)s; range: \(start)s to \(start + rangeDuration)s")
                         }
                     }
                 }
             }
-            .store(in: &cancellables)
+            .store(in: &self.cancellables)
 
         // Setup time observer
         let interval = CMTime(seconds: 0.1, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
-        timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+        self.timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             guard let self else { return }
             // We're on main queue since we explicitly passed queue: .main
             // Don't use MainActor.assumeIsolated - it creates dispatch barriers that conflict with MPNowPlayingInfoCenter
-            currentTime = time.seconds
-            notifyStateChanged()
+            self.currentTime = time.seconds
+            self.notifyStateChanged()
 
             // Update Now Playing info every second
-            if time.seconds - lastNowPlayingUpdate >= 1.0 {
-                lastNowPlayingUpdate = time.seconds
-                updateNowPlayingInfo()
+            if time.seconds - self.lastNowPlayingUpdate >= 1.0 {
+                self.lastNowPlayingUpdate = time.seconds
+                self.updateNowPlayingInfo()
             }
         }
 
@@ -445,7 +445,7 @@ final class PlayerCore: @unchecked Sendable {
             .sink { [weak self] _ in
                 self?.handlePlaybackEnded()
             }
-            .store(in: &cancellables)
+            .store(in: &self.cancellables)
 
         // Observe playback stalls
         NotificationCenter.default.publisher(for: .AVPlayerItemPlaybackStalled, object: playerItem)
@@ -453,7 +453,7 @@ final class PlayerCore: @unchecked Sendable {
             .sink { [weak self] _ in
                 self?.handlePlaybackStalled()
             }
-            .store(in: &cancellables)
+            .store(in: &self.cancellables)
 
         // Observe error log entries
         NotificationCenter.default.publisher(for: .AVPlayerItemNewErrorLogEntry, object: playerItem)
@@ -461,7 +461,7 @@ final class PlayerCore: @unchecked Sendable {
             .sink { [weak self] notification in
                 self?.handleErrorLogEntry(notification)
             }
-            .store(in: &cancellables)
+            .store(in: &self.cancellables)
 
         // Observe failed to play to end time
         NotificationCenter.default.publisher(for: .AVPlayerItemFailedToPlayToEndTime, object: playerItem)
@@ -469,7 +469,7 @@ final class PlayerCore: @unchecked Sendable {
             .sink { [weak self] notification in
                 self?.handleFailedToPlayToEndTime(notification)
             }
-            .store(in: &cancellables)
+            .store(in: &self.cancellables)
     }
 
     private nonisolated func setupAudioAnalysis(player: AVPlayer) {
@@ -537,17 +537,17 @@ final class PlayerCore: @unchecked Sendable {
     private func handlePlayerItemStatusChange(_ item: AVPlayerItem) {
         switch item.status {
         case .readyToPlay:
-            isLoading = false
-            errorMessage = nil
-            notifyStateChanged()
+            self.isLoading = false
+            self.errorMessage = nil
+            self.notifyStateChanged()
             // Update now playing info immediately when ready
-            updateNowPlayingInfo()
+            self.updateNowPlayingInfo()
 
         case .failed:
-            isLoading = false
-            isPlaying = false
-            errorMessage = item.error?.localizedDescription ?? "Playback failed"
-            notifyStateChanged()
+            self.isLoading = false
+            self.isPlaying = false
+            self.errorMessage = item.error?.localizedDescription ?? "Playback failed"
+            self.notifyStateChanged()
             logger.error("Player item failed: \(item.error?.localizedDescription ?? "unknown error")")
 
         case .unknown:
@@ -583,21 +583,21 @@ final class PlayerCore: @unchecked Sendable {
     private func handlePlaybackEnded() {
         // Mark playback as stopped so UIs can correctly reflect a non-playing state
         // when we reach the natural end of an item.
-        isPlaying = false
-        notifyStateChanged()
+        self.isPlaying = false
+        self.notifyStateChanged()
 
-        onPlaybackEnded?()
+        self.onPlaybackEnded?()
     }
 
     private func handlePlaybackStalled() {
-        logger.warning("Playback stalled at time: \(currentTime), duration: \(duration)")
+        logger.warning("Playback stalled at time: \(self.currentTime), duration: \(self.duration)")
 
-        guard !isHandlingStall else {
+        guard !self.isHandlingStall else {
             logger.debug("Already handling stall; ignoring duplicate notification")
             return
         }
 
-        isHandlingStall = true
+        self.isHandlingStall = true
 
         // Log detailed player state
         if let player, let currentItem = player.currentItem {
@@ -631,17 +631,17 @@ final class PlayerCore: @unchecked Sendable {
             guard let self else { return }
 
             if let player, let currentItem = player.currentItem {
-                if currentItem.isPlaybackLikelyToKeepUp, isPlaying {
+                if currentItem.isPlaybackLikelyToKeepUp, self.isPlaying {
                     logger.debug("Buffer refilled, resuming playback")
                     player.play()
-                } else if !isPlaying {
+                } else if !self.isPlaying {
                     logger.debug("Playback was paused, not auto-resuming")
                 } else {
                     logger.warning("Buffer still not ready after stall")
                 }
             }
 
-            isHandlingStall = false
+            self.isHandlingStall = false
         }
     }
 
@@ -650,7 +650,7 @@ final class PlayerCore: @unchecked Sendable {
             let playerItem = notification.object as? AVPlayerItem,
             let errorLog = playerItem.errorLog() else { return }
 
-        logger.error("Error log entry at time: \(currentTime)")
+        logger.error("Error log entry at time: \(self.currentTime)")
 
         for event in errorLog.events {
             logger.error("Error event:")
@@ -666,14 +666,14 @@ final class PlayerCore: @unchecked Sendable {
     }
 
     private func handleFailedToPlayToEndTime(_ notification: Notification) {
-        logger.error("Failed to play to end time: \(currentTime), duration: \(duration)")
+        logger.error("Failed to play to end time: \(self.currentTime), duration: \(self.duration)")
 
         if let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error {
             logger.error("Error: \(error.localizedDescription)")
-            errorMessage = "Playback failed: \(error.localizedDescription)"
+            self.errorMessage = "Playback failed: \(error.localizedDescription)"
         }
 
-        isPlaying = false
+        self.isPlaying = false
 
         // Log player item state
         if let player, let currentItem = player.currentItem {
@@ -700,8 +700,8 @@ final class PlayerCore: @unchecked Sendable {
         let declaredDuration = currentItem.duration
         if declaredDuration.isFinite, declaredDuration > 0 {
             nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = declaredDuration
-        } else if duration.isFinite, duration > 0 {
-            nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = duration
+        } else if self.duration.isFinite, self.duration > 0 {
+            nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = self.duration
         }
 
         // Use pre-created artwork (created once when item starts playing)
@@ -710,44 +710,44 @@ final class PlayerCore: @unchecked Sendable {
         }
 
         // Set current playback position and rate for lock screen controls
-        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
-        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = self.currentTime
+        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = self.isPlaying ? 1.0 : 0.0
 
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
     }
 
     private func cleanup() {
         if let timeObserver {
-            player?.removeTimeObserver(timeObserver)
+            self.player?.removeTimeObserver(timeObserver)
             self.timeObserver = nil
         }
 
-        statusObservation?.invalidate()
-        statusObservation = nil
+        self.statusObservation?.invalidate()
+        self.statusObservation = nil
 
-        timeControlStatusObservation?.invalidate()
-        timeControlStatusObservation = nil
+        self.timeControlStatusObservation?.invalidate()
+        self.timeControlStatusObservation = nil
 
-        player?.pause()
-        player = nil
+        self.player?.pause()
+        self.player = nil
 
-        cancellables.removeAll()
+        self.cancellables.removeAll()
 
-        isPlaying = false
-        currentTime = 0
-        duration = 0
-        isLoading = false
-        currentPlaybackURL = nil
-        isHandlingStall = false
-        lastObservedTime = 0
-        currentPlayerItemID = nil
-        isStreamingPlayback = false
-        canSeek = true
-        currentItemArtwork = nil
+        self.isPlaying = false
+        self.currentTime = 0
+        self.duration = 0
+        self.isLoading = false
+        self.currentPlaybackURL = nil
+        self.isHandlingStall = false
+        self.lastObservedTime = 0
+        self.currentPlayerItemID = nil
+        self.isStreamingPlayback = false
+        self.canSeek = true
+        self.currentItemArtwork = nil
 
         // Clear audio analysis state when switching tracks
-        audioFormat = nil
-        audioAnalyzer = nil // Clear analyzer so it gets recreated fresh for new track
+        self.audioFormat = nil
+        self.audioAnalyzer = nil // Clear analyzer so it gets recreated fresh for new track
         logger.debug("[AudioAnalysis] Cleared analyzer and format in cleanup")
 
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil

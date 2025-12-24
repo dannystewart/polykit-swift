@@ -1,3 +1,9 @@
+//
+//  PolyDataExplorerDataSource.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 import Foundation
 import SwiftData
 
@@ -9,8 +15,6 @@ import SwiftData
 /// and provides methods to fetch and manipulate records.
 @MainActor
 public final class PolyDataExplorerDataSource {
-    // MARK: Properties
-
     /// The explorer configuration.
     public let configuration: PolyDataExplorerConfiguration
 
@@ -35,20 +39,18 @@ public final class PolyDataExplorerDataSource {
     /// Cached integrity report.
     public private(set) var cachedIntegrityReport: PolyDataIntegrityReport?
 
-    // Per-entity sort state: [entityID: (sortFieldID, ascending)]
+    /// Per-entity sort state: [entityID: (sortFieldID, ascending)]
     private var sortState: [String: (String, Bool)] = [:]
-
-    // MARK: Computed Properties
 
     /// The currently selected entity.
     public var currentEntity: AnyPolyDataEntity? {
-        configuration.entity(at: currentEntityIndex)
+        self.configuration.entity(at: self.currentEntityIndex)
     }
 
     /// Current sort field ID for the current entity.
     public var currentSortFieldID: String {
         guard let entity = currentEntity else { return "" }
-        return sortState[entity.id]?.0 ?? entity.defaultSortFieldID
+        return self.sortState[entity.id]?.0 ?? entity.defaultSortFieldID
     }
 
     /// Whether current sort is ascending.
@@ -74,7 +76,7 @@ public final class PolyDataExplorerDataSource {
         self.currentEntityIndex = configuration.defaultEntityIndex
         self.context = PolyDataExplorerContext(
             modelContext: modelContext,
-            currentEntityIndex: configuration.defaultEntityIndex
+            currentEntityIndex: configuration.defaultEntityIndex,
         )
     }
 
@@ -82,20 +84,20 @@ public final class PolyDataExplorerDataSource {
 
     /// Selects an entity by index.
     public func selectEntity(at index: Int) {
-        guard index >= 0, index < configuration.entities.count else { return }
-        currentEntityIndex = index
-        context.setCurrentEntityIndex(index)
+        guard index >= 0, index < self.configuration.entities.count else { return }
+        self.currentEntityIndex = index
+        self.context.setCurrentEntityIndex(index)
 
         // Clear filter if it doesn't apply to the new entity
         // (This could be made smarter based on entity relationships)
-        currentFilter = nil
-        showOnlyIssues = false
+        self.currentFilter = nil
+        self.showOnlyIssues = false
     }
 
     /// Selects an entity by ID.
     public func selectEntity(withID id: String) {
         if let index = configuration.entityIndex(withID: id) {
-            selectEntity(at: index)
+            self.selectEntity(at: index)
         }
     }
 
@@ -104,16 +106,16 @@ public final class PolyDataExplorerDataSource {
     /// Sets the sort configuration for the current entity.
     public func setSort(fieldID: String, ascending: Bool) {
         guard let entity = currentEntity else { return }
-        sortState[entity.id] = (fieldID, ascending)
+        self.sortState[entity.id] = (fieldID, ascending)
     }
 
     /// Toggles the sort field. If already selected, toggles direction.
     public func toggleSort(fieldID: String) {
         guard let entity = currentEntity else { return }
 
-        if currentSortFieldID == fieldID {
+        if self.currentSortFieldID == fieldID {
             // Toggle direction
-            sortState[entity.id] = (fieldID, !currentSortAscending)
+            self.sortState[entity.id] = (fieldID, !self.currentSortAscending)
         } else {
             // Find default ascending for this field
             var defaultAscending = true
@@ -123,7 +125,7 @@ public final class PolyDataExplorerDataSource {
                     break
                 }
             }
-            sortState[entity.id] = (fieldID, defaultAscending)
+            self.sortState[entity.id] = (fieldID, defaultAscending)
         }
     }
 
@@ -131,26 +133,26 @@ public final class PolyDataExplorerDataSource {
 
     /// Sets the current filter.
     public func setFilter(_ filter: PolyDataFilter?) {
-        currentFilter = filter
-        showOnlyIssues = false
+        self.currentFilter = filter
+        self.showOnlyIssues = false
     }
 
     /// Sets the search text.
     public func setSearchText(_ text: String) {
-        searchText = text
+        self.searchText = text
     }
 
     /// Clears the current filter and issue filter.
     public func clearFilter() {
-        currentFilter = nil
-        showOnlyIssues = false
+        self.currentFilter = nil
+        self.showOnlyIssues = false
     }
 
     /// Enables or disables the "show only issues" filter.
     public func setIssueFilter(enabled: Bool) {
-        showOnlyIssues = enabled
+        self.showOnlyIssues = enabled
         if enabled {
-            currentFilter = nil
+            self.currentFilter = nil
         }
     }
 
@@ -162,10 +164,10 @@ public final class PolyDataExplorerDataSource {
 
         // Fetch with search and sort
         var records = entity.fetchRecords(
-            modelContext,
-            searchText.isEmpty ? nil : searchText,
-            currentSortFieldID,
-            currentSortAscending
+            self.modelContext,
+            self.searchText.isEmpty ? nil : self.searchText,
+            self.currentSortFieldID,
+            self.currentSortAscending,
         )
 
         // Apply filter if set
@@ -174,7 +176,7 @@ public final class PolyDataExplorerDataSource {
         }
 
         // Apply issue filter if enabled
-        if showOnlyIssues, let report = getIntegrityReport() {
+        if self.showOnlyIssues, let report = getIntegrityReport() {
             records = records.filter { record in
                 let recordID = entity.recordID(record)
                 return report.hasIssue(entityID: entity.id, recordID: recordID)
@@ -186,7 +188,7 @@ public final class PolyDataExplorerDataSource {
 
     /// Fetches statistics for all entities.
     public func fetchStats() -> PolyDataExplorerStats {
-        PolyDataExplorerStats.fetch(from: configuration, context: modelContext)
+        PolyDataExplorerStats.fetch(from: self.configuration, context: self.modelContext)
     }
 
     // MARK: Integrity
@@ -197,8 +199,8 @@ public final class PolyDataExplorerDataSource {
             return .empty
         }
 
-        let report = checker.analyze(context: modelContext)
-        cachedIntegrityReport = report
+        let report = checker.analyze(context: self.modelContext)
+        self.cachedIntegrityReport = report
         return report
     }
 
@@ -207,15 +209,15 @@ public final class PolyDataExplorerDataSource {
         if let cached = cachedIntegrityReport {
             return cached
         }
-        guard configuration.integrityChecker != nil else {
+        guard self.configuration.integrityChecker != nil else {
             return nil
         }
-        return analyzeDataIntegrity()
+        return self.analyzeDataIntegrity()
     }
 
     /// Invalidates the cached integrity report.
     public func invalidateIntegrityCache() {
-        cachedIntegrityReport = nil
+        self.cachedIntegrityReport = nil
     }
 
     // MARK: CRUD Operations
@@ -223,12 +225,12 @@ public final class PolyDataExplorerDataSource {
     /// Deletes a record.
     public func deleteRecord(_ record: AnyObject) async {
         guard let entity = currentEntity else { return }
-        let context = modelContext
+        let context = self.modelContext
         await entity.deleteRecord(record, context)
     }
 
     /// Saves the model context.
     public func save() {
-        try? modelContext.save()
+        try? self.modelContext.save()
     }
 }

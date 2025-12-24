@@ -56,8 +56,8 @@ private struct CacheEntry {
 public class PlayerEngine<T: Playable> {
     public var maxCacheSizeBytes: Int64 = 500000000 { // 500 MB default
         didSet {
-            UserDefaults.standard.set(maxCacheSizeBytes, forKey: "PlayerEngine_maxCacheSizeBytes")
-            pruneCache()
+            UserDefaults.standard.set(self.maxCacheSizeBytes, forKey: "PlayerEngine_maxCacheSizeBytes")
+            self.pruneCache()
         }
     }
 
@@ -84,7 +84,7 @@ public class PlayerEngine<T: Playable> {
     /// artwork for Now Playing info when the current item has no artwork.
     public var defaultArtworkImageName: String? {
         didSet {
-            core.setDefaultArtworkImageName(defaultArtworkImageName)
+            self.core.setDefaultArtworkImageName(self.defaultArtworkImageName)
         }
     }
 
@@ -92,7 +92,7 @@ public class PlayerEngine<T: Playable> {
     /// Setting this overrides any image name set in `defaultArtworkImageName`.
     public var defaultArtwork: MPMediaItemArtwork? {
         didSet {
-            core.setDefaultArtwork(defaultArtwork)
+            self.core.setDefaultArtwork(self.defaultArtwork)
         }
     }
 
@@ -111,33 +111,33 @@ public class PlayerEngine<T: Playable> {
     /// uses this for repeat and navigation, but higher-level behaviors like
     /// shuffle are owned by the host app.
     public var canonicalPlaylist: [T] {
-        originalPlaylist
+        self.originalPlaylist
     }
 
     /// Current frequency band levels for visualization (0.0 to 1.0)
     public var frequencyBands: [Float] {
-        core.frequencyBands
+        self.core.frequencyBands
     }
 
     public var hasCurrentItem: Bool {
-        currentItem != nil
+        self.currentItem != nil
     }
 
     public var hasNextTrack: Bool {
-        guard !playlist.isEmpty else { return false }
-        return repeatMode == .all || currentIndex < playlist.count - 1
+        guard !self.playlist.isEmpty else { return false }
+        return self.repeatMode == .all || self.currentIndex < self.playlist.count - 1
     }
 
     public var hasPreviousTrack: Bool {
-        guard !playlist.isEmpty else { return false }
-        return repeatMode == .all || currentIndex > 0
+        guard !self.playlist.isEmpty else { return false }
+        return self.repeatMode == .all || self.currentIndex > 0
     }
 
     public var currentCacheSizeBytes: Int64 {
         var totalSize: Int64 = 0
 
-        for itemID in cachedItemIDs {
-            let fileURL = getCachedFileURL(for: itemID)
+        for itemID in self.cachedItemIDs {
+            let fileURL = self.getCachedFileURL(for: itemID)
             if
                 let attributes = try? FileManager.default.attributesOfItem(atPath: fileURL.path),
                 let fileSize = attributes[.size] as? Int64
@@ -150,8 +150,8 @@ public class PlayerEngine<T: Playable> {
     }
 
     public var formattedCacheSize: String {
-        let totalSize = currentCacheSizeBytes
-        let maxSize = maxCacheSizeBytes
+        let totalSize = self.currentCacheSizeBytes
+        let maxSize = self.maxCacheSizeBytes
 
         // Format as MB or GB
         let megabytes = Double(totalSize) / 1048576.0
@@ -169,23 +169,23 @@ public class PlayerEngine<T: Playable> {
     // MARK: - Initialization
 
     public init() {
-        core = PlayerCore()
-        configureAudioSession()
-        setupRemoteCommandCenter()
-        loadCacheSettings()
-        core.setDefaultArtworkImageName(defaultArtworkImageName)
+        self.core = PlayerCore()
+        self.configureAudioSession()
+        self.setupRemoteCommandCenter()
+        self.loadCacheSettings()
+        self.core.setDefaultArtworkImageName(self.defaultArtworkImageName)
 
         // Setup core callbacks
-        core.onPlaybackEnded = { [weak self] in
+        self.core.onPlaybackEnded = { [weak self] in
             self?.handlePlaybackEnded()
         }
 
-        core.onStateChanged = { [weak self] in
+        self.core.onStateChanged = { [weak self] in
             self?.syncStateFromCore()
         }
 
         // Initial state sync
-        syncStateFromCore()
+        self.syncStateFromCore()
     }
 
     // MARK: - Playback Control
@@ -193,14 +193,14 @@ public class PlayerEngine<T: Playable> {
     public func play(_ item: T, in itemList: [T] = []) {
         // Update playlist if provided
         if !itemList.isEmpty {
-            originalPlaylist = itemList
-            playlist = itemList
-            currentIndex = playlist.firstIndex(where: { $0.id == item.id }) ?? 0
+            self.originalPlaylist = itemList
+            self.playlist = itemList
+            self.currentIndex = self.playlist.firstIndex(where: { $0.id == item.id }) ?? 0
         }
 
         guard let audioURL = item.audioURL else {
-            core.errorMessage = "No audio URL available"
-            core.isLoading = false
+            self.core.errorMessage = "No audio URL available"
+            self.core.isLoading = false
             return
         }
 
@@ -216,11 +216,11 @@ public class PlayerEngine<T: Playable> {
             logger.debug("Using local file; seeking is enabled, no manual caching needed")
         } else {
             // Remote HTTP(S) URL - check if we have a cached copy
-            let isCached = cachedItemIDs.contains(item.id)
+            let isCached = self.cachedItemIDs.contains(item.id)
 
             if isCached {
                 // Verify the cached file actually exists before using it
-                let cachedURL = getCachedFileURL(for: item.id)
+                let cachedURL = self.getCachedFileURL(for: item.id)
                 if FileManager.default.fileExists(atPath: cachedURL.path) {
                     // Use our cached copy from previous download
                     playbackURL = cachedURL
@@ -229,19 +229,19 @@ public class PlayerEngine<T: Playable> {
                 } else {
                     // Cached file is missing - remove from cache set and stream instead
                     logger.warning("Cached file \(item.id) is marked as cached but doesn't exist; removing from cache and streaming")
-                    cachedItemIDs.remove(item.id)
-                    favoriteCachedIDs.remove(item.id)
-                    saveCachedItems()
+                    self.cachedItemIDs.remove(item.id)
+                    self.favoriteCachedIDs.remove(item.id)
+                    self.saveCachedItems()
 
                     // Stream the remote file and download in background
                     playbackURL = audioURL
                     treatedAsCached = false
 
                     // Start background download for caching
-                    if currentlyDownloadingItemID != item.id {
-                        currentlyDownloadingItemID = item.id
+                    if self.currentlyDownloadingItemID != item.id {
+                        self.currentlyDownloadingItemID = item.id
                         logger.debug("Starting background download for remote file")
-                        downloadItem(item, enablePlaybackOptimizations: true, markAsFavorite: false)
+                        self.downloadItem(item, enablePlaybackOptimizations: true, markAsFavorite: false)
                     }
                 }
             } else {
@@ -251,30 +251,30 @@ public class PlayerEngine<T: Playable> {
                 logger.debug("Streaming remote URL; seeking disabled until file is cached")
 
                 // Start background download for caching
-                if currentlyDownloadingItemID != item.id {
-                    currentlyDownloadingItemID = item.id
+                if self.currentlyDownloadingItemID != item.id {
+                    self.currentlyDownloadingItemID = item.id
                     logger.debug("Starting background download for remote file")
-                    downloadItem(item, enablePlaybackOptimizations: true, markAsFavorite: false)
+                    self.downloadItem(item, enablePlaybackOptimizations: true, markAsFavorite: false)
                 }
             }
 
             // Track playback for LRU cache (only for remote files that get cached)
-            lastPlayedTimes[item.id] = Date()
-            saveLastPlayedTimes()
+            self.lastPlayedTimes[item.id] = Date()
+            self.saveLastPlayedTimes()
         }
 
         // Activate audio session before playback begins
-        activateAudioSession()
+        self.activateAudioSession()
 
         // Delegate to core
-        core.play(item, playbackURL: playbackURL, isCached: treatedAsCached)
+        self.core.play(item, playbackURL: playbackURL, isCached: treatedAsCached)
 
         // Ensure remote command center is enabled for playback
-        enableRemoteCommandCenter()
+        self.enableRemoteCommandCenter()
     }
 
     public func togglePlayPause() {
-        core.togglePlayPause()
+        self.core.togglePlayPause()
     }
 
     /// Smart play/pause that handles edge cases for better UX.
@@ -292,33 +292,33 @@ public class PlayerEngine<T: Playable> {
     ///   trigger restart behavior. Default is 0.5 seconds.
     public func smartPlayPause(restartThreshold: TimeInterval = 0.5) {
         // If no item is playing but we have a playlist, start from the beginning
-        if !hasCurrentItem {
+        if !self.hasCurrentItem {
             guard let first = playlist.first else { return }
-            play(first, in: playlist)
+            self.play(first, in: self.playlist)
             return
         }
 
         // If we're effectively at the end of the track, restart it
-        if duration > 0, currentTime >= duration - restartThreshold {
+        if self.duration > 0, self.currentTime >= self.duration - restartThreshold {
             if let current = currentItem {
-                play(current, in: playlist)
+                self.play(current, in: self.playlist)
             } else {
-                seek(to: 0)
+                self.seek(to: 0)
             }
         } else {
             // Normal toggle behavior
-            togglePlayPause()
+            self.togglePlayPause()
         }
     }
 
     public func stop() {
-        core.stop()
-        disableRemoteCommandCenter()
-        deactivateAudioSession()
+        self.core.stop()
+        self.disableRemoteCommandCenter()
+        self.deactivateAudioSession()
     }
 
     public func seek(to time: TimeInterval) {
-        core.seek(to: time)
+        self.core.seek(to: time)
     }
 
     /// Seeks forward or backward by the specified number of seconds.
@@ -327,59 +327,59 @@ public class PlayerEngine<T: Playable> {
     ///
     /// - Parameter offset: Time offset in seconds. Positive values seek forward, negative values seek backward.
     public func seekBy(offset: TimeInterval) {
-        let newTime = max(0, min(currentTime + offset, duration))
-        seek(to: newTime)
+        let newTime = max(0, min(currentTime + offset, self.duration))
+        self.seek(to: newTime)
     }
 
     public func nextTrack() {
-        guard !playlist.isEmpty else { return }
+        guard !self.playlist.isEmpty else { return }
 
         // Manual next track should override repeat one
-        switch repeatMode {
+        switch self.repeatMode {
         case .all:
-            currentIndex = (currentIndex + 1) % playlist.count
-            play(playlist[currentIndex])
+            self.currentIndex = (self.currentIndex + 1) % self.playlist.count
+            self.play(self.playlist[self.currentIndex])
 
         case .off, .one:
             // Explicit next track overrides repeat one
-            if currentIndex < playlist.count - 1 {
-                currentIndex += 1
-                play(playlist[currentIndex])
+            if self.currentIndex < self.playlist.count - 1 {
+                self.currentIndex += 1
+                self.play(self.playlist[self.currentIndex])
             } else {
-                stop()
+                self.stop()
             }
         }
     }
 
     public func previousTrack() {
-        guard !playlist.isEmpty else { return }
+        guard !self.playlist.isEmpty else { return }
 
         // If we're more than 3 seconds in, restart current track
-        if currentTime > 3 {
-            seek(to: 0)
+        if self.currentTime > 3 {
+            self.seek(to: 0)
             return
         }
 
         // Otherwise go to previous track - explicit previous overrides repeat one
-        switch repeatMode {
+        switch self.repeatMode {
         case .all:
-            currentIndex = (currentIndex - 1 + playlist.count) % playlist.count
-            play(playlist[currentIndex])
+            self.currentIndex = (self.currentIndex - 1 + self.playlist.count) % self.playlist.count
+            self.play(self.playlist[self.currentIndex])
 
         case .off, .one:
             // Explicit previous track overrides repeat one
-            if currentIndex > 0 {
-                currentIndex -= 1
-                play(playlist[currentIndex])
+            if self.currentIndex > 0 {
+                self.currentIndex -= 1
+                self.play(self.playlist[self.currentIndex])
             }
         }
     }
 
     public func cycleRepeatMode() {
-        switch repeatMode {
-        case .off: repeatMode = .one
-        case .one: repeatMode = .all
-        case .all: repeatMode = .off
+        switch self.repeatMode {
+        case .off: self.repeatMode = .one
+        case .one: self.repeatMode = .all
+        case .all: self.repeatMode = .off
         }
     }
 
@@ -389,16 +389,16 @@ public class PlayerEngine<T: Playable> {
     ///
     /// - Parameter newPlaylist: The new canonical playlist ordering.
     public func updatePlaylistKeepingCurrentItem(_ newPlaylist: [T]) {
-        originalPlaylist = newPlaylist
-        playlist = newPlaylist
+        self.originalPlaylist = newPlaylist
+        self.playlist = newPlaylist
 
         if
             let current = currentItem,
             let index = playlist.firstIndex(where: { $0.id == current.id })
         {
-            currentIndex = index
+            self.currentIndex = index
         } else {
-            currentIndex = 0
+            self.currentIndex = 0
         }
     }
 
@@ -412,47 +412,47 @@ public class PlayerEngine<T: Playable> {
     ///
     /// - Parameter newOrder: The desired playback order for the existing items.
     public func adoptPlaylistOrder(_ newOrder: [T]) {
-        playlist = newOrder
+        self.playlist = newOrder
 
         if
             let current = currentItem,
             let index = playlist.firstIndex(where: { $0.id == current.id })
         {
-            currentIndex = index
+            self.currentIndex = index
         } else {
-            currentIndex = 0
+            self.currentIndex = 0
         }
     }
 
     // MARK: - Cache Management
 
     public func clearCache() {
-        let nonFavoriteIDs = cachedItemIDs.subtracting(favoriteCachedIDs)
+        let nonFavoriteIDs = self.cachedItemIDs.subtracting(self.favoriteCachedIDs)
         for itemID in nonFavoriteIDs {
-            let fileURL = getCachedFileURL(for: itemID)
+            let fileURL = self.getCachedFileURL(for: itemID)
             try? FileManager.default.removeItem(at: fileURL)
         }
 
-        cachedItemIDs = favoriteCachedIDs
-        saveCachedItems()
+        self.cachedItemIDs = self.favoriteCachedIDs
+        self.saveCachedItems()
     }
 
     public func cacheItemAsFavorite(_ item: T) {
         let itemID = item.id
 
-        if cachedItemIDs.contains(itemID) {
+        if self.cachedItemIDs.contains(itemID) {
             // Verify the cached file actually exists
-            let cachedURL = getCachedFileURL(for: itemID)
+            let cachedURL = self.getCachedFileURL(for: itemID)
             if FileManager.default.fileExists(atPath: cachedURL.path) {
-                favoriteCachedIDs.insert(itemID)
-                saveCachedItems()
+                self.favoriteCachedIDs.insert(itemID)
+                self.saveCachedItems()
                 return
             } else {
                 // Cached file is missing - remove from cache set and re-download
                 logger.warning("Cached file \(itemID) is marked as cached but doesn't exist; re-downloading")
-                cachedItemIDs.remove(itemID)
-                favoriteCachedIDs.remove(itemID)
-                saveCachedItems()
+                self.cachedItemIDs.remove(itemID)
+                self.favoriteCachedIDs.remove(itemID)
+                self.saveCachedItems()
                 // Fall through to download
             }
         }
@@ -462,17 +462,17 @@ public class PlayerEngine<T: Playable> {
             return
         }
 
-        downloadItem(item, enablePlaybackOptimizations: false, markAsFavorite: true)
+        self.downloadItem(item, enablePlaybackOptimizations: false, markAsFavorite: true)
     }
 
     public func uncacheItemFromFavorites(_ item: T) {
-        favoriteCachedIDs.remove(item.id)
-        saveCachedItems()
+        self.favoriteCachedIDs.remove(item.id)
+        self.saveCachedItems()
     }
 
     public func syncFavorites(_ favorites: [T]) {
         let favoriteIDs = Set(favorites.map(\.id))
-        favoriteCachedIDs = favoriteCachedIDs.intersection(favoriteIDs)
+        self.favoriteCachedIDs = self.favoriteCachedIDs.intersection(favoriteIDs)
 
         for item in favorites {
             let itemID = item.id
@@ -482,60 +482,60 @@ public class PlayerEngine<T: Playable> {
                 continue
             }
 
-            if cachedItemIDs.contains(itemID) {
+            if self.cachedItemIDs.contains(itemID) {
                 // Verify the cached file actually exists
-                let cachedURL = getCachedFileURL(for: itemID)
+                let cachedURL = self.getCachedFileURL(for: itemID)
                 if FileManager.default.fileExists(atPath: cachedURL.path) {
-                    favoriteCachedIDs.insert(itemID)
+                    self.favoriteCachedIDs.insert(itemID)
                 } else {
                     // Cached file is missing - remove from cache set and re-download
                     logger.warning("Cached file \(itemID) is marked as cached but doesn't exist; re-downloading")
-                    cachedItemIDs.remove(itemID)
-                    favoriteCachedIDs.remove(itemID)
-                    downloadItem(item, enablePlaybackOptimizations: false, markAsFavorite: true)
+                    self.cachedItemIDs.remove(itemID)
+                    self.favoriteCachedIDs.remove(itemID)
+                    self.downloadItem(item, enablePlaybackOptimizations: false, markAsFavorite: true)
                 }
             } else {
-                downloadItem(item, enablePlaybackOptimizations: false, markAsFavorite: true)
+                self.downloadItem(item, enablePlaybackOptimizations: false, markAsFavorite: true)
             }
         }
 
-        saveCachedItems()
+        self.saveCachedItems()
     }
 
     // MARK: - State Synchronization
 
     private func syncStateFromCore() {
-        let wasPlaying = isPlaying
+        let wasPlaying = self.isPlaying
 
-        currentItem = core.currentItem as? T
-        isPlaying = core.isPlaying
-        currentTime = core.currentTime
-        duration = core.duration
-        canSeek = core.canSeek
-        isLoading = core.isLoading
-        errorMessage = core.errorMessage
+        self.currentItem = self.core.currentItem as? T
+        self.isPlaying = self.core.isPlaying
+        self.currentTime = self.core.currentTime
+        self.duration = self.core.duration
+        self.canSeek = self.core.canSeek
+        self.isLoading = self.core.isLoading
+        self.errorMessage = self.core.errorMessage
 
         // Redundantly ensure Now Playing playback rate matches our current state.
         // This guards against any timing quirks in the core's own updates so the
         // lock screen button reflects the real play/pause state.
-        if isPlaying != wasPlaying {
-            syncNowPlayingPlaybackRate()
+        if self.isPlaying != wasPlaying {
+            self.syncNowPlayingPlaybackRate()
         }
     }
 
     // MARK: - Private Methods
 
     private func handlePlaybackEnded() {
-        switch repeatMode {
+        switch self.repeatMode {
         case .one:
-            core.seekToStart()
+            self.core.seekToStart()
 
         case .all:
-            nextTrack()
+            self.nextTrack()
 
         case .off:
-            if hasNextTrack {
-                nextTrack()
+            if self.hasNextTrack {
+                self.nextTrack()
             }
         }
     }
@@ -552,28 +552,28 @@ public class PlayerEngine<T: Playable> {
     }
 
     private func getCachedFileURL(for itemID: Int) -> URL {
-        getCacheDirectory().appendingPathComponent("\(itemID).mp3")
+        self.getCacheDirectory().appendingPathComponent("\(itemID).mp3")
     }
 
     private func saveCachedItems() {
-        UserDefaults.standard.set(Array(cachedItemIDs), forKey: "PlayerEngine_cachedItemIDs")
-        UserDefaults.standard.set(Array(favoriteCachedIDs), forKey: "PlayerEngine_favoriteCachedIDs")
+        UserDefaults.standard.set(Array(self.cachedItemIDs), forKey: "PlayerEngine_cachedItemIDs")
+        UserDefaults.standard.set(Array(self.favoriteCachedIDs), forKey: "PlayerEngine_favoriteCachedIDs")
     }
 
     private func loadCacheSettings() {
         let savedMaxSize = UserDefaults.standard.object(forKey: "PlayerEngine_maxCacheSizeBytes") as? Int64
-        maxCacheSizeBytes = savedMaxSize ?? 500000000
+        self.maxCacheSizeBytes = savedMaxSize ?? 500000000
 
         if let idArray = UserDefaults.standard.array(forKey: "PlayerEngine_cachedItemIDs") as? [Int] {
-            cachedItemIDs = Set(idArray)
+            self.cachedItemIDs = Set(idArray)
         }
 
         if let favoriteIDArray = UserDefaults.standard.array(forKey: "PlayerEngine_favoriteCachedIDs") as? [Int] {
-            favoriteCachedIDs = Set(favoriteIDArray)
+            self.favoriteCachedIDs = Set(favoriteIDArray)
         }
 
         if let savedTimes = UserDefaults.standard.dictionary(forKey: "PlayerEngine_lastPlayedTimes") as? [String: Date] {
-            lastPlayedTimes = savedTimes.reduce(into: [:]) { result, entry in
+            self.lastPlayedTimes = savedTimes.reduce(into: [:]) { result, entry in
                 if let id = Int(entry.key) {
                     result[id] = entry.value
                 }
@@ -582,7 +582,7 @@ public class PlayerEngine<T: Playable> {
     }
 
     private func saveLastPlayedTimes() {
-        let stringKeyDict = lastPlayedTimes.reduce(into: [:]) { result, entry in
+        let stringKeyDict = self.lastPlayedTimes.reduce(into: [:]) { result, entry in
             result[String(entry.key)] = entry.value
         }
         UserDefaults.standard.set(stringKeyDict, forKey: "PlayerEngine_lastPlayedTimes")
@@ -667,39 +667,39 @@ public class PlayerEngine<T: Playable> {
     }
 
     private func pruneCache() {
-        let currentSize = currentCacheSizeBytes
-        guard currentSize > maxCacheSizeBytes else { return }
+        let currentSize = self.currentCacheSizeBytes
+        guard currentSize > self.maxCacheSizeBytes else { return }
 
-        logger.info("Cache is over the limit (\(currentSize) > \(maxCacheSizeBytes)), pruning...")
+        logger.info("Cache is over the limit (\(currentSize) > \(self.maxCacheSizeBytes)), pruning...")
 
-        let nonFavoriteIDs = cachedItemIDs.subtracting(favoriteCachedIDs)
+        let nonFavoriteIDs = self.cachedItemIDs.subtracting(self.favoriteCachedIDs)
         var entries = [CacheEntry]()
 
         for itemID in nonFavoriteIDs {
-            let fileURL = getCachedFileURL(for: itemID)
+            let fileURL = self.getCachedFileURL(for: itemID)
 
             if
                 let attributes = try? FileManager.default.attributesOfItem(atPath: fileURL.path),
                 let fileSize = attributes[.size] as? Int64
             {
-                let lastPlayed = lastPlayedTimes[itemID] ?? Date.distantPast
+                let lastPlayed = self.lastPlayedTimes[itemID] ?? Date.distantPast
                 entries.append(CacheEntry(id: itemID, size: fileSize, lastPlayed: lastPlayed))
             }
         }
 
         entries.sort { $0.lastPlayed < $1.lastPlayed }
 
-        var sizeToFree = currentSize - maxCacheSizeBytes
+        var sizeToFree = currentSize - self.maxCacheSizeBytes
         var deletedCount = 0
 
         for entry in entries {
             guard sizeToFree > 0 else { break }
 
-            let fileURL = getCachedFileURL(for: entry.id)
+            let fileURL = self.getCachedFileURL(for: entry.id)
             do {
                 try FileManager.default.removeItem(at: fileURL)
-                cachedItemIDs.remove(entry.id)
-                lastPlayedTimes.removeValue(forKey: entry.id)
+                self.cachedItemIDs.remove(entry.id)
+                self.lastPlayedTimes.removeValue(forKey: entry.id)
                 sizeToFree -= entry.size
                 deletedCount += 1
                 logger.debug("Deleted item \(entry.id) (last played: \(entry.lastPlayed), size: \(entry.size) bytes)")
@@ -709,8 +709,8 @@ public class PlayerEngine<T: Playable> {
         }
 
         if deletedCount > 0 {
-            saveCachedItems()
-            saveLastPlayedTimes()
+            self.saveCachedItems()
+            self.saveLastPlayedTimes()
             logger.info("Pruned \(deletedCount) items")
         }
     }
@@ -758,19 +758,19 @@ public class PlayerEngine<T: Playable> {
         // of sync with our actual playback state.
         commandCenter.togglePlayPauseCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
-            smartPlayPause()
+            self.smartPlayPause()
             return .success
         }
 
         commandCenter.nextTrackCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
-            nextTrack()
+            self.nextTrack()
             return .success
         }
 
         commandCenter.previousTrackCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
-            previousTrack()
+            self.previousTrack()
             return .success
         }
 
@@ -778,20 +778,20 @@ public class PlayerEngine<T: Playable> {
             guard let self, let event = event as? MPChangePlaybackPositionCommandEvent else {
                 return .commandFailed
             }
-            seek(to: event.positionTime)
+            self.seek(to: event.positionTime)
             return .success
         }
 
         // Start with commands disabled - they'll be enabled when playback starts
-        disableRemoteCommandCenter()
+        self.disableRemoteCommandCenter()
     }
 
     /// Force the system Now Playing center to reflect our current play/pause state.
     /// This supplements the core's own Now Playing updates in case of timing issues.
     private func syncNowPlayingPlaybackRate() {
         var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
-        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = self.currentTime
+        info[MPNowPlayingInfoPropertyPlaybackRate] = self.isPlaying ? 1.0 : 0.0
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 

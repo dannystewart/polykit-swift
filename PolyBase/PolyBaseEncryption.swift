@@ -44,7 +44,7 @@ public final class PolyBaseEncryption: @unchecked Sendable {
         guard let secretData = secret.data(using: .utf8), !secret.isEmpty else {
             fatalError("PolyBaseEncryption: Secret cannot be empty")
         }
-        appSecret = secretData
+        self.appSecret = secretData
     }
 
     // MARK: - Configuration
@@ -56,7 +56,7 @@ public final class PolyBaseEncryption: @unchecked Sendable {
     @discardableResult
     public static func configure(secret: String) -> PolyBaseEncryption {
         let instance = PolyBaseEncryption(secret: secret)
-        shared = instance
+        self.shared = instance
         polyDebug("PolyBase: Encryption configured")
         return instance
     }
@@ -74,24 +74,24 @@ public final class PolyBaseEncryption: @unchecked Sendable {
     /// Add a user ID that should bypass encryption (data stored in plaintext).
     /// Useful for admin accounts where you want to inspect data directly in the database.
     public func addAdminUser(_ userID: UUID) {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        adminUserIDs.insert(userID)
+        self.adminUserIDs.insert(userID)
         polyDebug("PolyBase: Added admin user (encryption bypass)")
     }
 
     /// Remove a user from the admin list.
     public func removeAdminUser(_ userID: UUID) {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        adminUserIDs.remove(userID)
+        self.adminUserIDs.remove(userID)
     }
 
     /// Check if a user is an admin (bypasses encryption).
     public func isAdminUser(_ userID: UUID) -> Bool {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
-        return adminUserIDs.contains(userID)
+        return self.adminUserIDs.contains(userID)
     }
 
     // MARK: - String Encryption
@@ -107,12 +107,12 @@ public final class PolyBaseEncryption: @unchecked Sendable {
         guard !plaintext.isEmpty else { return plaintext }
 
         // Skip encryption for admin users
-        if isAdminUser(userID) {
+        if self.isAdminUser(userID) {
             return plaintext
         }
 
         do {
-            let key = deriveKey(forUserID: userID)
+            let key = self.deriveKey(forUserID: userID)
             let plaintextData = Data(plaintext.utf8)
 
             // Generate random nonce
@@ -143,7 +143,7 @@ public final class PolyBaseEncryption: @unchecked Sendable {
         guard ciphertext.hasPrefix("enc:") else { return ciphertext }
 
         do {
-            let key = deriveKey(forUserID: userID)
+            let key = self.deriveKey(forUserID: userID)
 
             // Remove prefix and decode base64
             let base64String = String(ciphertext.dropFirst(4))
@@ -178,7 +178,7 @@ public final class PolyBaseEncryption: @unchecked Sendable {
     ///   - userID: The user's ID (used in key derivation).
     /// - Returns: A tuple of (decrypted value, was it encrypted). Returns nil if decryption fails.
     public func decryptWithHealing(_ ciphertext: String, forUserID userID: UUID) -> (value: String, wasEncrypted: Bool)? {
-        let wasEncrypted = isEncrypted(ciphertext)
+        let wasEncrypted = self.isEncrypted(ciphertext)
         guard let decrypted = decrypt(ciphertext, forUserID: userID) else {
             return nil
         }
@@ -193,7 +193,7 @@ public final class PolyBaseEncryption: @unchecked Sendable {
     /// - Returns: A tuple of (decrypted value, was it encrypted), or nil if input was nil or decryption fails.
     public func decryptWithHealing(_ ciphertext: String?, forUserID userID: UUID) -> (value: String, wasEncrypted: Bool)? {
         guard let text = ciphertext else { return nil }
-        return decryptWithHealing(text, forUserID: userID)
+        return self.decryptWithHealing(text, forUserID: userID)
     }
 
     // MARK: - Binary Data Encryption
@@ -211,12 +211,12 @@ public final class PolyBaseEncryption: @unchecked Sendable {
         guard !data.isEmpty else { return data }
 
         // Skip encryption for admin users
-        if isAdminUser(userID) {
+        if self.isAdminUser(userID) {
             return data
         }
 
         do {
-            let key = deriveKey(forUserID: userID)
+            let key = self.deriveKey(forUserID: userID)
 
             // Generate random nonce
             let nonce = AES.GCM.Nonce()
@@ -255,7 +255,7 @@ public final class PolyBaseEncryption: @unchecked Sendable {
         }
 
         do {
-            let key = deriveKey(forUserID: userID)
+            let key = self.deriveKey(forUserID: userID)
 
             // Remove magic header
             let combined = data.dropFirst(4)
@@ -284,7 +284,7 @@ public final class PolyBaseEncryption: @unchecked Sendable {
 
         // Use HKDF to derive a 256-bit key
         return HKDF<SHA256>.deriveKey(
-            inputKeyMaterial: SymmetricKey(data: appSecret),
+            inputKeyMaterial: SymmetricKey(data: self.appSecret),
             salt: salt,
             info: info,
             outputByteCount: 32,

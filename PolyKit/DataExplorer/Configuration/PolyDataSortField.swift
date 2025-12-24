@@ -1,3 +1,9 @@
+//
+//  PolyDataSortField.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 import Foundation
 import SwiftData
 
@@ -35,7 +41,7 @@ public struct PolyDataSortField<Model: PersistentModel>: Sendable {
         id: String,
         displayName: String,
         defaultAscending: Bool = true,
-        makeSortDescriptor: @escaping @Sendable (SortOrder) -> SortDescriptor<Model>
+        makeSortDescriptor: @escaping @Sendable (SortOrder) -> SortDescriptor<Model>,
     ) {
         self.id = id
         self.displayName = displayName
@@ -52,7 +58,7 @@ public extension PolyDataSortField {
         id: String,
         displayName: String,
         keyPath: KeyPath<Model, String> & Sendable,
-        defaultAscending: Bool = true
+        defaultAscending: Bool = true,
     ) -> PolyDataSortField {
         PolyDataSortField(
             id: id,
@@ -60,7 +66,7 @@ public extension PolyDataSortField {
             defaultAscending: defaultAscending,
             makeSortDescriptor: { order in
                 SortDescriptor(keyPath, order: order)
-            }
+            },
         )
     }
 
@@ -69,7 +75,7 @@ public extension PolyDataSortField {
         id: String,
         displayName: String,
         keyPath: KeyPath<Model, String?> & Sendable,
-        defaultAscending: Bool = true
+        defaultAscending: Bool = true,
     ) -> PolyDataSortField {
         PolyDataSortField(
             id: id,
@@ -77,7 +83,7 @@ public extension PolyDataSortField {
             defaultAscending: defaultAscending,
             makeSortDescriptor: { order in
                 SortDescriptor(keyPath, order: order)
-            }
+            },
         )
     }
 
@@ -86,7 +92,7 @@ public extension PolyDataSortField {
         id: String,
         displayName: String,
         keyPath: KeyPath<Model, Date> & Sendable,
-        defaultAscending: Bool = false
+        defaultAscending: Bool = false,
     ) -> PolyDataSortField {
         PolyDataSortField(
             id: id,
@@ -94,7 +100,7 @@ public extension PolyDataSortField {
             defaultAscending: defaultAscending,
             makeSortDescriptor: { order in
                 SortDescriptor(keyPath, order: order)
-            }
+            },
         )
     }
 
@@ -103,7 +109,7 @@ public extension PolyDataSortField {
         id: String,
         displayName: String,
         keyPath: KeyPath<Model, Date?> & Sendable,
-        defaultAscending: Bool = false
+        defaultAscending: Bool = false,
     ) -> PolyDataSortField {
         PolyDataSortField(
             id: id,
@@ -111,7 +117,7 @@ public extension PolyDataSortField {
             defaultAscending: defaultAscending,
             makeSortDescriptor: { order in
                 SortDescriptor(keyPath, order: order)
-            }
+            },
         )
     }
 
@@ -120,7 +126,7 @@ public extension PolyDataSortField {
         id: String,
         displayName: String,
         keyPath: KeyPath<Model, Int> & Sendable,
-        defaultAscending: Bool = true
+        defaultAscending: Bool = true,
     ) -> PolyDataSortField {
         PolyDataSortField(
             id: id,
@@ -128,7 +134,7 @@ public extension PolyDataSortField {
             defaultAscending: defaultAscending,
             makeSortDescriptor: { order in
                 SortDescriptor(keyPath, order: order)
-            }
+            },
         )
     }
 }

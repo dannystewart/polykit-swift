@@ -167,11 +167,11 @@ public final class PolyPullEngine {
         tableName: String,
         isNew _: Bool,
     ) async -> PolyPullResult {
-        guard registry.config(forTable: tableName) != nil else {
+        guard self.registry.config(forTable: tableName) != nil else {
             return .failed(PolyPullError.tableNotRegistered(tableName))
         }
 
-        guard modelContext != nil else {
+        guard self.modelContext != nil else {
             return .failed(PolyPullError.noModelContext)
         }
 
@@ -180,7 +180,7 @@ public final class PolyPullEngine {
         }
 
         // Check for echo
-        if pushEngine.wasRecentlyPushed(remoteID, table: tableName) {
+        if self.pushEngine.wasRecentlyPushed(remoteID, table: tableName) {
             return .skipped(reason: "Echo from own push")
         }
 
@@ -208,7 +208,7 @@ public final class PolyPullEngine {
         let remoteDeleted = record["deleted"]?.boolValue ?? false
 
         // Check for echo
-        if pushEngine.wasRecentlyPushed(remoteID, table: config.tableName) {
+        if self.pushEngine.wasRecentlyPushed(remoteID, table: config.tableName) {
             return .skipped(reason: "Echo from own push")
         }
 
@@ -254,7 +254,7 @@ public final class PolyPullEngine {
             }
 
             // Apply update (local is a class, so we can mutate directly)
-            let needsHealing = applyFields(from: record, to: local, config: config)
+            let needsHealing = self.applyFields(from: record, to: local, config: config)
             local.version = remoteVersion
             local.deleted = remoteDeleted
 
@@ -337,7 +337,7 @@ public final class PolyPullEngine {
 
             // Check rejectIfEmpty - skip applying empty incoming values
             if field.rejectIfEmpty {
-                let isEmpty = isValueEmpty(value, fieldType: field.fieldType)
+                let isEmpty = self.isValueEmpty(value, fieldType: field.fieldType)
                 if isEmpty {
                     polyDebug("PolyPullEngine: Rejecting empty value for '\(field.columnName)'")
                     continue

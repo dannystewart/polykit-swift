@@ -25,7 +25,7 @@
         private var splitViewTopConstraint: NSLayoutConstraint?
 
         public var currentEntityIndex: Int {
-            dataSource.currentEntityIndex
+            self.dataSource.currentEntityIndex
         }
 
         // MARK: Initialization
@@ -42,26 +42,26 @@
 
         override public func viewDidLoad() {
             super.viewDidLoad()
-            setupSplitView()
-            setupStatsBarIfNeeded()
-            refresh()
+            self.setupSplitView()
+            self.setupStatsBarIfNeeded()
+            self.refresh()
         }
 
         // MARK: Public Methods
 
         public func refresh() {
-            tableViewController.reloadData()
-            detailPanel.showEmpty()
-            updateStats()
-            updateFilterIndicator()
+            self.tableViewController.reloadData()
+            self.detailPanel.showEmpty()
+            self.updateStats()
+            self.updateFilterIndicator()
         }
 
         public func switchToEntity(at index: Int) {
-            dataSource.selectEntity(at: index)
-            tableViewController.reloadData()
-            detailPanel.showEmpty()
-            updateStats()
-            updateFilterIndicator()
+            self.dataSource.selectEntity(at: index)
+            self.tableViewController.reloadData()
+            self.detailPanel.showEmpty()
+            self.updateStats()
+            self.updateFilterIndicator()
         }
 
         public func toggleDetailPanel() {
@@ -79,8 +79,8 @@
 
         private func setupSplitView() {
             // Table view (main content)
-            tableViewController = macOSPolyDataExplorerViewController(dataSource: dataSource)
-            tableViewController.delegate = self
+            self.tableViewController = macOSPolyDataExplorerViewController(dataSource: self.dataSource)
+            self.tableViewController.delegate = self
 
             let tableItem = NSSplitViewItem(viewController: tableViewController)
             tableItem.minimumThickness = 400
@@ -88,7 +88,7 @@
             addSplitViewItem(tableItem)
 
             // Detail panel (inspector)
-            detailPanel = macOSPolyDataExplorerDetailPanel(dataSource: dataSource)
+            self.detailPanel = macOSPolyDataExplorerDetailPanel(dataSource: self.dataSource)
 
             let detailItem = NSSplitViewItem(viewController: detailPanel)
             detailItem.minimumThickness = 250
@@ -103,7 +103,7 @@
         }
 
         private func setupStatsBarIfNeeded() {
-            guard dataSource.configuration.showStats else { return }
+            guard self.dataSource.configuration.showStats else { return }
 
             let statsBar = NSView()
             statsBar.translatesAutoresizingMaskIntoConstraints = false
@@ -135,7 +135,7 @@
 
             // Position the split view below the stats bar.
             splitView.translatesAutoresizingMaskIntoConstraints = false
-            splitViewTopConstraint = splitView.topAnchor.constraint(equalTo: statsBar.bottomAnchor)
+            self.splitViewTopConstraint = splitView.topAnchor.constraint(equalTo: statsBar.bottomAnchor)
 
             NSLayoutConstraint.activate([
                 statsBar.topAnchor.constraint(equalTo: view.topAnchor),
@@ -152,7 +152,7 @@
                 clearFilterButton.leadingAnchor.constraint(equalTo: filterLabel.trailingAnchor, constant: 8),
                 clearFilterButton.centerYAnchor.constraint(equalTo: statsBar.centerYAnchor),
 
-                splitViewTopConstraint!,
+                self.splitViewTopConstraint!,
                 splitView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
                 splitView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
                 splitView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -166,11 +166,11 @@
         // MARK: - Stats / Filter UI
 
         private func updateStats() {
-            guard dataSource.configuration.showStats else { return }
+            guard self.dataSource.configuration.showStats else { return }
             guard let statsLabel else { return }
 
-            let stats = dataSource.fetchStats()
-            let parts = dataSource.configuration.entities.compactMap { entity -> String? in
+            let stats = self.dataSource.fetchStats()
+            let parts = self.dataSource.configuration.entities.compactMap { entity -> String? in
                 guard let count = stats.counts[entity.id] else { return nil }
                 return "\(entity.displayName): \(count)"
             }
@@ -178,10 +178,10 @@
         }
 
         private func updateFilterIndicator() {
-            guard dataSource.configuration.showStats else { return }
+            guard self.dataSource.configuration.showStats else { return }
             guard let filterLabel, let clearFilterButton else { return }
 
-            if dataSource.showOnlyIssues {
+            if self.dataSource.showOnlyIssues {
                 filterLabel.stringValue = "Showing only records with issues"
                 filterLabel.textColor = .systemRed
                 filterLabel.isHidden = false
@@ -198,10 +198,10 @@
         }
 
         @objc private func clearFilter() {
-            dataSource.clearFilter()
-            tableViewController.reloadData()
-            detailPanel.showEmpty()
-            updateFilterIndicator()
+            self.dataSource.clearFilter()
+            self.tableViewController.reloadData()
+            self.detailPanel.showEmpty()
+            self.updateFilterIndicator()
         }
     }
 
@@ -209,11 +209,11 @@
 
     extension macOSPolyDataExplorerSplitViewController: macOSPolyDataExplorerViewControllerDelegate {
         public func tableViewController(_: macOSPolyDataExplorerViewController, didSelectRecord record: AnyObject?) {
-            detailPanel.showRecord(record, entity: dataSource.currentEntity)
+            self.detailPanel.showRecord(record, entity: self.dataSource.currentEntity)
         }
 
         public func tableViewController(_: macOSPolyDataExplorerViewController, didDeleteRecords _: Int) {
-            detailPanel.showEmpty()
+            self.detailPanel.showEmpty()
         }
     }
 

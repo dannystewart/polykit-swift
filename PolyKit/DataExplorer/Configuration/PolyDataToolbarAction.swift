@@ -1,3 +1,9 @@
+//
+//  PolyDataToolbarAction.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 import Foundation
 
 // MARK: - PolyDataToolbarAction
@@ -32,7 +38,7 @@ public struct PolyDataToolbarAction: Sendable {
         title: String,
         iconName: String,
         isDestructive: Bool = false,
-        action: @escaping @Sendable (PolyDataExplorerContext) async -> Void
+        action: @escaping @Sendable (PolyDataExplorerContext) async -> Void,
     ) {
         self.id = id
         self.title = title

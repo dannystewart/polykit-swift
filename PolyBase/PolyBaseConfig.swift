@@ -48,9 +48,9 @@ public final class PolyBaseConfig: @unchecked Sendable {
         logGroup: LogGroup? = nil,
         modelContext: ModelContext? = nil,
     ) {
-        shared.logger = logger
-        shared.logGroup = logGroup
-        shared.modelContext = modelContext
+        self.shared.logger = logger
+        self.shared.logGroup = logGroup
+        self.shared.modelContext = modelContext
 
         // Initialize the sync coordinator if model context is provided
         if let modelContext {
@@ -64,8 +64,8 @@ public final class PolyBaseConfig: @unchecked Sendable {
     ///   - logger: The PolyLog instance to use. Pass `nil` to disable logging.
     ///   - logGroup: Optional log group for categorization. Pass `nil` for ungrouped logs.
     public static func configure(logger: PolyLog?, logGroup: LogGroup? = nil) {
-        shared.logger = logger
-        shared.logGroup = logGroup
+        self.shared.logger = logger
+        self.shared.logGroup = logGroup
     }
 
     /// Set the model context separately.
@@ -73,7 +73,7 @@ public final class PolyBaseConfig: @unchecked Sendable {
     /// Call this after app initialization when the model context becomes available.
     @MainActor
     public static func setModelContext(_ context: ModelContext) {
-        shared.modelContext = context
+        self.shared.modelContext = context
         PolySyncCoordinator.shared.initialize(with: context)
     }
 }
