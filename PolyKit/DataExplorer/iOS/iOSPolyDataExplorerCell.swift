@@ -1,3 +1,9 @@
+//
+//  iOSPolyDataExplorerCell.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 #if os(iOS)
 
     import UIKit
@@ -45,7 +51,7 @@
         public func configure(
             with record: AnyObject,
             entity: AnyPolyDataEntity,
-            report: PolyDataIntegrityReport?
+            report: PolyDataIntegrityReport?,
         ) {
             // Use first 3 columns for title, subtitle, detail
             let columnCount = entity.columnCount
@@ -65,7 +71,14 @@
                 detailLabel.text = entity.cellValue(record, 2)
             }
 
-            // Check for integrity issues
+            // Collect badges from all columns that define them
+            for columnIndex in 0 ..< columnCount {
+                if let badge = entity.cellBadge(record, columnIndex, report) {
+                    addBadge(badge.text, color: badge.color)
+                }
+            }
+
+            // Check for integrity issues (shown in addition to status badges)
             if let report {
                 let recordID = entity.recordID(record)
                 if report.hasIssue(entityID: entity.id, recordID: recordID) {

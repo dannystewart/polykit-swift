@@ -119,9 +119,41 @@ PolyDataColumn(
     title: "Status",
     width: 100,
     getValue: { record in record.status.displayName },
-    getTextColor: { record in record.isActive ? .green : .gray }
+    getTextColor: { record in record.isActive ? .green : .gray },
+    getBadge: { record in record.isActive ? nil : PolyDataBadge(text: "Inactive", color: .systemRed) }
 )
 ```
+
+#### Badge Support (iOS)
+
+Columns can define badges that appear on iOS where horizontal space is limited. Badges provide quick visual indicators for status fields:
+
+```swift
+PolyDataColumn(
+    id: "deleted",
+    title: "Del",
+    width: 40,
+    getValue: { $0.deleted ? "Yes" : "No" },
+    getTextColor: { message, _ in message.deleted ? .systemRed : nil },
+    getBadge: { message, _ in
+        message.deleted ? PolyDataBadge(text: "Deleted", color: .systemRed) : nil
+    }
+)
+```
+
+**Badge Design Guidelines:**
+
+- **Keep text short**: 1-2 words maximum (e.g., "Deleted", "Archived", "Unread")
+- **Only show when true**: Return `nil` when the condition is false
+- **Use consistent colors**:
+  - `.systemRed` for deleted/critical
+  - `.systemOrange` for ignored/archived/warnings
+  - `.systemBlue` for unread/default/info
+  - `.systemPurple` for test/placeholder/custom
+  - `.systemTeal` for dynamic/companion/active
+- **Don't badge everything**: Only important status indicators
+
+The iOS cell automatically collects and displays all badges from columns that define them.
 
 ### PolyDataSortField<Model>
 
@@ -280,6 +312,159 @@ let configuration = PolyDataExplorerConfiguration(
 
 Records with integrity issues display a warning badge in the table.
 
+## Badges (iOS)
+
+Badges provide visual status indicators on iOS where horizontal space is limited. Unlike macOS which shows all columns, iOS uses the first 3 columns for title/subtitle/detail and displays status information as colored badges.
+
+### Basic Usage
+
+Add the `getBadge` parameter to any column definition:
+
+```swift
+PolyDataColumn(
+    id: "ignored",
+    title: "Ign",
+    width: 40,
+    getValue: { $0.ignored ? "Yes" : "No" },
+    getTextColor: { message, _ in message.ignored ? .systemOrange : nil },
+    getBadge: { message, _ in
+        message.ignored ? PolyDataBadge(text: "Ignored", color: .systemOrange) : nil
+    }
+)
+```
+
+The cell automatically collects badges from all columns and displays them on the right side of the row.
+
+### Complete Example
+
+```swift
+// Messages with multiple status badges
+private static var messageColumns: [PolyDataColumn<Message>] {
+    [
+        // First 3 columns used for cell title/subtitle/detail
+        PolyDataColumn(id: "id", title: "ID", width: 205, getValue: { $0.id }),
+        PolyDataColumn(
+            id: "role",
+            title: "Role",
+            width: 70,
+            getValue: { $0.role },
+            getTextColor: { message, _ in
+                switch message.role {
+                case "user": .systemGreen
+                case "assistant": .systemBlue
+                default: nil
+                }
+            }
+        ),
+        PolyDataColumn(
+            id: "content",
+            title: "Content",
+            width: 250,
+            getValue: { $0.content.prefix(100) }
+        ),
+
+        // Status columns with badges (columns 3+ show as badges on iOS)
+        PolyDataColumn(
+            id: "deleted",
+            title: "Del",
+            width: 40,
+            getValue: { $0.deleted ? "Yes" : "No" },
+            getTextColor: { msg, _ in msg.deleted ? .systemRed : nil },
+            getBadge: { msg, _ in
+                msg.deleted ? PolyDataBadge(text: "Deleted", color: .systemRed) : nil
+            }
+        ),
+        PolyDataColumn(
+            id: "ignored",
+            title: "Ign",
+            width: 40,
+            getValue: { $0.ignored ? "Yes" : "No" },
+            getTextColor: { msg, _ in msg.ignored ? .systemOrange : nil },
+            getBadge: { msg, _ in
+                msg.ignored ? PolyDataBadge(text: "Ignored", color: .systemOrange) : nil
+            }
+        ),
+        PolyDataColumn(
+            id: "isRead",
+            title: "Read",
+            width: 40,
+            getValue: { $0.isRead ? "Yes" : "No" },
+            getBadge: { msg, _ in
+                msg.isRead ? nil : PolyDataBadge(text: "Unread", color: .systemBlue)
+            }
+        ),
+    ]
+}
+```
+
+### Badge vs Text Color
+
+Both `getTextColor` and `getBadge` can be used together:
+
+- **`getTextColor`**: Colors the column text on both macOS and iOS
+- **`getBadge`**: Shows a colored badge on iOS only (where columns 3+ aren't visible)
+
+On macOS, all columns are visible in the table. On iOS, only the first 3 columns are used for the cell layout, so badges provide visibility for status fields.
+
+### Color Consistency
+
+Use consistent colors across your entities for better visual scanning:
+
+| Color | Use Case | Example |
+| ----- | -------- | ------- |
+| `.systemRed` | Deleted, Critical | `PolyDataBadge(text: "Deleted", color: .systemRed)` |
+| `.systemOrange` | Ignored, Archived, Warnings | `PolyDataBadge(text: "Archived", color: .systemOrange)` |
+| `.systemBlue` | Unread, Default, Info | `PolyDataBadge(text: "Unread", color: .systemBlue)` |
+| `.systemPurple` | Test, Placeholder, Custom | `PolyDataBadge(text: "Test", color: .systemPurple)` |
+| `.systemTeal` | Dynamic, Companion, Active | `PolyDataBadge(text: "Dynamic", color: .systemTeal)` |
+| `.systemGreen` | Success, Verified | `PolyDataBadge(text: "Verified", color: .systemGreen)` |
+
+### Conditional Logic
+
+Return `nil` when the badge shouldn't be shown:
+
+```swift
+getBadge: { message, _ in
+    // Only show badge when deleted is TRUE
+    message.deleted ? PolyDataBadge(text: "Deleted", color: .systemRed) : nil
+}
+```
+
+Or combine multiple conditions:
+
+```swift
+getBadge: { message, _ in
+    if message.deleted {
+        return PolyDataBadge(text: "Deleted", color: .systemRed)
+    } else if message.ignored {
+        return PolyDataBadge(text: "Ignored", color: .systemOrange)
+    }
+    return nil
+}
+```
+
+### Using Integrity Report
+
+The `report` parameter can be used to show different badges based on data integrity:
+
+```swift
+getBadge: { conversation, report in
+    if let report, report.hasIssue(entityID: "conversations", recordID: conversation.id) {
+        return PolyDataBadge(text: "⚠️ Issue", color: .systemRed)
+    }
+    return conversation.archived ? PolyDataBadge(text: "Archived", color: .systemOrange) : nil
+}
+```
+
+**Note**: Integrity issues are automatically shown as badges by the cell. This example is for when you want custom badge text based on integrity state.
+
+### Display Behavior
+
+- **Automatic Collection**: The iOS cell iterates through all columns and collects badges
+- **Multiple Badges**: A row can show multiple badges if multiple columns define them
+- **Overflow Handling**: Badge stack uses horizontal layout with wrapping if needed
+- **Integrity Issues**: Shown in addition to status badges (not replacing them)
+
 ## Configuration Options
 
 ```swift
@@ -427,6 +612,7 @@ enum MyAppDataExplorer {
 ```text
 PolyKit/DataExplorer/
 ├── Configuration/
+│   ├── PolyDataBadge.swift
 │   ├── PolyDataColumn.swift
 │   ├── PolyDataSortField.swift
 │   ├── PolyDataField.swift

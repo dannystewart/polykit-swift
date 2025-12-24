@@ -1,10 +1,18 @@
+//
+//  PolyDataColumn.swift
+//  by Danny Stewart
+//  https://github.com/dannystewart/polykit-swift
+//
+
 import Foundation
 
 #if canImport(AppKit)
     import AppKit
+
     public typealias PolyColor = NSColor
 #elseif canImport(UIKit)
     import UIKit
+
     public typealias PolyColor = UIColor
 #endif
 
@@ -46,6 +54,24 @@ public struct PolyDataColumn<Model> {
     /// - Returns: The color to use, or nil to use the default label color.
     public let getTextColor: ((Model, PolyDataIntegrityReport?) -> PolyColor?)?
 
+    /// Optional closure that returns a badge to display on iOS (where space is limited).
+    ///
+    /// Badges provide quick visual indicators for status fields. This is particularly
+    /// useful on iOS where showing all columns isn't practical. Return nil to show no badge.
+    ///
+    /// Example:
+    /// ```swift
+    /// getBadge: { message, _ in
+    ///     message.deleted ? PolyDataBadge(text: "Deleted", color: .systemRed) : nil
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - model: The model instance being displayed.
+    ///   - report: Optional integrity report for context.
+    /// - Returns: A badge to display, or nil for no badge.
+    public let getBadge: ((Model, PolyDataIntegrityReport?) -> PolyDataBadge?)?
+
     // MARK: Initialization
 
     /// Creates a new column configuration.
@@ -59,6 +85,7 @@ public struct PolyDataColumn<Model> {
     ///   - isSortable: Whether sorting by this column is allowed. Default is true.
     ///   - getValue: Closure to extract the display value from a model.
     ///   - getTextColor: Optional closure for custom text coloring.
+    ///   - getBadge: Optional closure for badge display on iOS. Default is nil.
     public init(
         id: String,
         title: String,
@@ -67,7 +94,8 @@ public struct PolyDataColumn<Model> {
         maxWidth: CGFloat = 500,
         isSortable: Bool = true,
         getValue: @escaping (Model) -> String,
-        getTextColor: ((Model, PolyDataIntegrityReport?) -> PolyColor?)? = nil
+        getTextColor: ((Model, PolyDataIntegrityReport?) -> PolyColor?)? = nil,
+        getBadge: ((Model, PolyDataIntegrityReport?) -> PolyDataBadge?)? = nil,
     ) {
         self.id = id
         self.title = title
@@ -77,5 +105,6 @@ public struct PolyDataColumn<Model> {
         self.isSortable = isSortable
         self.getValue = getValue
         self.getTextColor = getTextColor
+        self.getBadge = getBadge
     }
 }
