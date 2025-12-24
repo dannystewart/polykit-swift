@@ -52,7 +52,7 @@
             emptyLabel.alignment = .center
             view.addSubview(emptyLabel)
 
-            // Stack view for fields
+            // Stack view for fields - use a flipped clip view to pin content to top
             stackView = NSStackView()
             stackView.translatesAutoresizingMaskIntoConstraints = false
             stackView.orientation = .vertical
@@ -60,9 +60,13 @@
             stackView.spacing = 12
             stackView.edgeInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
 
+            // Use a flipped clip view so content stays at top
+            let flippedClipView = FlippedClipView()
+            flippedClipView.documentView = stackView
+
             scrollView = NSScrollView()
             scrollView.translatesAutoresizingMaskIntoConstraints = false
-            scrollView.documentView = stackView
+            scrollView.contentView = flippedClipView
             scrollView.hasVerticalScroller = true
             scrollView.hasHorizontalScroller = false
             scrollView.autohidesScrollers = true
@@ -199,7 +203,7 @@
                     textView.isEditable = true
                     scrollView.documentView = textView
                     scrollView.hasVerticalScroller = true
-                    scrollView.heightAnchor.constraint(equalToConstant: 100).isActive = true
+                    scrollView.heightAnchor.constraint(equalToConstant: 200).isActive = true
                     scrollView.widthAnchor.constraint(equalToConstant: 250).isActive = true
                     container.addArrangedSubview(scrollView)
                 } else {
@@ -241,7 +245,13 @@
             let relationship = entity.detailRelationships[sender.tag]
             relationship.navigateAction(record, dataSource.context)
         }
+    }
 
+    // MARK: - FlippedClipView
+
+    /// A clip view that flips its coordinate system so content pins to the top.
+    private final class FlippedClipView: NSClipView {
+        override var isFlipped: Bool { true }
     }
 
 #endif // os(macOS)
