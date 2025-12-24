@@ -115,8 +115,9 @@
                 iOSPolyDataExplorerCell.self,
                 forCellReuseIdentifier: iOSPolyDataExplorerCell.reuseIdentifier,
             )
-            self.tableView.rowHeight = UITableView.automaticDimension
-            self.tableView.estimatedRowHeight = 80
+            // Fixed row height avoids any self-sizing edge cases and is much faster for large datasets.
+            self.tableView.rowHeight = 88
+            self.tableView.estimatedRowHeight = 88
             view.addSubview(self.tableView)
 
             NSLayoutConstraint.activate([
