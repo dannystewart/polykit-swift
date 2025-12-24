@@ -34,6 +34,8 @@
         private var filterBanner: UIView?
         private var warningBanner: UIView?
 
+        private let emptyStateLabel: UILabel = .init()
+
         // MARK: Initialization
 
         init(dataSource: PolyDataExplorerDataSource) {
@@ -51,6 +53,7 @@
             self.setupUI()
             self.setupNavigationBar()
             self.setupSearchController()
+            self.setupEmptyState()
             self.reloadData()
         }
 
@@ -73,6 +76,7 @@
             self.updateStats()
             self.rebuildBanners()
             self.refreshMenus()
+            self.updateEmptyState()
         }
 
         // MARK: Setup
@@ -123,6 +127,44 @@
                 self.tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
                 self.tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             ])
+        }
+
+        private func setupEmptyState() {
+            self.emptyStateLabel.translatesAutoresizingMaskIntoConstraints = false
+            self.emptyStateLabel.textAlignment = .center
+            self.emptyStateLabel.textColor = .secondaryLabel
+            self.emptyStateLabel.numberOfLines = 0
+            self.emptyStateLabel.font = .systemFont(ofSize: 14, weight: .regular)
+            self.tableView.backgroundView = self.emptyStateLabel
+            self.updateEmptyState()
+        }
+
+        private func updateEmptyState() {
+            guard let entity = self.dataSource.currentEntity else {
+                self.emptyStateLabel.isHidden = false
+                self.emptyStateLabel.text = "No entity selected."
+                self.tableView.separatorStyle = .none
+                return
+            }
+
+            let expected = entity.recordCount(self.dataSource.modelContext)
+            if self.records.isEmpty {
+                self.tableView.separatorStyle = .none
+
+                if expected > 0 {
+                    self.emptyStateLabel.text = """
+                    No rows fetched for \(entity.displayName).
+
+                    Expected \(expected) record(s) based on count(), but fetch returned 0.
+                    """
+                } else {
+                    self.emptyStateLabel.text = "No \(entity.displayName.lowercased()) found."
+                }
+                self.emptyStateLabel.isHidden = false
+            } else {
+                self.emptyStateLabel.isHidden = true
+                self.tableView.separatorStyle = .singleLine
+            }
         }
 
         private func setupNavigationBar() {

@@ -47,8 +47,19 @@
             preferredSplitBehavior = .tile
             preferredDisplayMode = .oneBesideSecondary
 
-            setViewController(self.recordsViewController, for: .primary)
-            setViewController(self.detailViewController, for: .secondary)
+            // Embed columns in navigation controllers so:
+            // - Compact-width (iPhone / narrow iPad windows) can push list → detail correctly
+            // - Nav bar items (Done, entity picker, search, etc.) appear as intended
+            let primaryNav = UINavigationController(rootViewController: self.recordsViewController)
+            primaryNav.navigationBar.prefersLargeTitles = false
+            primaryNav.view.backgroundColor = .clear
+
+            let secondaryNav = UINavigationController(rootViewController: self.detailViewController)
+            secondaryNav.navigationBar.prefersLargeTitles = false
+            secondaryNav.view.backgroundColor = .clear
+
+            setViewController(primaryNav, for: .primary)
+            setViewController(secondaryNav, for: .secondary)
 
             self.setupContextCallbacks()
 
