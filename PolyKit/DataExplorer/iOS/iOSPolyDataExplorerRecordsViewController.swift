@@ -57,6 +57,12 @@
             self.reloadData()
         }
 
+        override func viewDidLayoutSubviews() {
+            super.viewDidLayoutSubviews()
+            guard self.tableView != nil else { return }
+            self.emptyStateLabel.frame = self.tableView.bounds.insetBy(dx: 24, dy: 0)
+        }
+
         // MARK: Public API
 
         func setSelectedEntityIndex(_ index: Int) {
@@ -130,11 +136,13 @@
         }
 
         private func setupEmptyState() {
-            self.emptyStateLabel.translatesAutoresizingMaskIntoConstraints = false
             self.emptyStateLabel.textAlignment = .center
             self.emptyStateLabel.textColor = .secondaryLabel
             self.emptyStateLabel.numberOfLines = 0
             self.emptyStateLabel.font = .systemFont(ofSize: 14, weight: .regular)
+            self.emptyStateLabel.translatesAutoresizingMaskIntoConstraints = true
+            self.emptyStateLabel.frame = self.tableView.bounds.insetBy(dx: 24, dy: 0)
+            self.emptyStateLabel.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             self.tableView.backgroundView = self.emptyStateLabel
             self.updateEmptyState()
         }
