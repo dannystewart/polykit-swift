@@ -1,23 +1,28 @@
 disabled_rules:
-  - closing_brace
-  - cyclomatic_complexity
+  # Disabled with reason
+  - line_length # too strict
+  - type_name # needed for "macOS" and "iOS"
+  - identifier_name # needed for database column names
+  - opening_brace # conflicts with swiftformat
+  - closing_brace # conflicts with swiftformat
+  - trailing_comma # conflicts with swiftformat
+  - todo # not all todos can be done today
+  #
+  # Enable when possible
   - file_length
-  - function_body_length
-  - function_parameter_count
-  - identifier_name
-  - large_tuple
-  - line_length
-  - multiple_closures_with_trailing_closure
-  - nesting
-  - opening_brace
-  - todo
-  - trailing_comma
   - type_body_length
-  - type_name
+  - function_parameter_count
+  - function_body_length
+  - cyclomatic_complexity
+
+included:
+  - PolyKit
+  - PolyMedia
+  - PolyBase
+  - Tests
 
 excluded:
   - .build
-  - Packages
 
 strict: true
 check_for_updates: true
