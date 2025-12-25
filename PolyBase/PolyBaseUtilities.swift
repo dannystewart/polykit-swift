@@ -11,10 +11,15 @@ import Supabase
 
 /// Convenient accessors for extracting typed values from AnyJSON.
 public extension AnyJSON {
-    /// Extract string value from AnyJSON.
-    var stringValue: String? {
-        if case let .string(value) = self { return value }
-        return nil
+    /// Check whether this value is `.null`.
+    ///
+    /// Note: Supabase's `AnyJSON` already provides `isNil`.
+    /// We keep `isNull` as a semantic alias (and to preserve existing call sites),
+    /// but we intentionally do **not** duplicate Supabase's `stringValue`/`boolValue`/etc
+    /// accessors to avoid ambiguity when apps import both `Supabase` and `PolyBase`.
+    var isNull: Bool {
+        if case .null = self { return true }
+        return false
     }
 
     /// Extract integer value from AnyJSON.
@@ -25,35 +30,14 @@ public extension AnyJSON {
         return nil
     }
 
-    /// Extract bool value from AnyJSON.
-    var boolValue: Bool? {
-        if case let .bool(value) = self { return value }
-        return nil
-    }
-
-    /// Extract double value from AnyJSON.
-    var doubleValue: Double? {
+    /// Extract double value from AnyJSON, accepting both `.double` and `.integer`.
+    ///
+    /// Supabase's `AnyJSON.doubleValue` only returns a value for `.double`.
+    /// This helper preserves PolyBase's historical behavior of treating integer JSON numbers as valid doubles.
+    var numericDoubleValue: Double? {
         if case let .double(value) = self { return value }
         if case let .integer(value) = self { return Double(value) }
         return nil
-    }
-
-    /// Extract array value from AnyJSON.
-    var arrayValue: [AnyJSON]? {
-        if case let .array(value) = self { return value }
-        return nil
-    }
-
-    /// Extract object value from AnyJSON.
-    var objectValue: [String: AnyJSON]? {
-        if case let .object(value) = self { return value }
-        return nil
-    }
-
-    /// Check if this is null.
-    var isNull: Bool {
-        if case .null = self { return true }
-        return false
     }
 }
 

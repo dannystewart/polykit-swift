@@ -98,6 +98,28 @@ PolyBaseRegistry.shared.register(Task.self) { config in
 - **Protected fields** — Use `rejectIfEmpty: true` to prevent data loss
 - **Factory required for reconciliation** — Needed to create entities that exist remotely but not locally
 
+## IMPORTANT: Breaking Change (25.12.25)
+
+### `AnyJSON` accessors (Supabase) + PolyBase additions
+
+Supabase's `AnyJSON` already includes the common typed accessors you see in the examples above:
+`stringValue`, `boolValue`, `intValue`, `doubleValue`, `objectValue`, `arrayValue`, and `isNil`.
+
+**Important PolyBase compatibility note:** PolyBase used to define its own versions of those accessors.
+As of this update, PolyBase **no longer** defines them because it caused errors like `ambiguous use of 'stringValue'` when an app imports both `Supabase` and `PolyBase` (the normal case).
+
+PolyBase intentionally only adds **non-colliding** helpers:
+
+- `AnyJSON.integerValue`: Like `intValue`, but also accepts `.double` values that represent whole numbers (helpful for sloppy JSON / Postgres casts).
+- `AnyJSON.numericDoubleValue`: Like `doubleValue`, but also accepts `.integer` values (preserves PolyBase’s historical numeric coercion behavior).
+- `AnyJSON.isNull`: A semantic alias for `isNil` (and preserved for existing call sites).
+
+#### What to change in existing apps
+
+- If an app previously added workarounds like `(json.value as? String)` to avoid the ambiguity, it can now be safely reverted back to `json.stringValue`.
+- If it referenced PolyBase’s removed accessors explicitly (rare), switch to Supabase’s built-ins (`stringValue`, `boolValue`, `intValue`, etc.).
+- If it relied on PolyBase’s old `doubleValue` accepting integer JSON numbers, switch those call sites to `numericDoubleValue`.
+
 ### 3. The Persistence Lifecycle
 
 All data mutations go through `PolySyncCoordinator`:

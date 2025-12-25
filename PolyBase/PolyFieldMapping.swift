@@ -236,7 +236,7 @@ public extension PolyFieldMapping {
                 .double(entity[keyPath: keyPath])
             },
             setValue: { entity, json in
-                guard let value = json.doubleValue else { return false }
+                guard let value = json.numericDoubleValue else { return false }
                 var mutableEntity = entity
                 mutableEntity[keyPath: keyPath] = value
                 return true
@@ -268,7 +268,7 @@ public extension PolyFieldMapping {
                 var mutableEntity = entity
                 if json == .null {
                     mutableEntity[keyPath: keyPath] = nil
-                } else if let value = json.doubleValue {
+                } else if let value = json.numericDoubleValue {
                     mutableEntity[keyPath: keyPath] = value
                 } else {
                     return false
