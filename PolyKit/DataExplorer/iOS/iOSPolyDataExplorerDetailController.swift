@@ -198,10 +198,14 @@
             let field = entity.detailFields[indexPath.row]
 
             if field.isToggle {
-                let cell = tableView.dequeueReusableCell(
-                    withIdentifier: PolyToggleCell.reuseIdentifier,
-                    for: indexPath,
-                ) as! PolyToggleCell
+                guard
+                    let cell = tableView.dequeueReusableCell(
+                        withIdentifier: PolyToggleCell.reuseIdentifier,
+                        for: indexPath,
+                    ) as? PolyToggleCell else
+                {
+                    return UITableViewCell()
+                }
                 let isOn = field.getToggleValue?(record) ?? false
                 cell.configure(label: field.label, isOn: isOn) { [weak self] newValue in
                     guard let self else { return }
@@ -213,10 +217,14 @@
 
             if field.isEditable {
                 if field.isMultiline {
-                    let cell = tableView.dequeueReusableCell(
-                        withIdentifier: PolyTextViewCell.reuseIdentifier,
-                        for: indexPath,
-                    ) as! PolyTextViewCell
+                    guard
+                        let cell = tableView.dequeueReusableCell(
+                            withIdentifier: PolyTextViewCell.reuseIdentifier,
+                            for: indexPath,
+                        ) as? PolyTextViewCell else
+                    {
+                        return UITableViewCell()
+                    }
                     cell.configure(label: field.label, value: field.getValue(record)) { [weak self] newValue in
                         guard let self else { return }
                         field.editAction?(record, newValue)
@@ -224,10 +232,14 @@
                     }
                     return cell
                 } else {
-                    let cell = tableView.dequeueReusableCell(
-                        withIdentifier: PolyTextFieldCell.reuseIdentifier,
-                        for: indexPath,
-                    ) as! PolyTextFieldCell
+                    guard
+                        let cell = tableView.dequeueReusableCell(
+                            withIdentifier: PolyTextFieldCell.reuseIdentifier,
+                            for: indexPath,
+                        ) as? PolyTextFieldCell else
+                    {
+                        return UITableViewCell()
+                    }
                     cell.configure(label: field.label, value: field.getValue(record)) { [weak self] newValue in
                         guard let self else { return }
                         field.editAction?(record, newValue)

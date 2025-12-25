@@ -577,10 +577,14 @@
         }
 
         func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-            let cell = tableView.dequeueReusableCell(
-                withIdentifier: iOSPolyDataExplorerCell.reuseIdentifier,
-                for: indexPath,
-            ) as! iOSPolyDataExplorerCell
+            guard
+                let cell = tableView.dequeueReusableCell(
+                    withIdentifier: iOSPolyDataExplorerCell.reuseIdentifier,
+                    for: indexPath,
+                ) as? iOSPolyDataExplorerCell else
+            {
+                return UITableViewCell()
+            }
 
             guard
                 indexPath.row < self.records.count,

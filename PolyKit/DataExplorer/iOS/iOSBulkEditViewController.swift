@@ -87,7 +87,9 @@
 
             // Error section
             if self.errorMessage != nil, indexPath.section == 0 {
-                let cell = tableView.dequeueReusableCell(withIdentifier: "error", for: indexPath) as! ErrorCell
+                guard let cell = tableView.dequeueReusableCell(withIdentifier: "error", for: indexPath) as? ErrorCell else {
+                    return UITableViewCell()
+                }
                 cell.errorLabel.text = self.errorMessage
                 return cell
             }
@@ -114,7 +116,9 @@
                     return cell
 
                 case 2:
-                    let cell = tableView.dequeueReusableCell(withIdentifier: "textField", for: indexPath) as! TextFieldCell
+                    guard let cell = tableView.dequeueReusableCell(withIdentifier: "textField", for: indexPath) as? TextFieldCell else {
+                        return UITableViewCell()
+                    }
                     cell.label.text = "To value"
                     cell.textField.placeholder = "New value"
                     cell.textField.text = self.newValue
@@ -133,7 +137,9 @@
                     return cell
 
                 case 4:
-                    let cell = tableView.dequeueReusableCell(withIdentifier: "textField", for: indexPath) as! TextFieldCell
+                    guard let cell = tableView.dequeueReusableCell(withIdentifier: "textField", for: indexPath) as? TextFieldCell else {
+                        return UITableViewCell()
+                    }
                     cell.label.text = "Equals"
                     cell.textField.placeholder = "Match value"
                     cell.textField.text = self.whereValue
@@ -149,7 +155,9 @@
 
             // Version checkbox section
             if indexPath.section == 1 + errorOffset {
-                let cell = tableView.dequeueReusableCell(withIdentifier: "switch", for: indexPath) as! SwitchCell
+                guard let cell = tableView.dequeueReusableCell(withIdentifier: "switch", for: indexPath) as? SwitchCell else {
+                    return UITableViewCell()
+                }
                 cell.label.text = "Increment version (for PolyBase sync)"
                 cell.switchControl.isOn = self.incrementVersion
                 cell.onToggle = { [weak self] isOn in
@@ -525,7 +533,9 @@
         }
 
         override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-            let cell = tableView.dequeueReusableCell(withIdentifier: "preview", for: indexPath) as! PreviewCell
+            guard let cell = tableView.dequeueReusableCell(withIdentifier: "preview", for: indexPath) as? PreviewCell else {
+                return UITableViewCell()
+            }
             let record = self.preview.matchingRecords[indexPath.row]
 
             cell.recordLabel.text = record.displayName
