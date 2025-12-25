@@ -149,7 +149,10 @@ public enum ULID {
         // With the 2-bit prefix, we should have emitted exactly 26 chars.
         precondition(output.count == 26, "ULID encoding produced \(output.count) chars")
 
-        return String(decoding: output, as: UTF8.self)
+        guard let result = String(bytes: output, encoding: .utf8) else {
+            preconditionFailure("ULID encoding produced invalid UTF-8")
+        }
+        return result
     }
 
     private nonisolated static func shiftLeft(_ bytes: inout [UInt8], by bits: UInt16) {
