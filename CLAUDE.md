@@ -10,7 +10,13 @@ PolyKit is a Swift utility library providing delightful utilities for CLI applic
 - **PolyMedia**: Audio/video player components and audio analysis
 - **PolyBase**: Supabase sync engine with offline-first architecture
 
-## Building and Testing
+## Building and Tool Use
+
+- **Always** run `swiftlint` before building, either via the Swift MCP or using `swiftlint lint` from the command line.
+- **Always** check available MCPs and tools before falling back to shell commands.
+- **Use the Apple Docs MCP often** to retrieve the latest Apple API documentation. This is especially important for modern macOS 26 and iOS 26 APIs.
+
+Warnings are always to be treated as errors and fixed accordingly.
 
 ### Validating Build
 
