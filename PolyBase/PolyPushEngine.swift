@@ -7,6 +7,21 @@
 import Foundation
 import Supabase
 
+// MARK: - TombstoneRecord
+
+/// Represents a tombstone record for batch updates.
+public struct TombstoneRecord {
+    public let id: String
+    public let version: Int
+    public let deleted: Bool
+
+    public init(id: String, version: Int, deleted: Bool) {
+        self.id = id
+        self.version = version
+        self.deleted = deleted
+    }
+}
+
 // MARK: - PolyPushEngine
 
 /// Generic engine for pushing entities to Supabase.
@@ -210,7 +225,7 @@ public final class PolyPushEngine {
     @discardableResult
     public nonisolated func updateTombstones(
         tableName: String,
-        tombstones: [(id: String, version: Int, deleted: Bool)],
+        tombstones: [TombstoneRecord],
     ) async -> Int {
         guard !tombstones.isEmpty else { return 0 }
 

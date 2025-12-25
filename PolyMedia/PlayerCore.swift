@@ -290,6 +290,7 @@ final class PlayerCore: @unchecked Sendable {
 
     // MARK: - Audio Tap Callbacks
 
+    // swiftlint:disable:next function_parameter_count
     fileprivate nonisolated func processAudioTap(
         tap: MTAudioProcessingTap,
         numberFrames: CMItemCount,
@@ -831,6 +832,7 @@ private func tapUnprepare(tap: MTAudioProcessingTap) {
     logger.debug("[AudioTap] Unprepare called, keeping audio format")
 }
 
+// swiftlint:disable:next function_parameter_count
 private func tapProcess(
     tap: MTAudioProcessingTap,
     numberFrames: CMItemCount,

@@ -44,6 +44,18 @@ import Supabase
 /// Once started, all log entries from `logger` (the global PolyLog instance)
 /// are automatically buffered and streamed to Supabase.
 public final class LogRemote: @unchecked Sendable {
+    // MARK: - Push
+
+    /// Parameters for pushing log entries to Supabase.
+    private struct PushEntriesParameters {
+        let entries: [LogEntry]
+        let client: SupabaseClient
+        let tableName: String
+        let deviceID: String
+        let sessionID: String
+        let appBundleID: String
+    }
+
     // MARK: - Singleton
 
     /// Shared instance for remote logging.
@@ -311,14 +323,14 @@ public final class LogRemote: @unchecked Sendable {
 
         // Push asynchronously
         Task.detached { [weak self, deviceID, sessionID, appBundleID] in
-            await self?.pushEntries(
-                entries,
+            await self?.pushEntries(PushEntriesParameters(
+                entries: entries,
                 client: client,
                 tableName: config.tableName,
                 deviceID: deviceID,
                 sessionID: sessionID,
                 appBundleID: appBundleID,
-            )
+            ))
         }
     }
 
@@ -371,36 +383,26 @@ public final class LogRemote: @unchecked Sendable {
 
         // Push asynchronously
         Task.detached { [weak self] in
-            await self?.pushEntries(
-                entries,
+            await self?.pushEntries(PushEntriesParameters(
+                entries: entries,
                 client: client,
                 tableName: config.tableName,
                 deviceID: deviceID,
                 sessionID: sessionID,
                 appBundleID: appBundleID,
-            )
+            ))
         }
     }
 
-    // MARK: - Push
-
     /// Push log entries to Supabase.
-    private func pushEntries(
-        _ entries: [LogEntry],
-        client: SupabaseClient,
-        tableName: String,
-        deviceID: String,
-        sessionID: String,
-        appBundleID: String)
-        async
-    {
-        guard !entries.isEmpty else { return }
+    private func pushEntries(_ params: PushEntriesParameters) async {
+        guard !params.entries.isEmpty else { return }
 
         // Build records
         let isoFormatter = ISO8601DateFormatter()
         isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
-        let records: [[String: AnyJSON]] = entries.map { entry in
+        let records: [[String: AnyJSON]] = params.entries.map { entry in
             // Generate ULID from the log entry's timestamp (not push time)
             let ulid = ULID.generate(for: entry.timestamp)
 
@@ -409,9 +411,9 @@ public final class LogRemote: @unchecked Sendable {
                 "timestamp": .string(isoFormatter.string(from: entry.timestamp)),
                 "level": .string(entry.level.rawValue),
                 "message": .string(entry.message),
-                "device_id": .string(deviceID),
-                "session_id": .string(sessionID),
-                "app_bundle_id": .string(appBundleID),
+                "device_id": .string(params.deviceID),
+                "session_id": .string(params.sessionID),
+                "app_bundle_id": .string(params.appBundleID),
             ]
 
             if let group = entry.group {
@@ -428,8 +430,8 @@ public final class LogRemote: @unchecked Sendable {
         var lastError: Error?
         for attempt in 1 ... 2 {
             do {
-                try await client
-                    .from(tableName)
+                try await params.client
+                    .from(params.tableName)
                     .insert(records)
                     .execute()
                 return // Success

@@ -56,6 +56,21 @@ public final class PolySyncCoordinator {
         }
     }
 
+    /// Handle a push error, distinguishing between retryable and permanent failures.
+    ///
+    /// - Version regression: Don't queue, post notification to trigger reconcile
+    /// - Invalid undelete: Don't queue, post notification to trigger reconcile
+    /// - Same-version: Ignore (benign duplicate)
+    /// - Other errors: Queue for retry (transient failure)
+    private struct PushErrorContext {
+        let error: Error
+        let entityType: String
+        let entityId: String
+        let tableName: String
+        let record: [String: AnyJSON]
+        let action: PolyBaseOfflineOperation.Action
+    }
+
     // MARK: - Singleton
 
     public static let shared: PolySyncCoordinator = .init()
@@ -189,14 +204,14 @@ public final class PolySyncCoordinator {
                     )
                 }
             } catch {
-                self.handlePushError(
-                    error,
+                self.handlePushError(PushErrorContext(
+                    error: error,
                     entityType: entityType,
                     entityId: entityID,
                     tableName: tableName,
                     record: record,
                     action: .update,
-                )
+                ))
             }
         }
 
@@ -348,14 +363,14 @@ public final class PolySyncCoordinator {
                     )
                 }
             } catch {
-                self.handlePushError(
-                    error,
+                self.handlePushError(PushErrorContext(
+                    error: error,
                     entityType: entityType,
                     entityId: entityID,
                     tableName: tableName,
                     record: record,
                     action: .insert,
-                )
+                ))
             }
         }
 
@@ -438,14 +453,14 @@ public final class PolySyncCoordinator {
                     tombstoneRecord["user_id"] = .string(userID.uuidString)
                 }
 
-                self.handlePushError(
-                    error,
+                self.handlePushError(PushErrorContext(
+                    error: error,
                     entityType: entityType,
                     entityId: entityID,
                     tableName: tableName,
                     record: tombstoneRecord,
                     action: .delete,
-                )
+                ))
             }
         }
 
@@ -477,8 +492,8 @@ public final class PolySyncCoordinator {
         // 2. Capture tombstone data IMMEDIATELY after mutation (before save can cause staleness)
         let tableName = config.tableName
         let parentTable = config.parentRelation?.parentTableName
-        let tombstones: [(id: String, version: Int, deleted: Bool)] = entities.map { entity in
-            (id: entity.id, version: entity.version, deleted: entity.deleted)
+        let tombstones: [TombstoneRecord] = entities.map { entity in
+            TombstoneRecord(id: entity.id, version: entity.version, deleted: entity.deleted)
         }
 
         // 3. Collect and bump parent hierarchy
@@ -585,14 +600,14 @@ public final class PolySyncCoordinator {
             do {
                 try await pushEngine.pushRawRecord(record, to: tableName)
             } catch {
-                self.handlePushError(
-                    error,
+                self.handlePushError(PushErrorContext(
+                    error: error,
                     entityType: entityType,
                     entityId: entityID,
                     tableName: tableName,
                     record: record,
                     action: .update,
-                )
+                ))
             }
         }
 
@@ -836,24 +851,11 @@ public final class PolySyncCoordinator {
         return errorString.contains("undelete requires version")
     }
 
-    /// Handle a push error, distinguishing between retryable and permanent failures.
-    ///
-    /// - Version regression: Don't queue, post notification to trigger reconcile
-    /// - Invalid undelete: Don't queue, post notification to trigger reconcile
-    /// - Same-version: Ignore (benign duplicate)
-    /// - Other errors: Queue for retry (transient failure)
-    private func handlePushError(
-        _ error: Error,
-        entityType: String,
-        entityId: String,
-        tableName: String,
-        record: [String: AnyJSON],
-        action: PolyBaseOfflineOperation.Action,
-    ) {
-        if self.isVersionRegressionError(error) {
+    private func handlePushError(_ context: PushErrorContext) {
+        if self.isVersionRegressionError(context.error) {
             // Permanent failure: local is stale, needs reconciliation
             polyWarning(
-                "PolySyncCoordinator: Version regression for \(entityType) \(entityId) - " +
+                "PolySyncCoordinator: Version regression for \(context.entityType) \(context.entityId) - " +
                     "local is stale, will sync at next reconciliation",
             )
             // Post notification so app can trigger reconciliation if desired
@@ -861,19 +863,19 @@ public final class PolySyncCoordinator {
                 name: .polyBaseVersionRegressionDetected,
                 object: nil,
                 userInfo: [
-                    "entityType": entityType,
-                    "entityId": entityId,
-                    "tableName": tableName,
+                    "entityType": context.entityType,
+                    "entityId": context.entityId,
+                    "tableName": context.tableName,
                 ],
             )
             // Do NOT queue — retrying will never succeed
             return
         }
 
-        if self.isInvalidUndeleteError(error) {
+        if self.isInvalidUndeleteError(context.error) {
             // Permanent failure: trying to undelete without proper version bump
             polyWarning(
-                "PolySyncCoordinator: Invalid undelete attempt for \(entityType) \(entityId) - " +
+                "PolySyncCoordinator: Invalid undelete attempt for \(context.entityType) \(context.entityId) - " +
                     "remote is deleted, local needs to adopt tombstone",
             )
             // Post notification so app can trigger reconciliation
@@ -881,24 +883,24 @@ public final class PolySyncCoordinator {
                 name: .polyBaseVersionRegressionDetected, // Reuse same notification
                 object: nil,
                 userInfo: [
-                    "entityType": entityType,
-                    "entityId": entityId,
-                    "tableName": tableName,
+                    "entityType": context.entityType,
+                    "entityId": context.entityId,
+                    "tableName": context.tableName,
                 ],
             )
             // Do NOT queue — retrying will never succeed
             return
         }
 
-        if self.isSameVersionMutationError(error) {
+        if self.isSameVersionMutationError(context.error) {
             // Benign duplicate — the push already happened, ignore
-            polyDebug("PolySyncCoordinator: Same-version mutation for \(entityType) \(entityId) - ignoring")
+            polyDebug("PolySyncCoordinator: Same-version mutation for \(context.entityType) \(context.entityId) - ignoring")
             return
         }
 
         // Transient failure — queue for retry
-        polyError("PolySyncCoordinator: Push failed for \(entityType) \(entityId), queueing for retry: \(error)")
-        self.queueOperation(table: tableName, action: action, record: record, entityId: entityId)
+        polyError("PolySyncCoordinator: Push failed for \(context.entityType) \(context.entityId), queueing for retry: \(context.error)")
+        self.queueOperation(table: context.tableName, action: context.action, record: context.record, entityId: context.entityId)
     }
 }
 
