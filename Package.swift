@@ -36,5 +36,13 @@ let package = Package(
             ],
             path: "PolyBase",
         ),
+        .testTarget(
+            name: "PolyKitTests",
+            dependencies: [
+                "PolyKit",
+                "PolyMedia",
+                "PolyBase",
+            ],
+        ),
     ],
 )
