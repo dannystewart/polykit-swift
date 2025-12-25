@@ -60,10 +60,8 @@ public final class PolyDataExplorerDataSource {
             return state.1
         }
         // Find default from sort field
-        for i in 0 ..< entity.sortFieldCount {
-            if entity.sortFieldID(i) == entity.defaultSortFieldID {
-                return entity.sortFieldDefaultAscending(i)
-            }
+        for i in 0 ..< entity.sortFieldCount where entity.sortFieldID(i) == entity.defaultSortFieldID {
+            return entity.sortFieldDefaultAscending(i)
         }
         return true
     }
@@ -119,11 +117,9 @@ public final class PolyDataExplorerDataSource {
         } else {
             // Find default ascending for this field
             var defaultAscending = true
-            for i in 0 ..< entity.sortFieldCount {
-                if entity.sortFieldID(i) == fieldID {
-                    defaultAscending = entity.sortFieldDefaultAscending(i)
-                    break
-                }
+            for i in 0 ..< entity.sortFieldCount where entity.sortFieldID(i) == fieldID {
+                defaultAscending = entity.sortFieldDefaultAscending(i)
+                break
             }
             self.sortState[entity.id] = (fieldID, defaultAscending)
         }

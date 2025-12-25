@@ -156,10 +156,8 @@ public struct AnimatedEqualizer: View {
 
     private func resetToMinimum() {
         withAnimation(.easeOut(duration: 0.2)) {
-            for i in 0 ..< self.barCount {
-                if i < self.barHeights.count {
-                    self.barHeights[i] = self.minimumBarHeight
-                }
+            for i in 0 ..< self.barCount where i < self.barHeights.count {
+                self.barHeights[i] = self.minimumBarHeight
             }
         }
     }

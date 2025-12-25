@@ -264,11 +264,9 @@
 
         private func hideProgress() {
             guard let contentView = window?.contentView else { return }
-            for subview in contentView.subviews {
-                if subview.identifier == NSUserInterfaceItemIdentifier("progressOverlay") {
-                    subview.removeFromSuperview()
-                    break
-                }
+            for subview in contentView.subviews where subview.identifier == NSUserInterfaceItemIdentifier("progressOverlay") {
+                subview.removeFromSuperview()
+                break
             }
             self.progressLabel = nil
         }
