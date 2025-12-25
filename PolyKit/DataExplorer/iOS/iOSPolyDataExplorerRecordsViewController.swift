@@ -104,6 +104,10 @@
             self.bannerStack.alignment = .fill
             self.bannerStack.distribution = .fill
             self.bannerStack.spacing = 8
+            // Critical: prevent the banner stack from expanding to consume all vertical space.
+            // If it stretches, Auto Layout can legitimately squeeze the table view down to 0 height.
+            self.bannerStack.setContentHuggingPriority(.required, for: .vertical)
+            self.bannerStack.setContentCompressionResistancePriority(.required, for: .vertical)
             view.addSubview(self.bannerStack)
 
             // Table view
@@ -118,6 +122,9 @@
             // Fixed row height avoids any self-sizing edge cases and is much faster for large datasets.
             self.tableView.rowHeight = 88
             self.tableView.estimatedRowHeight = 88
+            // Prefer allocating vertical space to the table (not the banner stack).
+            self.tableView.setContentHuggingPriority(.defaultLow, for: .vertical)
+            self.tableView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
             view.addSubview(self.tableView)
 
             NSLayoutConstraint.activate([
