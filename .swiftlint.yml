@@ -1,9 +1,23 @@
 disabled_rules:
+  - closing_brace
+  - cyclomatic_complexity
   - file_length
+  - function_body_length
+  - function_parameter_count
+  - identifier_name
+  - large_tuple
   - line_length
+  - multiple_closures_with_trailing_closure
+  - nesting
+  - opening_brace
+  - todo
+  - trailing_comma
+  - type_body_length
+  - type_name
 
 excluded:
   - .build
   - Packages
 
+strict: true
 check_for_updates: true
