@@ -33,6 +33,7 @@
         private let bannerStack: UIStackView = .init()
         private var filterBanner: UIView?
         private var warningBanner: UIView?
+        private var bannerStackCollapsedHeightConstraint: NSLayoutConstraint?
 
         private let emptyStateLabel: UILabel = .init()
 
@@ -109,6 +110,12 @@
             self.bannerStack.setContentHuggingPriority(.required, for: .vertical)
             self.bannerStack.setContentCompressionResistancePriority(.required, for: .vertical)
             view.addSubview(self.bannerStack)
+
+            // When there are no banners, the stack view's height can be ambiguous.
+            // Explicitly collapsing it prevents the table view from being squeezed to 0 height.
+            self.bannerStackCollapsedHeightConstraint = self.bannerStack.heightAnchor.constraint(equalToConstant: 0)
+            self.bannerStackCollapsedHeightConstraint?.priority = .required
+            self.bannerStackCollapsedHeightConstraint?.isActive = true
 
             // Table view
             self.tableView = UITableView(frame: .zero, style: .plain)
@@ -365,6 +372,11 @@
                 self.bannerStack.addArrangedSubview(warningView)
                 self.warningBanner = warningView
             }
+
+            let hasBanners = !self.bannerStack.arrangedSubviews.isEmpty
+            self.bannerStack.isHidden = !hasBanners
+            self.bannerStackCollapsedHeightConstraint?.isActive = !hasBanners
+            self.view.setNeedsLayout()
         }
 
         private func buildFilterBannerIfNeeded() -> UIView? {
