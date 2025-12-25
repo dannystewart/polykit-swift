@@ -1,10 +1,14 @@
 # Build artifacts
 .build/
+.cache/
+.home/
+.tmp/
 build/
 DerivedData/
 
 # Swift package files
 .swiftpm/
+.config/swiftpm/
 *.xcodeproj/xcuserdata/
 *.xcuserdata/
 *.xcworkspace/xcuserdata/
