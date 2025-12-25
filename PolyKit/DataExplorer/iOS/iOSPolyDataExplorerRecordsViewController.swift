@@ -23,6 +23,7 @@
         var onEntitySelected: ((Int) -> Void)?
 
         private let dataSource: PolyDataExplorerDataSource
+        private let showsEntityPicker: Bool
         private var records: [AnyObject] = []
 
         // UI Components
@@ -39,8 +40,9 @@
 
         // MARK: Initialization
 
-        init(dataSource: PolyDataExplorerDataSource) {
+        init(dataSource: PolyDataExplorerDataSource, showsEntityPicker: Bool = true) {
             self.dataSource = dataSource
+            self.showsEntityPicker = showsEntityPicker
             super.init(nibName: nil, bundle: nil)
         }
 
@@ -191,18 +193,17 @@
         }
 
         private func setupNavigationBar() {
-            title = self.dataSource.configuration.title
+            if self.showsEntityPicker {
+                title = self.dataSource.configuration.title
+            } else {
+                title = self.dataSource.currentEntity?.displayName ?? self.dataSource.configuration.title
+            }
             navigationController?.navigationBar.prefersLargeTitles = false
 
             navigationItem.rightBarButtonItem = UIBarButtonItem(
                 barButtonSystemItem: .done,
                 target: self,
                 action: #selector(self.handleDone),
-            )
-
-            let entityPicker = UIBarButtonItem(
-                title: dataSource.currentEntity?.displayName ?? "Entity",
-                menu: self.createEntityMenu(),
             )
 
             let refreshButton = UIBarButtonItem(
@@ -219,7 +220,13 @@
             )
 
             var leftItems = [UIBarButtonItem]()
-            leftItems.append(entityPicker)
+            if self.showsEntityPicker {
+                let entityPicker = UIBarButtonItem(
+                    title: dataSource.currentEntity?.displayName ?? "Entity",
+                    menu: self.createEntityMenu(),
+                )
+                leftItems.append(entityPicker)
+            }
             leftItems.append(refreshButton)
 
             if !self.dataSource.configuration.toolbarSections.isEmpty {
@@ -332,6 +339,10 @@
         }
 
         private func refreshMenus() {
+            if !self.showsEntityPicker {
+                title = self.dataSource.currentEntity?.displayName ?? self.dataSource.configuration.title
+            }
+
             guard let leftItems = navigationItem.leftBarButtonItems else { return }
 
             for item in leftItems {

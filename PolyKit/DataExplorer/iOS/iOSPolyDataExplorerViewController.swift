@@ -13,13 +13,15 @@
 
     /// Main view controller for the Data Explorer on iOS.
     ///
-    /// Displays a split view (records list + inspector) on iPad and collapses
-    /// down to list → detail navigation on iPhone.
+    /// Displays a triple-column split view on iPad (entities → records → inspector)
+    /// and collapses to a single records list on iPhone.
     @MainActor
     public final class iOSPolyDataExplorerViewController: UISplitViewController {
         private let dataSource: PolyDataExplorerDataSource
 
+        private let entitiesViewController: iOSPolyDataExplorerEntitiesSidebarViewController
         private let recordsViewController: iOSPolyDataExplorerRecordsViewController
+        private let compactRecordsViewController: iOSPolyDataExplorerRecordsViewController
         private let detailViewController: iOSPolyDataExplorerDetailController
 
         // Progress overlay (covers the whole split view).
@@ -39,10 +41,12 @@
                 modelContext: modelContext,
             )
 
-            self.recordsViewController = iOSPolyDataExplorerRecordsViewController(dataSource: self.dataSource)
+            self.entitiesViewController = iOSPolyDataExplorerEntitiesSidebarViewController(dataSource: self.dataSource)
+            self.recordsViewController = iOSPolyDataExplorerRecordsViewController(dataSource: self.dataSource, showsEntityPicker: false)
+            self.compactRecordsViewController = iOSPolyDataExplorerRecordsViewController(dataSource: self.dataSource, showsEntityPicker: true)
             self.detailViewController = iOSPolyDataExplorerDetailController(dataSource: self.dataSource)
 
-            super.init(style: .doubleColumn)
+            super.init(style: .tripleColumn)
 
             preferredSplitBehavior = .tile
             preferredDisplayMode = .oneBesideSecondary
@@ -50,16 +54,28 @@
             // Embed columns in navigation controllers so:
             // - Compact-width (iPhone / narrow iPad windows) can push list → detail correctly
             // - Nav bar items (Done, entity picker, search, etc.) appear as intended
-            let primaryNav = UINavigationController(rootViewController: self.recordsViewController)
+            let primaryNav = UINavigationController(rootViewController: self.entitiesViewController)
             primaryNav.navigationBar.prefersLargeTitles = false
             primaryNav.view.backgroundColor = .clear
+
+            let supplementaryNav = UINavigationController(rootViewController: self.recordsViewController)
+            supplementaryNav.navigationBar.prefersLargeTitles = false
+            supplementaryNav.view.backgroundColor = .clear
 
             let secondaryNav = UINavigationController(rootViewController: self.detailViewController)
             secondaryNav.navigationBar.prefersLargeTitles = false
             secondaryNav.view.backgroundColor = .clear
 
             setViewController(primaryNav, for: .primary)
+            setViewController(supplementaryNav, for: .supplementary)
             setViewController(secondaryNav, for: .secondary)
+
+            // Important: provide an explicit compact column so iPhone opens to the records list,
+            // not the inspector.
+            let compactNav = UINavigationController(rootViewController: self.compactRecordsViewController)
+            compactNav.navigationBar.prefersLargeTitles = false
+            compactNav.view.backgroundColor = .clear
+            setViewController(compactNav, for: .compact)
 
             self.setupContextCallbacks()
 
@@ -67,8 +83,28 @@
                 self?.showInspector(for: record)
             }
 
-            self.recordsViewController.onEntitySelected = { [weak self] index in
+            self.compactRecordsViewController.onSelectRecord = { [weak self] record in
+                self?.showInspector(for: record)
+            }
+
+            self.compactRecordsViewController.onEntitySelected = { [weak self] index in
                 self?.switchToEntity(at: index)
+            }
+
+            self.entitiesViewController.onSelectEntityIndex = { [weak self] index in
+                self?.switchToEntity(at: index)
+            }
+
+            self.entitiesViewController.onSetIssuesOnly = { [weak self] enabled in
+                guard let self else { return }
+                self.dataSource.setIssueFilter(enabled: enabled)
+                self.reloadAllColumns(clearInspector: true)
+            }
+
+            self.entitiesViewController.onClearFilter = { [weak self] in
+                guard let self else { return }
+                self.dataSource.clearFilter()
+                self.reloadAllColumns(clearInspector: true)
             }
         }
 
@@ -84,6 +120,8 @@
 
             context.reloadData = { [weak self] in
                 self?.recordsViewController.reloadData()
+                self?.compactRecordsViewController.reloadData()
+                self?.entitiesViewController.reloadSidebar()
                 self?.detailViewController.tableView.reloadData()
             }
 
@@ -109,14 +147,12 @@
 
             context.applyFilter = { [weak self] filter in
                 self?.dataSource.setFilter(filter)
-                self?.recordsViewController.reloadData()
-                self?.clearInspector()
+                self?.reloadAllColumns(clearInspector: true)
             }
 
             context.clearFilter = { [weak self] in
                 self?.dataSource.clearFilter()
-                self?.recordsViewController.reloadData()
-                self?.clearInspector()
+                self?.reloadAllColumns(clearInspector: true)
             }
 
             context.dismiss = { [weak self] in
@@ -138,13 +174,25 @@
         private func clearInspector() {
             self.detailViewController.setRecord(nil, entity: nil)
             if isCollapsed {
+                // In compact mode, returning to primary shows the records list.
                 show(.primary)
             }
         }
 
         private func switchToEntity(at index: Int) {
             self.recordsViewController.setSelectedEntityIndex(index)
+            self.compactRecordsViewController.setSelectedEntityIndex(index)
+            self.entitiesViewController.reloadSidebar()
             self.clearInspector()
+        }
+
+        private func reloadAllColumns(clearInspector: Bool) {
+            self.recordsViewController.reloadData()
+            self.compactRecordsViewController.reloadData()
+            self.entitiesViewController.reloadSidebar()
+            if clearInspector {
+                self.clearInspector()
+            }
         }
 
         // MARK: Progress Overlay
