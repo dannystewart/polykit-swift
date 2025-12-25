@@ -229,13 +229,12 @@
             }
             leftItems.append(refreshButton)
 
-            if !self.dataSource.configuration.toolbarSections.isEmpty {
-                let toolsButton = UIBarButtonItem(
-                    image: UIImage(systemName: "wrench.and.screwdriver"),
-                    menu: createToolsMenu(),
-                )
-                leftItems.append(toolsButton)
-            }
+            // Tools button (always shown)
+            let toolsButton = UIBarButtonItem(
+                image: UIImage(systemName: "wrench.and.screwdriver"),
+                menu: createToolsMenu(),
+            )
+            leftItems.append(toolsButton)
 
             leftItems.append(sortButton)
             navigationItem.leftBarButtonItems = leftItems
@@ -261,6 +260,12 @@
         @objc private func clearFilter() {
             self.dataSource.clearFilter()
             self.reloadData()
+        }
+
+        private func showBulkEdit() {
+            let bulkEditVC = iOSBulkEditViewController(dataSource: dataSource)
+            let navController = UINavigationController(rootViewController: bulkEditVC)
+            present(navController, animated: true)
         }
 
         // MARK: Menus
@@ -317,6 +322,17 @@
         private func createToolsMenu() -> UIMenu {
             var menuChildren = [UIMenuElement]()
 
+            // Built-in: Bulk Edit
+            let bulkEditAction = UIAction(
+                title: "Bulk Edit…",
+                image: UIImage(systemName: "pencil.and.list.clipboard"),
+            ) { [weak self] _ in
+                self?.showBulkEdit()
+            }
+            let builtInMenu = UIMenu(title: "", options: .displayInline, children: [bulkEditAction])
+            menuChildren.append(builtInMenu)
+
+            // User-supplied tools
             for section in self.dataSource.configuration.toolbarSections {
                 let sectionActions = section.actions.map { action in
                     UIAction(

@@ -12,7 +12,7 @@ import Foundation
 ///
 /// Fields represent individual properties that can be viewed and optionally edited
 /// in the detail panel when a record is selected.
-public struct PolyDataField {
+public struct PolyDataField: @unchecked Sendable {
     /// Display label for the field.
     public let label: String
 

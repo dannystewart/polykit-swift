@@ -290,7 +290,6 @@
                 let entity = dataSource.currentEntity,
                 row < records.count else { return nil }
 
-            let identifier = column.identifier
             let cellIdentifier = NSUserInterfaceItemIdentifier("DataCell")
 
             let cell: NSTextField

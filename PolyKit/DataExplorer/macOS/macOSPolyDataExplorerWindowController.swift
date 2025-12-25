@@ -302,33 +302,23 @@
         }
 
         public func toolbarDefaultItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
-            var identifiers: [NSToolbarItem.Identifier] = [
+            [
                 NSToolbarItem.Identifier("entitySelector"),
                 .flexibleSpace,
                 NSToolbarItem.Identifier("refresh"),
+                NSToolbarItem.Identifier("tools"),
+                NSToolbarItem.Identifier("toggleInspector"),
             ]
-
-            if !self.configuration.toolbarSections.isEmpty {
-                identifiers.append(NSToolbarItem.Identifier("tools"))
-            }
-
-            identifiers.append(NSToolbarItem.Identifier("toggleInspector"))
-            return identifiers
         }
 
         public func toolbarAllowedItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
-            var identifiers: [NSToolbarItem.Identifier] = [
+            [
                 NSToolbarItem.Identifier("entitySelector"),
                 .flexibleSpace,
                 NSToolbarItem.Identifier("refresh"),
+                NSToolbarItem.Identifier("tools"),
                 NSToolbarItem.Identifier("toggleInspector"),
             ]
-
-            if !self.configuration.toolbarSections.isEmpty {
-                identifiers.append(NSToolbarItem.Identifier("tools"))
-            }
-
-            return identifiers
         }
 
         private func createEntitySelectorItem() -> NSToolbarItem {
@@ -383,19 +373,32 @@
             // Build menu
             let menu = NSMenu()
 
-            for section in self.configuration.toolbarSections {
-                if !menu.items.isEmpty {
-                    menu.addItem(.separator())
-                }
+            // Built-in: Bulk Edit
+            let bulkEditItem = NSMenuItem(title: "Bulk Edit…", action: #selector(self.showBulkEdit), keyEquivalent: "")
+            bulkEditItem.target = self
+            if let image = NSImage(systemSymbolName: "pencil.and.list.clipboard", accessibilityDescription: "Bulk Edit") {
+                bulkEditItem.image = image
+            }
+            menu.addItem(bulkEditItem)
 
-                for action in section.actions {
-                    let menuItem = NSMenuItem(title: action.title, action: #selector(self.toolbarActionTriggered(_:)), keyEquivalent: "")
-                    menuItem.target = self
-                    menuItem.representedObject = action.id
-                    if let image = NSImage(systemSymbolName: action.iconName, accessibilityDescription: action.title) {
-                        menuItem.image = image
+            // User-supplied tools (if any)
+            if !self.configuration.toolbarSections.isEmpty {
+                menu.addItem(.separator())
+
+                for section in self.configuration.toolbarSections {
+                    if menu.items.count > 2 { // More than bulk edit + separator
+                        menu.addItem(.separator())
                     }
-                    menu.addItem(menuItem)
+
+                    for action in section.actions {
+                        let menuItem = NSMenuItem(title: action.title, action: #selector(self.toolbarActionTriggered(_:)), keyEquivalent: "")
+                        menuItem.target = self
+                        menuItem.representedObject = action.id
+                        if let image = NSImage(systemSymbolName: action.iconName, accessibilityDescription: action.title) {
+                            menuItem.image = image
+                        }
+                        menu.addItem(menuItem)
+                    }
                 }
             }
 
@@ -418,6 +421,11 @@
 
         @objc private func toggleInspectorClicked() {
             self.splitViewController?.toggleDetailPanel()
+        }
+
+        @objc private func showBulkEdit() {
+            let bulkEditPanel = macOSBulkEditPanel(dataSource: dataSource)
+            self.contentViewController?.presentAsSheet(bulkEditPanel)
         }
 
         @objc private func toolbarActionTriggered(_ sender: NSMenuItem) {
