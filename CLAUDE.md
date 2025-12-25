@@ -138,7 +138,7 @@ An offline-first, real-time sync engine for Supabase with:
    - `PolyRealtimeSubscriber`: Per-table subscriptions with echo filtering
 
 4. **PolySyncable Protocol**: Entities must conform to enable sync
-   - Requires: `id`, `version`, `deleted_at`, `updated_at`
+   - Requires: `id` (ULID preferred), `version` (bigint), `deleted` (bool), `updated_at` (timestamptz)
    - Provides table name and field mappings
 
 All data mutations MUST go through `PolySyncCoordinator.shared.persistChange()` or `.delete()`. Direct SwiftData saves bypass version bumping and sync.
