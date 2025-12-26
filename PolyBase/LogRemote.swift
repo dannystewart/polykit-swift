@@ -8,15 +8,12 @@ import Auth
 import Foundation
 import PolyKit
 import Supabase
-
 #if canImport(UIKit) && !os(macOS)
     import UIKit
 #endif
-
 #if canImport(WatchKit)
     import WatchKit
 #endif
-
 #if canImport(IOKit)
     import IOKit
 #endif
