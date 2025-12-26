@@ -27,6 +27,11 @@
 
         private let emptyStateLabel: UILabel = .init()
 
+        /// Whether explicit save is required (from configuration).
+        private var requiresExplicitSave: Bool {
+            self.dataSource.configuration.requiresExplicitSave
+        }
+
         // MARK: Initialization
 
         public init(
@@ -77,7 +82,7 @@
             return switch sectionType {
             case .fields: entity.detailFields.count
             case .relationships: entity.detailRelationships.count
-            case .actions: 1
+            case .actions: self.requiresExplicitSave ? 2 : 1 // Save + Delete when explicit save enabled
             }
         }
 
@@ -105,7 +110,11 @@
             case .relationships:
                 return self.relationshipCell(at: indexPath, tableView: tableView, entity: entity, record: record)
             case .actions:
-                return self.deleteCell(tableView: tableView)
+                if self.requiresExplicitSave, indexPath.row == 0 {
+                    return self.saveCell(tableView: tableView)
+                } else {
+                    return self.deleteCell(tableView: tableView)
+                }
             }
         }
 
@@ -127,7 +136,11 @@
                 relationship.navigateAction(record, self.dataSource.context)
 
             case .actions:
-                self.confirmDelete()
+                if self.requiresExplicitSave, indexPath.row == 0 {
+                    self.performSave()
+                } else {
+                    self.confirmDelete()
+                }
             }
         }
 
@@ -210,7 +223,9 @@
                 cell.configure(label: field.label, isOn: isOn) { [weak self] newValue in
                     guard let self else { return }
                     field.toggleAction?(record, newValue)
-                    self.dataSource.save()
+                    if !self.requiresExplicitSave {
+                        self.dataSource.save()
+                    }
                 }
                 return cell
             }
@@ -228,7 +243,9 @@
                     cell.configure(label: field.label, value: field.getValue(record)) { [weak self] newValue in
                         guard let self else { return }
                         field.editAction?(record, newValue)
-                        self.dataSource.save()
+                        if !self.requiresExplicitSave {
+                            self.dataSource.save()
+                        }
                     }
                     return cell
                 } else {
@@ -243,7 +260,9 @@
                     cell.configure(label: field.label, value: field.getValue(record)) { [weak self] newValue in
                         guard let self else { return }
                         field.editAction?(record, newValue)
-                        self.dataSource.save()
+                        if !self.requiresExplicitSave {
+                            self.dataSource.save()
+                        }
                     }
                     return cell
                 }
@@ -281,6 +300,17 @@
             return cell
         }
 
+        private func saveCell(tableView: UITableView) -> UITableViewCell {
+            let cell = tableView.dequeueReusableCell(withIdentifier: "Cell") ?? UITableViewCell()
+            var config = cell.defaultContentConfiguration()
+            config.text = "Save Changes"
+            config.textProperties.color = .systemBlue
+            config.textProperties.alignment = .center
+            cell.contentConfiguration = config
+            cell.accessoryType = .none
+            return cell
+        }
+
         private func deleteCell(tableView: UITableView) -> UITableViewCell {
             let cell = tableView.dequeueReusableCell(withIdentifier: "Cell") ?? UITableViewCell()
             var config = cell.defaultContentConfiguration()
@@ -290,6 +320,38 @@
             cell.contentConfiguration = config
             cell.accessoryType = .none
             return cell
+        }
+
+        // MARK: Save
+
+        private func performSave() {
+            guard let record else { return }
+            guard let onSave = dataSource.configuration.onSave else {
+                // Fallback: just save context if no custom save handler
+                self.dataSource.save()
+                return
+            }
+
+            Task {
+                do {
+                    try await onSave(record, self.dataSource.modelContext)
+                    await MainActor.run {
+                        // Reload to show updated values
+                        self.tableView.reloadData()
+                        self.dataSource.context.reloadData?()
+                    }
+                } catch {
+                    await MainActor.run {
+                        let alert = UIAlertController(
+                            title: "Save Failed",
+                            message: error.localizedDescription,
+                            preferredStyle: .alert,
+                        )
+                        alert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self.present(alert, animated: true)
+                    }
+                }
+            }
         }
 
         // MARK: Delete

@@ -20,6 +20,12 @@
         private var scrollView: NSScrollView!
         private var stackView: NSStackView!
         private var emptyLabel: NSTextField!
+        private var saveButton: NSButton?
+
+        /// Whether explicit save is required (from configuration).
+        private var requiresExplicitSave: Bool {
+            self.dataSource.configuration.requiresExplicitSave
+        }
 
         // MARK: Initialization
 
@@ -172,6 +178,22 @@
                     self.stackView.addArrangedSubview(relView)
                 }
             }
+
+            // Add Save button if explicit save is required
+            if self.requiresExplicitSave {
+                let separator = NSBox()
+                separator.boxType = .separator
+                separator.translatesAutoresizingMaskIntoConstraints = false
+                self.stackView.addArrangedSubview(separator)
+                separator.widthAnchor.constraint(equalTo: self.stackView.widthAnchor, constant: -24).isActive = true
+
+                let button = NSButton(title: "Save Changes", target: self, action: #selector(saveButtonClicked))
+                button.bezelStyle = .rounded
+                button.translatesAutoresizingMaskIntoConstraints = false
+                button.widthAnchor.constraint(equalToConstant: 250).isActive = true
+                self.stackView.addArrangedSubview(button)
+                self.saveButton = button
+            }
         }
 
         private func createFieldView(field: PolyDataField, record: AnyObject) -> NSView {
@@ -247,6 +269,38 @@
 
             let relationship = entity.detailRelationships[sender.tag]
             relationship.navigateAction(record, self.dataSource.context)
+        }
+
+        @objc private func saveButtonClicked() {
+            guard let record = currentRecord else { return }
+            guard let onSave = dataSource.configuration.onSave else {
+                // Fallback: just save context if no custom save handler
+                self.dataSource.save()
+                return
+            }
+
+            // Capture modelContext on MainActor before passing to nonisolated Task
+            let modelContext = self.dataSource.modelContext
+
+            Task {
+                do {
+                    try await onSave(record, modelContext)
+                    await MainActor.run {
+                        // Reload to show updated values
+                        self.refresh()
+                        self.dataSource.context.reloadData?()
+                    }
+                } catch {
+                    await MainActor.run {
+                        let alert = NSAlert()
+                        alert.messageText = "Save Failed"
+                        alert.informativeText = error.localizedDescription
+                        alert.alertStyle = .warning
+                        alert.addButton(withTitle: "OK")
+                        alert.runModal()
+                    }
+                }
+            }
         }
     }
 

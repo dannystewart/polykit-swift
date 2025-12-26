@@ -47,6 +47,15 @@ public struct PolyDataExplorerConfiguration {
     /// Title for the explorer window/view.
     public let title: String
 
+    /// Whether edits require explicit save (prevents auto-save on field changes).
+    /// When true, a Save button is shown and edits are batched until explicitly saved.
+    public let requiresExplicitSave: Bool
+
+    /// Callback invoked when Save button is pressed (only if requiresExplicitSave is true).
+    /// Receives the record being saved and the model context.
+    /// This is where you should implement proper versioning and persistence logic.
+    public let onSave: ((AnyObject, ModelContext) async throws -> Void)?
+
     // MARK: Initialization
 
     public init(
@@ -56,6 +65,8 @@ public struct PolyDataExplorerConfiguration {
         integrityChecker: (any PolyDataIntegrityChecker)? = nil,
         showStats: Bool = true,
         title: String = "Data Explorer",
+        requiresExplicitSave: Bool = false,
+        onSave: ((AnyObject, ModelContext) async throws -> Void)? = nil,
     ) {
         self.entities = entities
         self.defaultEntityIndex = min(defaultEntityIndex, max(0, entities.count - 1))
@@ -63,6 +74,8 @@ public struct PolyDataExplorerConfiguration {
         self.integrityChecker = integrityChecker
         self.showStats = showStats
         self.title = title
+        self.requiresExplicitSave = requiresExplicitSave
+        self.onSave = onSave
     }
 
     // MARK: Convenience
