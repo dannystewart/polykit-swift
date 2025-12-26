@@ -5,133 +5,14 @@
 //
 
 import Foundation
-
 #if canImport(os)
     import os
 #endif
-
 #if canImport(Darwin)
     import Darwin
 #elseif canImport(Glibc)
     import Glibc
 #endif
-
-// MARK: - LogEntry
-
-/// A captured log entry for in-app console display.
-public struct LogEntry: Sendable, Identifiable {
-    public let id: UUID
-    public let timestamp: Date
-    public let level: LogLevel
-    public let message: String
-    public let group: LogGroup?
-
-    /// Pre-formatted plain text for display (no ANSI codes).
-    public let formattedText: String
-
-    public init(
-        timestamp: Date,
-        level: LogLevel,
-        message: String,
-        group: LogGroup?,
-        formattedText: String,
-    ) {
-        self.id = UUID()
-        self.timestamp = timestamp
-        self.level = level
-        self.message = message
-        self.group = group
-        self.formattedText = formattedText
-    }
-}
-
-// MARK: - LogBuffer
-
-/// Thread-safe circular buffer for capturing log entries.
-///
-/// Used by `PolyLog` when capture is enabled to store recent log entries
-/// for display in an in-app console.
-public final class LogBuffer: @unchecked Sendable {
-    /// Default capacity for the log buffer.
-    public static let defaultCapacity = 5000
-
-    private let lock: NSLock = .init()
-    private var entries: [LogEntry] = []
-    private let capacity: Int
-
-    /// Returns the number of entries currently in the buffer.
-    public var count: Int {
-        self.lock.lock()
-        defer { lock.unlock() }
-        return self.entries.count
-    }
-
-    /// Creates a new log buffer with the specified capacity.
-    ///
-    /// - Parameter capacity: Maximum number of entries to retain. Oldest entries are
-    ///   dropped when the buffer is full. Defaults to 5000.
-    public init(capacity: Int = LogBuffer.defaultCapacity) {
-        self.capacity = capacity
-        self.entries.reserveCapacity(capacity)
-    }
-
-    /// Appends a new entry to the buffer, dropping the oldest if at capacity.
-    public func append(_ entry: LogEntry) {
-        self.lock.lock()
-        defer { lock.unlock() }
-
-        if self.entries.count >= self.capacity {
-            self.entries.removeFirst()
-        }
-        self.entries.append(entry)
-    }
-
-    /// Returns all captured entries in chronological order.
-    public func allEntries() -> [LogEntry] {
-        self.lock.lock()
-        defer { lock.unlock() }
-        return self.entries
-    }
-
-    /// Clears all entries from the buffer.
-    public func clear() {
-        self.lock.lock()
-        defer { lock.unlock() }
-        self.entries.removeAll(keepingCapacity: true)
-    }
-
-    /// Exports all entries as plain text, one entry per line.
-    ///
-    /// - Returns: A string containing all log entries formatted for export.
-    public func exportAsText() -> String {
-        let allEntries = allEntries()
-        return allEntries.map(\.formattedText).joined(separator: "\n")
-    }
-}
-
-// MARK: - LogGroup
-
-/// Type-safe identifier for logging groups. Allows categorization of logs for filtering.
-///
-/// Example usage:
-/// ```swift
-/// extension LogGroup {
-///     static let networking = LogGroup("networking", emoji: "🌐")
-///     static let database = LogGroup("database", emoji: "💾")
-///     static let verboseUI = LogGroup("verbose-ui", emoji: "🎨", defaultEnabled: false)
-/// }
-/// ```
-public struct LogGroup: Hashable, Sendable {
-    public let identifier: String
-    public let emoji: String?
-    public let defaultEnabled: Bool
-
-    public init(_ identifier: String, emoji: String? = nil, defaultEnabled: Bool = true) {
-        self.identifier = identifier
-        self.emoji = emoji
-        self.defaultEnabled = defaultEnabled
-    }
-}
 
 // MARK: - PolyLog
 
@@ -243,6 +124,110 @@ public final class PolyLog: @unchecked Sendable {
             let subsystem = Bundle.main.bundleIdentifier ?? "com.unknown.app.polylog"
             self.osLogger = Logger(subsystem: subsystem, category: "PolyLog")
         #endif
+    }
+
+    // MARK: Public Logging Methods
+
+    public func debug(_ message: String, group: LogGroup? = nil) {
+        self.log(message, level: .debug, group: group)
+    }
+
+    public func info(_ message: String, group: LogGroup? = nil) {
+        self.log(message, level: .info, group: group)
+    }
+
+    public func warning(_ message: String, group: LogGroup? = nil) {
+        self.log(message, level: .warning, group: group)
+    }
+
+    public func error(_ message: String, group: LogGroup? = nil) {
+        self.log(message, level: .error, group: group)
+    }
+
+    public func fault(_ message: String, group: LogGroup? = nil) {
+        self.log(message, level: .fault, group: group)
+    }
+
+    // MARK: Group Management
+
+    /// Disables logging for a specific group.
+    /// - Parameter group: The group to disable.
+    public func disableGroup(_ group: LogGroup) {
+        self.groupLock.lock()
+        defer { groupLock.unlock() }
+        self.disabledGroups.insert(group)
+    }
+
+    /// Enables logging for a specific group.
+    /// - Parameter group: The group to enable.
+    public func enableGroup(_ group: LogGroup) {
+        self.groupLock.lock()
+        defer { groupLock.unlock() }
+        self.disabledGroups.remove(group)
+    }
+
+    /// Disables multiple groups at once.
+    /// - Parameter groups: The groups to disable.
+    public func disableGroups(_ groups: [LogGroup]) {
+        self.groupLock.lock()
+        defer { groupLock.unlock() }
+        self.disabledGroups.formUnion(groups)
+    }
+
+    /// Enables multiple groups at once.
+    /// - Parameter groups: The groups to enable.
+    public func enableGroups(_ groups: [LogGroup]) {
+        self.groupLock.lock()
+        defer { groupLock.unlock() }
+        groups.forEach { self.disabledGroups.remove($0) }
+    }
+
+    /// Checks if an group is currently enabled.
+    /// - Parameter group: The group to check.
+    /// - Returns: `true` if the group is enabled (not disabled).
+    public func isGroupEnabled(_ group: LogGroup) -> Bool {
+        self.groupLock.lock()
+        defer { groupLock.unlock() }
+        return !self.disabledGroups.contains(group)
+    }
+
+    /// Returns all currently disabled groups.
+    /// - Returns: A set of disabled groups.
+    public func getDisabledGroups() -> Set<LogGroup> {
+        self.groupLock.lock()
+        defer { groupLock.unlock() }
+        return self.disabledGroups
+    }
+
+    /// Enables all groups (clears the disabled list).
+    public func enableAllGroups() {
+        self.groupLock.lock()
+        defer { groupLock.unlock() }
+        self.disabledGroups.removeAll()
+    }
+
+    /// Applies default enabled/disabled states based on `registeredGroups` and their `defaultEnabled` property.
+    ///
+    /// Call this during app initialization to set up initial group states. Groups with `defaultEnabled: false`
+    /// will be disabled, while groups with `defaultEnabled: true` (the default) will be enabled.
+    ///
+    /// Typical workflow:
+    /// ```swift
+    /// logger.registeredGroups = [.networking, .database, .verboseUI]
+    /// logger.applyDefaultStates()  // Apply defaults
+    /// logger.loadPersistedStates() // Override with user preferences if available
+    /// ```
+    public func applyDefaultStates() {
+        self.groupLock.lock()
+        defer { groupLock.unlock() }
+
+        for group in self.registeredGroups {
+            if group.defaultEnabled {
+                self.disabledGroups.remove(group)
+            } else {
+                self.disabledGroups.insert(group)
+            }
+        }
     }
 
     // MARK: - Capture Control
@@ -408,110 +393,6 @@ public final class PolyLog: @unchecked Sendable {
         self.groupLock.unlock()
 
         return buffer?.exportAsText() ?? ""
-    }
-
-    // MARK: Public Logging Methods
-
-    public func debug(_ message: String, group: LogGroup? = nil) {
-        self.log(message, level: .debug, group: group)
-    }
-
-    public func info(_ message: String, group: LogGroup? = nil) {
-        self.log(message, level: .info, group: group)
-    }
-
-    public func warning(_ message: String, group: LogGroup? = nil) {
-        self.log(message, level: .warning, group: group)
-    }
-
-    public func error(_ message: String, group: LogGroup? = nil) {
-        self.log(message, level: .error, group: group)
-    }
-
-    public func fault(_ message: String, group: LogGroup? = nil) {
-        self.log(message, level: .fault, group: group)
-    }
-
-    // MARK: Group Management
-
-    /// Disables logging for a specific group.
-    /// - Parameter group: The group to disable.
-    public func disableGroup(_ group: LogGroup) {
-        self.groupLock.lock()
-        defer { groupLock.unlock() }
-        self.disabledGroups.insert(group)
-    }
-
-    /// Enables logging for a specific group.
-    /// - Parameter group: The group to enable.
-    public func enableGroup(_ group: LogGroup) {
-        self.groupLock.lock()
-        defer { groupLock.unlock() }
-        self.disabledGroups.remove(group)
-    }
-
-    /// Disables multiple groups at once.
-    /// - Parameter groups: The groups to disable.
-    public func disableGroups(_ groups: [LogGroup]) {
-        self.groupLock.lock()
-        defer { groupLock.unlock() }
-        self.disabledGroups.formUnion(groups)
-    }
-
-    /// Enables multiple groups at once.
-    /// - Parameter groups: The groups to enable.
-    public func enableGroups(_ groups: [LogGroup]) {
-        self.groupLock.lock()
-        defer { groupLock.unlock() }
-        groups.forEach { self.disabledGroups.remove($0) }
-    }
-
-    /// Checks if an group is currently enabled.
-    /// - Parameter group: The group to check.
-    /// - Returns: `true` if the group is enabled (not disabled).
-    public func isGroupEnabled(_ group: LogGroup) -> Bool {
-        self.groupLock.lock()
-        defer { groupLock.unlock() }
-        return !self.disabledGroups.contains(group)
-    }
-
-    /// Returns all currently disabled groups.
-    /// - Returns: A set of disabled groups.
-    public func getDisabledGroups() -> Set<LogGroup> {
-        self.groupLock.lock()
-        defer { groupLock.unlock() }
-        return self.disabledGroups
-    }
-
-    /// Enables all groups (clears the disabled list).
-    public func enableAllGroups() {
-        self.groupLock.lock()
-        defer { groupLock.unlock() }
-        self.disabledGroups.removeAll()
-    }
-
-    /// Applies default enabled/disabled states based on `registeredGroups` and their `defaultEnabled` property.
-    ///
-    /// Call this during app initialization to set up initial group states. Groups with `defaultEnabled: false`
-    /// will be disabled, while groups with `defaultEnabled: true` (the default) will be enabled.
-    ///
-    /// Typical workflow:
-    /// ```swift
-    /// logger.registeredGroups = [.networking, .database, .verboseUI]
-    /// logger.applyDefaultStates()  // Apply defaults
-    /// logger.loadPersistedStates() // Override with user preferences if available
-    /// ```
-    public func applyDefaultStates() {
-        self.groupLock.lock()
-        defer { groupLock.unlock() }
-
-        for group in self.registeredGroups {
-            if group.defaultEnabled {
-                self.disabledGroups.remove(group)
-            } else {
-                self.disabledGroups.insert(group)
-            }
-        }
     }
 
     // MARK: Persistence
@@ -757,6 +638,99 @@ public extension PolyLog {
     }
 }
 
+// MARK: - LogBuffer
+
+/// Thread-safe circular buffer for capturing log entries.
+///
+/// Used by `PolyLog` when capture is enabled to store recent log entries
+/// for display in an in-app console.
+public final class LogBuffer: @unchecked Sendable {
+    /// Default capacity for the log buffer.
+    public static let defaultCapacity = 5000
+
+    private let lock: NSLock = .init()
+    private var entries: [LogEntry] = []
+    private let capacity: Int
+
+    /// Returns the number of entries currently in the buffer.
+    public var count: Int {
+        self.lock.lock()
+        defer { lock.unlock() }
+        return self.entries.count
+    }
+
+    /// Creates a new log buffer with the specified capacity.
+    ///
+    /// - Parameter capacity: Maximum number of entries to retain. Oldest entries are
+    ///   dropped when the buffer is full. Defaults to 5000.
+    public init(capacity: Int = LogBuffer.defaultCapacity) {
+        self.capacity = capacity
+        self.entries.reserveCapacity(capacity)
+    }
+
+    /// Appends a new entry to the buffer, dropping the oldest if at capacity.
+    public func append(_ entry: LogEntry) {
+        self.lock.lock()
+        defer { lock.unlock() }
+
+        if self.entries.count >= self.capacity {
+            self.entries.removeFirst()
+        }
+        self.entries.append(entry)
+    }
+
+    /// Returns all captured entries in chronological order.
+    public func allEntries() -> [LogEntry] {
+        self.lock.lock()
+        defer { lock.unlock() }
+        return self.entries
+    }
+
+    /// Clears all entries from the buffer.
+    public func clear() {
+        self.lock.lock()
+        defer { lock.unlock() }
+        self.entries.removeAll(keepingCapacity: true)
+    }
+
+    /// Exports all entries as plain text, one entry per line.
+    ///
+    /// - Returns: A string containing all log entries formatted for export.
+    public func exportAsText() -> String {
+        let allEntries = allEntries()
+        return allEntries.map(\.formattedText).joined(separator: "\n")
+    }
+}
+
+// MARK: - LogEntry
+
+/// A captured log entry for in-app console display.
+public struct LogEntry: Sendable, Identifiable {
+    public let id: UUID
+    public let timestamp: Date
+    public let level: LogLevel
+    public let message: String
+    public let group: LogGroup?
+
+    /// Pre-formatted plain text for display (no ANSI codes).
+    public let formattedText: String
+
+    public init(
+        timestamp: Date,
+        level: LogLevel,
+        message: String,
+        group: LogGroup?,
+        formattedText: String,
+    ) {
+        self.id = UUID()
+        self.timestamp = timestamp
+        self.level = level
+        self.message = message
+        self.group = group
+        self.formattedText = formattedText
+    }
+}
+
 // MARK: - LogLevel
 
 /// Enum representing various log levels.
@@ -797,5 +771,29 @@ public enum LogLevel: String, CaseIterable, Sendable {
         case .error: "❌ "
         case .fault: "🔥 "
         }
+    }
+}
+
+// MARK: - LogGroup
+
+/// Type-safe identifier for logging groups. Allows categorization of logs for filtering.
+///
+/// Example usage:
+/// ```swift
+/// extension LogGroup {
+///     static let networking = LogGroup("networking", emoji: "🌐")
+///     static let database = LogGroup("database", emoji: "💾")
+///     static let verboseUI = LogGroup("verbose-ui", emoji: "🎨", defaultEnabled: false)
+/// }
+/// ```
+public struct LogGroup: Hashable, Sendable {
+    public let identifier: String
+    public let emoji: String?
+    public let defaultEnabled: Bool
+
+    public init(_ identifier: String, emoji: String? = nil, defaultEnabled: Bool = true) {
+        self.identifier = identifier
+        self.emoji = emoji
+        self.defaultEnabled = defaultEnabled
     }
 }
