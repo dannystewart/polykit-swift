@@ -332,9 +332,11 @@
                 return
             }
 
+            // Capture modelContext while still on MainActor
+            let modelContext = self.dataSource.modelContext
             Task {
                 do {
-                    try await onSave(record, self.dataSource.modelContext)
+                    try await onSave(record, modelContext)
                     await MainActor.run {
                         // Reload to show updated values
                         self.tableView.reloadData()
