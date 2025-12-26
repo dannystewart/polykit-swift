@@ -899,7 +899,7 @@ public final class PolySyncCoordinator {
         }
 
         // Transient failure — queue for retry
-        polyError("PolySyncCoordinator: Push failed for \(context.entityType) \(context.entityId), queueing for retry: \(context.error)")
+        polyWarning("PolySyncCoordinator: Push failed for \(context.entityType) \(context.entityId), queueing for retry: \(context.error)")
         self.queueOperation(table: context.tableName, action: context.action, record: context.record, entityId: context.entityId)
     }
 }
