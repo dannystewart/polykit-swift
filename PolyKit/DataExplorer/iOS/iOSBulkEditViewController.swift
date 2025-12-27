@@ -547,9 +547,10 @@
 
         override func tableView(_: UITableView, titleForHeaderInSection _: Int) -> String? {
             if self.preview.hasMore {
-                "Showing first 5 of \(self.preview.totalCount) matching records. All \(self.preview.totalCount) will be updated."
+                return "Showing first 5 of \(self.preview.totalCount) matching records. All \(self.preview.totalCount) will be updated."
             } else {
-                "\(self.preview.totalCount) record(s) will be updated:"
+                let recordWord = self.preview.totalCount == 1 ? "record" : "records"
+                return "\(self.preview.totalCount) \(recordWord) will be updated:"
             }
         }
 
@@ -567,10 +568,11 @@
 
                 if result.isSuccess {
                     self.dataSource.context.reloadData?()
+                    let recordWord = result.updatedCount == 1 ? "record" : "records"
 
                     let alert = UIAlertController(
                         title: "Bulk Edit Complete",
-                        message: "Successfully updated \(result.updatedCount) record(s).",
+                        message: "Successfully updated \(result.updatedCount) \(recordWord).",
                         preferredStyle: .alert,
                     )
                     alert.addAction(UIAlertAction(title: "OK", style: .default) { [weak self] _ in

@@ -370,9 +370,10 @@
             stack.addArrangedSubview(titleLabel)
 
             // Summary
+            let recordWord = self.preview.totalCount == 1 ? "record" : "records"
             let summaryText = self.preview.hasMore
                 ? "Showing first 5 of \(self.preview.totalCount) matching records. All \(self.preview.totalCount) will be updated."
-                : "\(self.preview.totalCount) record(s) will be updated:"
+                : "\(self.preview.totalCount) \(recordWord) will be updated:"
             let summaryLabel = NSTextField(labelWithString: summaryText)
             summaryLabel.font = .systemFont(ofSize: 11)
             summaryLabel.textColor = .secondaryLabelColor
@@ -462,9 +463,10 @@
                     self.dismiss(nil)
                     self.presentingViewController?.dismiss(nil)
 
+                    let recordWord = result.updatedCount == 1 ? "record" : "records"
                     self.dataSource.context.showAlert?(
                         "Bulk Edit Complete",
-                        "Successfully updated \(result.updatedCount) record(s).")
+                        "Successfully updated \(result.updatedCount) \(recordWord).")
                 } else {
                     self.applyButton.isEnabled = true
                     self.applyButton.title = "Apply Changes"

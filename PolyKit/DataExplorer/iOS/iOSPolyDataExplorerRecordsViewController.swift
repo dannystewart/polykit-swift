@@ -177,10 +177,11 @@
                 self.tableView.separatorStyle = .none
 
                 if expected > 0 {
+                    let recordWord = expected == 1 ? "record" : "records"
                     self.emptyStateLabel.text = """
                     No rows fetched for \(entity.displayName).
 
-                    Expected \(expected) record(s) based on count(), but fetch returned 0.
+                    Expected \(expected) \(recordWord) based on count(), but fetch returned 0.
                     """
                 } else {
                     self.emptyStateLabel.text = "No \(entity.displayName.lowercased()) found."

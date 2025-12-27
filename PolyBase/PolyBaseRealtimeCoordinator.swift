@@ -147,7 +147,8 @@ public final class PolyBaseRealtimeCoordinator {
         try await newChannel.subscribeWithError()
         self.isSubscribed = true
 
-        polyDebug("PolyBaseRealtimeCoordinator: Subscribed to \(tables.count) table(s)")
+        let tableWord = tables.count == 1 ? "table" : "tables"
+        polyDebug("PolyBaseRealtimeCoordinator: Subscribed to \(tables.count) \(tableWord)")
 
         // Set up notification observer
         NotificationCenter.default.addObserver(
