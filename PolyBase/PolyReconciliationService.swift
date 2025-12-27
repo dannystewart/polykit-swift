@@ -88,7 +88,7 @@ public struct ReconcileError: Error, Sendable {
 /// ```swift
 /// // Reconcile all items
 /// let result = await PolyReconciliationService.shared.reconcile(Item.self)
-/// print("↓\(result.pulled) ↑\(result.pushed) 🪦\(result.tombstonesAdopted)")
+/// logger.debug("↓\(result.pulled) ↑\(result.pushed) 🪦\(result.tombstonesAdopted)")
 /// ```
 @MainActor
 public final class PolyReconciliationService {

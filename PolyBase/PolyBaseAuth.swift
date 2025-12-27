@@ -26,7 +26,7 @@ import Supabase
 ///
 /// // Check status
 /// if PolyBaseAuth.shared.isSignedIn {
-///     print("User ID: \(PolyBaseAuth.shared.userID!)")
+///     logger.debug("User ID: \(PolyBaseAuth.shared.userID!)")
 /// }
 ///
 /// // Sign out

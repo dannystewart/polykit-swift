@@ -119,7 +119,7 @@ public final class PolyBaseRealtimeCoordinator {
     /// ## Example
     /// ```swift
     /// try await coordinator.subscribe(to: ["projects", "areas", "items"]) {
-    ///     print("Data changed on another device!")
+    ///     logger.debug("Data changed on another device!")
     ///     try await syncData()
     /// }
     /// ```
