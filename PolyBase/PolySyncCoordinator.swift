@@ -104,12 +104,18 @@ public final class PolySyncCoordinator {
     /// - Immutable field violations (e.g., created_at)
     /// - Same-version mutations (already at that version)
     /// - Invalid undelete attempts (requires version >= old + 1000)
+    /// - Database constraint violations (TSVector size, etc.)
     private nonisolated static func isPermanentOfflineQueueError(_ error: Error) -> Bool {
-        let errorString = String(describing: error)
+        let errorString = String(describing: error).lowercased()
         return errorString.contains("version regression") ||
             errorString.contains("is immutable") ||
             errorString.contains("same-version mutation") ||
-            errorString.contains("undelete requires version")
+            errorString.contains("undelete requires version") ||
+            errorString.contains("string is too long for tsvector") ||
+            errorString.contains("value too long") ||
+            errorString.contains("violates check constraint") ||
+            errorString.contains("violates not-null constraint") ||
+            errorString.contains("violates unique constraint")
     }
 
     // MARK: - Initialization
