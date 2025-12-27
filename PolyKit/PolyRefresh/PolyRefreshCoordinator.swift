@@ -7,6 +7,8 @@
 import Foundation
 import Observation
 
+let logger: PolyLog = .init()
+
 // MARK: - PolyRefreshCoordinator
 
 /// Centralized coordinator for UI refresh signals across any entity types.
@@ -99,7 +101,7 @@ public final class PolyRefreshCoordinator {
         }
 
         #if DEBUG
-            print("PolyRefresh: Registered '\(entityType)'" + (parent != nil ? " with parent '\(parent!)'" : ""))
+            logger.debug("PolyRefresh: Registered '\(entityType)'" + (parent != nil ? " with parent '\(parent!)'" : ""))
         #endif
     }
 
@@ -145,7 +147,7 @@ public final class PolyRefreshCoordinator {
     public func notify(_ entityType: String, change: EntityChange) {
         #if DEBUG
             if !self.registeredTypes.contains(entityType) {
-                print("⚠️ PolyRefresh: Warning - notifying unregistered entity type '\(entityType)'")
+                logger.warning("PolyRefresh: Warning - notifying unregistered entity type '\(entityType)'")
             }
         #endif
 
@@ -156,7 +158,7 @@ public final class PolyRefreshCoordinator {
         self.signals[entityType, default: 0] &+= 1
 
         #if DEBUG
-            print("PolyRefresh: '\(entityType)' changed (\(change.changeType), \(change.entityIDs.count) entities)")
+            logger.debug("PolyRefresh: '\(entityType)' changed (\(change.changeType), \(change.entityIDs.count) entities)")
         #endif
 
         // Bubble up hierarchy
@@ -182,7 +184,7 @@ public final class PolyRefreshCoordinator {
         }
 
         #if DEBUG
-            print("PolyRefresh: All entity types signaled for refresh")
+            logger.debug("PolyRefresh: All entity types signaled for refresh")
         #endif
     }
 
@@ -230,7 +232,7 @@ public final class PolyRefreshCoordinator {
         self.signals[parentType, default: 0] &+= 1
 
         #if DEBUG
-            print("PolyRefresh: Bubbled '\(entityType)' change to parent '\(parentType)'")
+            logger.debug("PolyRefresh: Bubbled '\(entityType)' change to parent '\(parentType)'")
         #endif
 
         // Continue bubbling up (e.g., Conversation → Persona)
