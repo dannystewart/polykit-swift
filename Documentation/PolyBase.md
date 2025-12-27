@@ -200,17 +200,22 @@ At equal versions, only deletion drift is healed:
 
 ### 5. Offline Queue
 
-Failed pushes are automatically queued and retried:
+Failed pushes are **automatically queued and retried**. PolyBase handles this completely:
+
+1. **On app launch** — Any queued operations from previous sessions are automatically processed
+2. **When network returns** — Network connectivity monitoring triggers automatic retry
+3. **No app code required** — PolyBase manages this internally
+
+You can monitor queue status if needed:
 
 ```swift
-// In app startup (e.g., PrismApp.swift):
-let processed = await PolySyncCoordinator.shared.processOfflineQueue()
-print("Processed \(processed) offline operations")
-
 // Check queue status:
 if PolySyncCoordinator.shared.hasPendingOfflineOperations {
     print("\(PolySyncCoordinator.shared.pendingOfflineOperationCount) pending")
 }
+
+// Manual retry (optional - already happens automatically):
+let processed = await PolySyncCoordinator.shared.processOfflineQueue()
 ```
 
 **Permanent errors are not retried:**
@@ -514,6 +519,11 @@ Thread-safe tracking of recently pushed entities to prevent real-time echo proce
        logGroup: .database,
        modelContext: modelContext
    )
+
+   // That's it! PolyBase automatically:
+   // - Processes any queued operations from previous sessions
+   // - Monitors network connectivity and retries failed operations
+   // - No manual queue processing needed
    ```
 
 6. **Use PolySyncCoordinator for all mutations:**
@@ -521,14 +531,9 @@ Thread-safe tracking of recently pushed entities to prevent real-time echo proce
    ```swift
    // Instead of: context.save()
    try await PolySyncCoordinator.shared.persistChange(item)
-   ```
 
-7. **Process offline queue on app launch:**
-
-   ```swift
-   Task {
-       await PolySyncCoordinator.shared.processOfflineQueue()
-   }
+   // PolyBase automatically queues for retry if push fails
+   // Network monitoring will retry when connectivity returns
    ```
 
 ### Scenario 2: Existing Supabase Integration (Legacy Sync Logic)
@@ -969,7 +974,7 @@ func testPushPull() async throws {
 
 ### Q: Can I customize the offline queue retry logic?
 
-**A:** Not currently. The queue retries all operations on app launch and after sign-in. You can call `processOfflineQueue()` manually at any time. Network connectivity detection isn't built-in yet.
+**A:** The queue automatically retries on app launch and when network connectivity returns (via built-in `NWPathMonitor`). You can call `processOfflineQueue()` manually at any time for immediate retry. The retry logic filters out permanent errors (version regression, invalid undelete, etc.) automatically.
 
 ### Q: What happens if I delete an entity locally but another device modifies it remotely?
 

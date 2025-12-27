@@ -123,6 +123,17 @@ public final class PolySyncCoordinator {
         }
         self.modelContext = context
         polyInfo("PolySyncCoordinator initialized")
+
+        // Start network monitoring for automatic offline queue processing
+        PolyBaseNetworkMonitor.shared.startMonitoring()
+
+        // Process any queued operations from previous sessions
+        Task {
+            if self.offlineQueue.hasPendingOperations {
+                polyInfo("PolySyncCoordinator: Found \(self.offlineQueue.pendingCount) queued operations from previous session")
+                await self.processOfflineQueue()
+            }
+        }
     }
 
     // MARK: - Persist Change (Update Existing)

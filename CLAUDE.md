@@ -9,6 +9,9 @@ PolyKit is a Swift utility library providing delightful utilities for CLI applic
 - **PolyKit**: Core utilities (logging, terminal I/O, device detection, ULID generation, data explorer framework)
 - **PolyMedia**: Audio/video player components and audio analysis
 - **PolyBase**: Supabase sync engine with offline-first architecture
+  - **Automatic offline queue retry**: Network monitoring with `NWPathMonitor` automatically retries failed operations when connectivity returns
+  - **App launch processing**: Any queued operations from previous sessions are automatically processed during `PolySyncCoordinator` initialization
+  - **No manual intervention required**: Apps using PolyBase don't need to call `processOfflineQueue()` explicitly
 
 ## Building and Tool Use
 
